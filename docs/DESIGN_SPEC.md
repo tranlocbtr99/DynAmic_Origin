@@ -21,3 +21,7 @@ Size transition: 280ms cubic curve, no positional spring/overshoot. The camera c
 
 ## Regression evidence
 Pure geometry test checks 15,000 frames across five screen widths and three explicit horizontal offsets, preserving center within 0.5px and retaining on-screen bounds. Device/emulator evidence is recorded in PROJECT_STATUS.md; these mathematical checks alone do not prove OEM compositor behavior.
+
+## 0.5.0 corrections from device feedback
+A screen-space anchor alone did not solve touch routing: Android's status bar is a higher window than TYPE_APPLICATION_OVERLAY. Safe interaction mode deliberately places the actual island beneath it. Exact camera placement remains available as an explicit less reliable option. A persistent IslandTouchLayout intercepts the header only; child label redraws cannot reset GestureDetector's long-press timer. Card controls below the header retain their own touch routing.
+Rotation now uses DisplayManager.DisplayListener and the current Display's real metrics/cutout. Configuration callbacks remain supplementary. It never feeds overlay-local cutout insets into placement. Landscape uses top center and a horizontal layout.

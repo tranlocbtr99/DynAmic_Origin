@@ -37,3 +37,11 @@
 - Open A, B, A: list order A then B, no duplicates; home/island excluded. Revoke access: no cached names shown.
 - Expand one notification, scroll/load more, delete/reply; actions hidden in collapsed rows and scroll retained.
 - A notification arriving while viewing recent apps is saved without interrupting that panel. After collapsing, subsequent notifications can open normally.
+
+## 0.5.0 critical checks
+- With another normal app foreground and safe mode ON: left/right taps and >500ms hold must work.
+- Receive notification/progress updates while holding; long press must still open the inbox. Header touch must not steal taps from action rows.
+- Compare safe mode with camera mode; camera mode may be intercepted by SystemUI and must not be reported as universally supported.
+- Rotate in another app at 0/90/180/270 degrees; overlay must re-anchor based on current display geometry.
+- Compact pill must show icon/title/count or media/download status, not just a single dot.
+- Protected apps may hide overlays regardless of safe mode; no bypass should be attempted.

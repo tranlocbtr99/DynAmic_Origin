@@ -29,3 +29,7 @@ The UI follows Apple material hierarchy and iOS geometry, but Android cannot rep
 
 ## 0.4.0 compact inbox and recent apps
 Notifications default to short rows with one-line title/body; tap to reveal actions. First 8 entries are shown, with load more. Right-half tap opens a custom recent-app list, not Android Overview. Enable Usage Access from the app or the prompt inside the island. It reads the past 24h of foreground-resume events only on demand, filters to launchable apps, deduplicates, and keeps up to 12 entries in memory. No usage history is written to disk or sent online. Notification functionality does not require Usage Access.
+
+## 0.5.0 touch and rotation fix
+The header's gesture owner now survives notification/card redraws, preserving long press. Incoming notification refreshes are queued during a touch. Display changes are observed directly, using live display metrics instead of relying solely on service configuration callbacks. Compact UI shows the source icon/title or active progress.
+**Tương tác ổn định** defaults on and places the interactive island just below the status bar so ordinary overlay touches can reach it in other apps. Turn this off only if your firmware allows touch in the camera/status-bar region. Ordinary application overlays cannot override the system status bar or apps that hide overlays. In landscape the island uses the top center; it is not a camera-following vertical iPhone island. No accessibility or root is added.

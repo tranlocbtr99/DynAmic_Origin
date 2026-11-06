@@ -219,6 +219,25 @@ public class MainActivity extends Activity {
         "Chạm trái: mở thông báo mới nhất. Chạm phải: ứng dụng vừa dùng. Nhấn giữ: xem danh sách"
             + " thông báo.");
     heading("Căn chỉnh camera");
+    IOSToggle safe = new IOSToggle(this);
+    safe.setChecked(Prefs.get(this).getBoolean("safe_interaction", true));
+    safe.setContentDescription("Chế độ tương tác ổn định");
+    LinearLayout safeRow = new LinearLayout(this);
+    safeRow.setGravity(Gravity.CENTER_VERTICAL);
+    TextView safeTitle = IOSStyle.text(this, "Tương tác ổn định", 16, true, IOSStyle.ink(this));
+    safeRow.addView(safeTitle, new LinearLayout.LayoutParams(0, dp(48), 1));
+    safeRow.addView(safe);
+    section.addView(safeRow);
+    safe.onChange(
+        on -> {
+          Prefs.get(this).edit().putBoolean("safe_interaction", on).apply();
+          if (IslandService.getInstance() != null) IslandService.getInstance().reposition();
+        });
+    note(
+        "Bật: đảo nằm ngay dưới thanh trạng thái để nhận chạm trên ứng dụng khác. Tắt: đặt quanh"
+            + " camera; vùng này có thể bị hệ thống chặn chạm. Khi xoay ngang, đảo chuyển về giữa"
+            + " cạnh trên.");
+
     slider("Chiều rộng", "width", 24, 55, 30, "%");
     slider("Chiều cao", "height", 28, 64, 36, "dp");
     slider("Khoảng cách mép trên", "offset", 0, 70, 8, "dp");
@@ -314,7 +333,7 @@ public class MainActivity extends Activity {
           IOSStyle.dialog(d);
         });
     note(
-        "0.4.0 · Xử lý trên thiết bị · Không cần trợ năng\n"
+        "0.5.0 · Xử lý trên thiết bị · Không cần trợ năng\n"
             + "Giữ quyền thông báo của ứng dụng nguồn bật. Tắt banner của từng ứng dụng để giảm"
             + " hiển thị trùng.");
     LinearLayout dock = new LinearLayout(this);

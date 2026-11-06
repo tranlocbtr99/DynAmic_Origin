@@ -23,7 +23,21 @@ public class IslandService extends Service {
 
   private WindowManager wm;
   private WindowManager.LayoutParams params;
-  private LinearLayout root;
+  private IslandTouchLayout root;
+  private boolean pendingRender, pendingAlert;
+  private int statusBarBottom;
+  private android.hardware.display.DisplayManager displays;
+  private final android.hardware.display.DisplayManager.DisplayListener displayListener =
+      new android.hardware.display.DisplayManager.DisplayListener() {
+        public void onDisplayAdded(int id) {}
+
+        public void onDisplayRemoved(int id) {}
+
+        public void onDisplayChanged(int id) {
+          if (id == android.view.Display.DEFAULT_DISPLAY)
+            handler.post(() -> updateDisplayGeometry());
+        }
+      };
   private final Handler handler = new Handler(Looper.getMainLooper());
   private boolean expanded, attached, replyVisible;
   private Entry primaryEntry;
@@ -74,6 +88,8 @@ public class IslandService extends Service {
     reference = new java.lang.ref.WeakReference<>(this);
     wm = getSystemService(WindowManager.class);
     Inbox.load(this);
+    displays = getSystemService(android.hardware.display.DisplayManager.class);
+    displays.registerDisplayListener(displayListener, handler);
     IntentFilter f = new IntentFilter();
     f.addAction(Intent.ACTION_SCREEN_OFF);
     f.addAction(Intent.ACTION_SCREEN_ON);
@@ -133,7 +149,42 @@ public class IslandService extends Service {
   }
 
   private void attach() {
-    root = new LinearLayout(this);
+    root =
+        new IslandTouchLayout(
+            this,
+            new IslandTouchLayout.Actions() {
+              public void left() {
+                java.util.List<Entry> list = Inbox.list(IslandService.this);
+                if (list.isEmpty()) showInbox();
+                else open(list.get(0));
+              }
+
+              public void right() {
+                showRecentApps();
+              }
+
+              public void hold() {
+                recentMode = false;
+                expanded = !expanded;
+                handler.removeCallbacks(collapse);
+                render();
+              }
+
+              public void collapse() {
+                expanded = false;
+                recentMode = false;
+                render();
+              }
+
+              public void finished() {
+                if (pendingRender) {
+                  boolean alert = pendingAlert;
+                  pendingRender = false;
+                  pendingAlert = false;
+                  refresh(alert);
+                }
+              }
+            });
     root.setOrientation(LinearLayout.VERTICAL);
     root.setElevation(dp(4));
     GradientDrawable bg = new GradientDrawable();
@@ -160,7 +211,7 @@ public class IslandService extends Service {
             IslandGeometry.center(
                 screenWidth, cameraCenter, dp(Prefs.number(this, "horizontal", 0))),
             params.width);
-    params.y = Math.max(0, dp(Prefs.number(this, "offset", 8)));
+    params.y = topPosition();
     params.layoutInDisplayCutoutMode =
         WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
     wm.addView(root, params);
@@ -181,10 +232,22 @@ public class IslandService extends Service {
     render();
   }
 
+  void reposition() {
+    readScreenAnchor();
+    animationTargetW = -1;
+    animationTargetH = -1;
+    render();
+  }
+
   void refresh(boolean alert) {
     handler.post(
         () -> {
           if (root == null) return;
+          if (root.touching()) {
+            pendingRender = true;
+            pendingAlert |= alert;
+            return;
+          }
           if (alert && !locked() && !(recentMode && expanded)) {
             recentMode = false;
             expanded = true;
@@ -207,55 +270,6 @@ public class IslandService extends Service {
     return t;
   }
 
-  private void pillTouch(View view) {
-    view.setOnClickListener(
-        v -> {
-          java.util.List<Entry> all = Inbox.list(IslandService.this);
-          if (!all.isEmpty()) open(all.get(0));
-          else {
-            recentMode = false;
-            expanded = true;
-            render();
-          }
-        });
-    GestureDetector gesture =
-        new GestureDetector(
-            this,
-            new GestureDetector.SimpleOnGestureListener() {
-              public boolean onDown(android.view.MotionEvent e) {
-                return true;
-              }
-
-              public boolean onSingleTapUp(android.view.MotionEvent e) {
-                if (IslandTap.right(e.getX(), view.getWidth())) showRecentApps();
-                else view.performClick();
-                return true;
-              }
-
-              public void onLongPress(android.view.MotionEvent e) {
-                recentMode = false;
-                expanded = !expanded;
-                handler.removeCallbacks(collapse);
-                render();
-              }
-
-              public boolean onFling(
-                  android.view.MotionEvent a, android.view.MotionEvent b, float vx, float vy) {
-                if (a != null && b.getY() < a.getY() - dp(10)) {
-                  expanded = false;
-                  recentMode = false;
-                  render();
-                  return true;
-                }
-                return false;
-              }
-            });
-    view.setContentDescription(
-        "Chạm trái mở thông báo mới nhất, chạm phải mở ứng dụng gần đây, nhấn giữ mở danh sách"
-            + " thông báo");
-    view.setOnTouchListener((v, e) -> gesture.onTouchEvent(e));
-  }
-
   private void render() {
     if (root == null || !attached) return;
     final int oldScroll = resetScroll || panelScroll == null ? 0 : panelScroll.getScrollY();
@@ -268,24 +282,36 @@ public class IslandService extends Service {
     int idle =
         Math.min(
             available, Math.max(cameraWidth + dp(30), sw * Prefs.number(this, "width", 30) / 100));
-    int h =
-        Math.max(
-            dp(Prefs.number(this, "height", 36)),
-            cameraBottom > 0
-                ? cameraBottom - Math.max(0, dp(Prefs.number(this, "offset", 8))) + dp(4)
-                : 0);
+    int h = dp(Prefs.number(this, "height", 36));
+    if (!safeInteraction() && cameraBottom > 0)
+      h = Math.max(h, cameraBottom - topPosition() + dp(4));
     h = Math.min(dp(96), h);
-    params.y = Math.max(0, dp(Prefs.number(this, "offset", 8)));
-
+    root.headerHeight(h);
+    params.y = topPosition();
     java.util.List<Entry> list = Inbox.list(this);
     LinearLayout header = new LinearLayout(this);
     header.setGravity(Gravity.CENTER_VERTICAL);
     header.setPadding(dp(14), 0, dp(14), 0);
-    TextView left = text(list.isEmpty() ? "" : "●", 13, 0xff70caff);
+    TextView left = text(list.isEmpty() ? "◉" : String.valueOf(list.size()), 13, 0xff70caff);
     left.setGravity(Gravity.CENTER_VERTICAL);
-    header.addView(left, new LinearLayout.LayoutParams(0, h, 1));
+    LinearLayout leading = new LinearLayout(this);
+    leading.setGravity(Gravity.CENTER_VERTICAL);
+    Entry newest = list.isEmpty() ? null : list.get(0);
+    if (newest != null) left.setText(newest.title.isBlank() ? newest.app : newest.title);
+    if (newest != null && newest.icon != null) {
+      ImageView sourceIcon = new ImageView(this);
+      sourceIcon.setImageDrawable(newest.icon);
+      LinearLayout.LayoutParams iconSize = new LinearLayout.LayoutParams(dp(22), dp(22));
+      iconSize.setMarginEnd(dp(6));
+      leading.addView(sourceIcon, iconSize);
+    }
+    leading.addView(left, new LinearLayout.LayoutParams(0, h, 1));
+    header.addView(leading, new LinearLayout.LayoutParams(0, h, 1));
     View gap = new View(this);
-    header.addView(gap, new LinearLayout.LayoutParams(Math.max(cameraWidth + dp(12), dp(32)), h));
+    header.addView(
+        gap,
+        new LinearLayout.LayoutParams(
+            safeInteraction() ? dp(12) : Math.max(cameraWidth + dp(12), dp(32)), h));
     TextView count = text("▦", 18, 0xffd1d1d6);
     count.setContentDescription("Ứng dụng gần đây");
     count.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
@@ -293,14 +319,11 @@ public class IslandService extends Service {
     java.util.List<Entry> activities = new java.util.ArrayList<>();
     for (Entry e : list) if (e.ongoing && !e.removed) activities.add(e);
     primaryEntry = activities.isEmpty() ? null : activities.get(0);
-    if (primaryEntry != null) {
-      left.setText(compactLabel(primaryEntry));
-      left.setSingleLine(true);
-      left.setGravity(Gravity.CENTER_VERTICAL);
-      left.setEllipsize(android.text.TextUtils.TruncateAt.END);
-    }
+    if (primaryEntry != null) left.setText(compactLabel(primaryEntry));
+    left.setSingleLine(true);
+    left.setEllipsize(android.text.TextUtils.TruncateAt.END);
     root.addView(header);
-    pillTouch(header);
+
     if (expanded) {
       LinearLayout bar = new LinearLayout(this);
       bar.setPadding(dp(22), dp(6), dp(14), dp(12));
@@ -475,7 +498,7 @@ public class IslandService extends Service {
     int targetWidth =
         expanded
             ? Math.min(available, dp(440))
-            : activities.isEmpty() ? idle : Math.min(available, Math.max(idle, sw * 48 / 100));
+            : Math.min(available, Math.max(idle, list.isEmpty() ? dp(136) : dp(208)));
     int targetHeight = h;
     if (expanded) {
       root.measure(
@@ -593,7 +616,7 @@ public class IslandService extends Service {
   private String compactLabel(Entry e) {
     if (!e.removed && e.progressMax > 0)
       return Math.round(100.0 * e.progress / e.progressMax) + "%";
-    if (e.media != null && !e.removed) return "♫";
+    if (e.media != null && !e.removed) return "♫ " + e.title;
     return e.app.isEmpty() ? "●" : e.app;
   }
 
@@ -646,16 +669,21 @@ public class IslandService extends Service {
   }
 
   private void readScreenAnchor() {
-    WindowMetrics metrics = wm.getMaximumWindowMetrics();
-    screenWidth = metrics.getBounds().width();
-    screenHeight = metrics.getBounds().height();
-    screenDensity = getResources().getDisplayMetrics().densityDpi;
-    screenRotation = wm.getDefaultDisplay().getRotation();
+    android.view.Display display = wm.getDefaultDisplay();
+    android.util.DisplayMetrics real = new android.util.DisplayMetrics();
+    display.getRealMetrics(real);
+    screenWidth = real.widthPixels;
+    screenHeight = real.heightPixels;
+    screenDensity = real.densityDpi;
+    screenRotation = display.getRotation();
     cameraCenter = screenWidth / 2;
     cameraWidth = 0;
     cameraBottom = 0;
-    DisplayCutout cutout = metrics.getWindowInsets().getDisplayCutout();
-    if (cutout != null) {
+    WindowMetrics metrics = wm.getMaximumWindowMetrics();
+    statusBarBottom =
+        metrics.getWindowInsets().getInsetsIgnoringVisibility(WindowInsets.Type.statusBars()).top;
+    DisplayCutout cutout = display.getCutout();
+    if (cutout != null)
       for (android.graphics.Rect rect : cutout.getBoundingRects())
         if (rect.top < dp(100) && rect.width() < screenWidth / 2 && rect.height() > 0) {
           cameraCenter = rect.centerX();
@@ -663,7 +691,35 @@ public class IslandService extends Service {
           cameraBottom = rect.bottom;
           break;
         }
-    }
+    if (safeInteraction() || screenWidth > screenHeight) cameraCenter = screenWidth / 2;
+  }
+
+  private boolean safeInteraction() {
+    return Prefs.get(this).getBoolean("safe_interaction", true);
+  }
+
+  private int topPosition() {
+    int manual = Math.max(0, dp(Prefs.number(this, "offset", 8)));
+    return safeInteraction() ? Math.max(statusBarBottom, dp(24)) + manual : manual;
+  }
+
+  private void updateDisplayGeometry() {
+    if (wm == null) return;
+    android.view.Display display = wm.getDefaultDisplay();
+    android.util.DisplayMetrics real = new android.util.DisplayMetrics();
+    display.getRealMetrics(real);
+    if (screenWidth == real.widthPixels
+        && screenHeight == real.heightPixels
+        && screenRotation == display.getRotation()
+        && screenDensity == real.densityDpi) return;
+    if (animator != null) animator.cancel();
+    readScreenAnchor();
+    animationTargetW = -1;
+    animationTargetH = -1;
+    expanded = false;
+    recentMode = false;
+    pendingRender = false;
+    if (attached) render();
   }
 
   private void applyWindowFrame(int width, int height) {
@@ -672,7 +728,7 @@ public class IslandService extends Service {
     int center =
         IslandGeometry.center(screenWidth, cameraCenter, dp(Prefs.number(this, "horizontal", 0)));
     params.x = IslandGeometry.left(center, width);
-    params.y = Math.max(0, dp(Prefs.number(this, "offset", 8)));
+    params.y = topPosition();
     if (attached)
       try {
         wm.updateViewLayout(root, params);
@@ -719,23 +775,13 @@ public class IslandService extends Service {
   @Override
   public void onConfigurationChanged(Configuration c) {
     super.onConfigurationChanged(c);
-    WindowMetrics metrics = wm.getMaximumWindowMetrics();
-    int rotation = wm.getDefaultDisplay().getRotation();
-    if (screenWidth != metrics.getBounds().width()
-        || screenHeight != metrics.getBounds().height()
-        || screenDensity != getResources().getDisplayMetrics().densityDpi
-        || screenRotation != rotation) {
-      if (animator != null) animator.cancel();
-      readScreenAnchor();
-      animationTargetW = -1;
-      animationTargetH = -1;
-      expanded = false;
-    }
+    updateDisplayGeometry();
     render();
   }
 
   @Override
   public void onDestroy() {
+    if (displays != null) displays.unregisterDisplayListener(displayListener);
     recentWorker.shutdownNow();
     recentRequest++;
     handler.removeCallbacksAndMessages(null);

@@ -10,3 +10,5 @@ For each change update PROJECT_STATUS.md with behavior, verification and unresol
 
 Position regressions: read IslandGeometry.java and docs/DESIGN_SPEC.md before IslandService. Never feed overlay-local WindowInsets cutout rectangles back into screen coordinates.
 UI changes: IOSStyle.java and IOSToggle.java own shared materials/controls. Keep the camera island opaque black; document Android rendering differences rather than promise an exact iOS clone.
+
+Touch regressions: IslandTouchLayout owns header gestures for the lifetime of the overlay. Never re-create its detector during notification render. Safe interaction mode must stay below protected status-bar windows; do not promise touch interception at camera on all OEM firmware. Rotation uses DisplayManager events and current Display metrics, not only Service.onConfigurationChanged.

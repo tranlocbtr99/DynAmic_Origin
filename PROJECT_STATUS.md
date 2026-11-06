@@ -1,8 +1,12 @@
 # Current state — 2026-11-06
-Version 0.4.0 / code 4; package vn.loctm.dynamicorigin. Initial independent implementation in previously empty repo.
+Version 0.5.0 / code 5; package vn.loctm.dynamicorigin. Initial independent implementation in previously empty repo.
 
 ## Implemented
 - User-started foreground service and configurable camera overlay; no accessibility declaration or network permission.
+- Persistent root-owned header gesture detector; notification redraws no longer recreate gesture state, with queued notification refresh while a finger is down.
+- Safe interaction mode defaults ON: island sits immediately below status bar. Camera-area mode remains optional but system windows may intercept touch.
+- DisplayManager listener plus live Display metrics/cutout handles rotation while another app is foreground; landscape uses top center.
+- Source icon/title or live progress replaces the single-dot notification indicator.
 - Compact persistent pill; expand by long press or new notification; physical left tap opens newest notification, right tap opens recent apps; swipe-up collapse; 220ms resize.
 - Stable display-space camera anchor, independent from overlay-local insets. Fixed top, horizontal calibration/reset and size-only 280ms transitions; duplicate targets do not restart animations.
 - iOS-inspired light/dark grouped settings, capsule navigation, custom switches, glass control rims, black expanded island and updated reply/app-filter screens. See docs/DESIGN_SPEC.md.
@@ -20,7 +24,7 @@ Version 0.4.0 / code 4; package vn.loctm.dynamicorigin. Initial independent impl
 ## Validation
 - Android SDK 36 Java compilation succeeded independently.
 - 32 transfer gating combinations, 6 expansion/update scenarios 15,000 geometry frames and recent-app ordering/deduplication plus physical tap-boundary tests passed.
-- Gradle assembleRelease, assembleDebug and lintDebug succeeded (Android SDK 36, JDK 21). 0 lint errors, 11 warnings (UI localization, gesture click delegation and intentional physical LEFT screen coordinates). Same release certificate verified against 0.1.0.
+- Gradle assembleRelease, assembleDebug and lintDebug succeeded (Android SDK 36, JDK 21). 0 lint errors, 12 warnings (UI localization, gesture click delegation and intentional physical LEFT screen coordinates). Same release certificate verified against 0.1.0.
 - No connected iQOO or KVM available. Software emulator boot was attempted; UI runtime validation is pending until Android finishes initialization. OEM camera placement and service survival remain device QA.
 
 ## Next implementation milestones
