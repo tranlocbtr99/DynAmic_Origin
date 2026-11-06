@@ -17,3 +17,7 @@
 - https://developer.android.com/security/fraud-prevention/activities
 - https://developer.apple.com/design/human-interface-guidelines/live-activities
 The third-party Origin Isle implementation was studied for feasibility; no source copied.
+
+## 0.2.0 updates
+Private ReplyActivity validates current action identity, RemoteInput key, keyguard and app rule before dispatch. Draft text never persists or sends automatically. Overlay is hidden during composition. Transferred action tokens are retained in memory best-effort; cancellation errors are surfaced.
+App exclusions apply before capture and to inbox presentation, while original history can be re-enabled. Ongoing updates render without expanding; ordinary message content changes can expand.

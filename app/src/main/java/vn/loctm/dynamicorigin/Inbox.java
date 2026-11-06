@@ -39,6 +39,11 @@ final class Inbox {
     return save(c);
   }
 
+  static synchronized Entry find(Context c, String key) {
+    load(c);
+    return entries.get(key);
+  }
+
   static synchronized boolean save(Context c) {
     JSONArray a = new JSONArray();
     try {
@@ -59,10 +64,15 @@ final class Inbox {
   }
 
   static synchronized java.util.List<Entry> list(Context c) {
-    load(c);
-    ArrayList<Entry> a = new ArrayList<>(entries.values());
+    ArrayList<Entry> a = new ArrayList<>(all(c));
+    a.removeIf(e -> !Prefs.allowed(c, e.pkg));
     Collections.reverse(a);
     return a;
+  }
+
+  static synchronized java.util.List<Entry> all(Context c) {
+    load(c);
+    return new ArrayList<>(entries.values());
   }
 
   static synchronized void remove(Context c, String key) {
@@ -80,7 +90,7 @@ final class Inbox {
     Entry e = entries.get(key);
     if (e != null) {
       e.removed = true;
-      e.actions = null;
+      if (!e.transferred) e.actions = null;
       e.media = null;
       if (!e.transferred) e.open = null;
     }

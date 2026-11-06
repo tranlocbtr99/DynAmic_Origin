@@ -151,6 +151,8 @@ public class MainActivity extends Activity {
         "Nhấn giữ đảo để mở hộp thư. Chạm để mở thông báo mới nhất. Vuốt lên để thu gọn. Nội dung"
             + " được ẩn khi khóa máy.",
         14);
+    button("Chọn ứng dụng hiển thị trên đảo", () -> go(new Intent(this, AppRulesActivity.class)));
+    slider("Thời gian mở thông báo (giây)", "duration", 3, 15, 7);
     label("Thiết lập chạy nền", 21);
     button(
         "Mở cài đặt ứng dụng / pin / tự khởi động",
@@ -181,7 +183,7 @@ public class MainActivity extends Activity {
                 .setNegativeButton("Hủy", null)
                 .show());
     label(
-        "0.1.0 · Bản thử nghiệm trên thiết bị\n"
+        "0.2.0 · Bản thử nghiệm trên thiết bị\n"
             + "Không gửi dữ liệu lên mạng. Không có quyền trợ năng.",
         12);
   }

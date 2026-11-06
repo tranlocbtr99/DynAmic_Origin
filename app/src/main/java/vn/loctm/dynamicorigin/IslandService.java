@@ -25,7 +25,8 @@ public class IslandService extends Service {
   private WindowManager.LayoutParams params;
   private LinearLayout root;
   private final Handler handler = new Handler(Looper.getMainLooper());
-  private boolean expanded, attached;
+  private boolean expanded, attached, replyVisible;
+  private Entry primaryEntry;
   private ValueAnimator animator;
   private int cameraBottom, cameraCenter = -1, cameraWidth;
   private final Runnable collapse =
@@ -38,7 +39,7 @@ public class IslandService extends Service {
         public void onReceive(Context c, Intent i) {
           if (root == null) return;
           root.setVisibility(
-              Intent.ACTION_SCREEN_OFF.equals(i.getAction()) || locked()
+              Intent.ACTION_SCREEN_OFF.equals(i.getAction()) || locked() || replyVisible
                   ? View.GONE
                   : View.VISIBLE);
         }
@@ -170,8 +171,10 @@ public class IslandService extends Service {
           if (root == null) return;
           if (alert && !locked()) expanded = true;
           render();
-          handler.removeCallbacks(collapse);
-          if (alert) handler.postDelayed(collapse, 6500);
+          if (alert) {
+            handler.removeCallbacks(collapse);
+            handler.postDelayed(collapse, Prefs.number(this, "duration", 7) * 1000L);
+          }
         });
   }
 
@@ -187,7 +190,8 @@ public class IslandService extends Service {
     view.setOnClickListener(
         v -> {
           java.util.List<Entry> all = Inbox.list(IslandService.this);
-          if (!all.isEmpty()) open(all.get(0));
+          if (primaryEntry != null) open(primaryEntry);
+          else if (!all.isEmpty()) open(all.get(0));
           else {
             expanded = true;
             render();
@@ -254,6 +258,22 @@ public class IslandService extends Service {
     TextView count = text(list.isEmpty() ? "" : String.valueOf(list.size()), 12, Color.WHITE);
     count.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
     header.addView(count, new LinearLayout.LayoutParams(0, h, 1));
+    java.util.List<Entry> activities = new java.util.ArrayList<>();
+    for (Entry e : list) if (e.ongoing && !e.removed) activities.add(e);
+    primaryEntry = activities.isEmpty() ? null : activities.get(0);
+    if (primaryEntry != null) {
+      left.setText(compactLabel(primaryEntry));
+      left.setSingleLine(true);
+      left.setGravity(Gravity.CENTER_VERTICAL);
+      left.setEllipsize(android.text.TextUtils.TruncateAt.END);
+    }
+    if (activities.size() > 1) {
+      Entry second = activities.get(1);
+      count.setText(compactLabel(second));
+      count.setSingleLine(true);
+      count.setEllipsize(android.text.TextUtils.TruncateAt.END);
+      count.setOnClickListener(v -> open(second));
+    }
     root.addView(header);
     pillTouch(header);
     if (expanded) {
@@ -290,6 +310,16 @@ public class IslandService extends Service {
         TextView body = text(e.text, 13, 0xffcccccc);
         body.setMaxLines(4);
         row.addView(body);
+        if (!e.removed && (e.progressMax > 0 || e.indeterminate)) {
+          ProgressBar progress =
+              new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+          progress.setIndeterminate(e.indeterminate);
+          if (!e.indeterminate) {
+            progress.setMax(e.progressMax);
+            progress.setProgress(Math.max(0, Math.min(e.progressMax, e.progress)));
+          }
+          row.addView(progress, new LinearLayout.LayoutParams(-1, dp(8)));
+        }
         t.setOnClickListener(v -> open(e));
         body.setOnClickListener(v -> open(e));
         LinearLayout actions = new LinearLayout(this);
@@ -337,7 +367,7 @@ public class IslandService extends Service {
           }
           row.addView(controls);
         }
-        if (e.actions != null && !e.removed)
+        if (e.actions != null && (!e.removed || e.transferred))
           for (Notification.Action a : e.actions) {
             if (a.actionIntent == null) continue;
             Button b = new Button(this);
@@ -345,8 +375,7 @@ public class IslandService extends Service {
             b.setOnClickListener(
                 v -> {
                   if (a.getRemoteInputs() != null) {
-                    toast("Mở ứng dụng để trả lời");
-                    open(e);
+                    startReply(e, a);
                   } else send(a.actionIntent, e.pkg);
                 });
             row.addView(b);
@@ -357,7 +386,10 @@ public class IslandService extends Service {
         rows.addView(line, new LinearLayout.LayoutParams(-1, dp(1)));
       }
     }
-    int targetWidth = expanded ? Math.min(available, dp(440)) : idle;
+    int targetWidth =
+        expanded
+            ? Math.min(available, dp(440))
+            : activities.isEmpty() ? idle : Math.min(available, Math.max(idle, sw * 48 / 100));
     int targetHeight = h;
     if (expanded) {
       root.measure(
@@ -367,6 +399,39 @@ public class IslandService extends Service {
       targetHeight = root.getMeasuredHeight();
     }
     resize(targetWidth, targetHeight);
+  }
+
+  private String compactLabel(Entry e) {
+    if (!e.removed && e.progressMax > 0)
+      return Math.round(100.0 * e.progress / e.progressMax) + "%";
+    if (e.media != null && !e.removed) return "♫";
+    return e.app.isEmpty() ? "●" : e.app;
+  }
+
+  void replyVisibility(boolean visible) {
+    replyVisible = visible;
+    if (root != null)
+      root.setVisibility(
+          visible || locked() || !getSystemService(PowerManager.class).isInteractive()
+              ? View.GONE
+              : View.VISIBLE);
+  }
+
+  private void startReply(Entry e, Notification.Action action) {
+    int index = java.util.Arrays.asList(e.actions).indexOf(action);
+    expanded = false;
+    render();
+    replyVisibility(true);
+    try {
+      startActivity(
+          new Intent(this, ReplyActivity.class)
+              .putExtra("key", e.key)
+              .putExtra("index", index)
+              .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+    } catch (RuntimeException ex) {
+      replyVisibility(false);
+      toast("Không mở được trả lời nhanh");
+    }
   }
 
   private void resize(int w, int h) {

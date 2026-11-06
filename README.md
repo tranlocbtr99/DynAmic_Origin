@@ -8,13 +8,13 @@ Android camera island for iQOO and other Android 14+ devices. Independent implem
 4. On OriginOS enable unrestricted battery, auto-start and associated startup as supported by the installed firmware.
 5. Long press the island for the inbox, tap for the newest item, swipe up to collapse.
 
-Transfer of ordinary notifications is optional. Capture is persisted before requesting cancellation. Ongoing, foreground service, call, alarm, media and core system notifications are retained. This cannot prevent an initial system banner. Keep source notification permissions enabled; turn off source channel banners manually if desired. Source PendingIntents may expire after cancellation: opening the app is the fallback, and remote reply is currently handled in the source app.
+Transfer of ordinary notifications is optional. Capture is persisted before requesting cancellation. Ongoing, foreground service, call, alarm, media and core system notifications are retained. This cannot prevent an initial system banner. Keep source notification permissions enabled; turn off source channel banners manually if desired. Source PendingIntents may expire after cancellation: opening the app is the fallback, quick reply is available when the source exposes a mutable free-form RemoteInput action. Reply tokens may expire after transfer; failures are shown without claiming delivery.
 
 ## Implemented
-Persistent configurable overlay; compact/expanded inbox; bounded on-device history; source actions; media transport buttons; screen-lock privacy; foreground runtime; boot/update recovery attempt; diagnostics; opt-in ordinary notification transfer.
+Persistent configurable overlay; compact/expanded inbox; bounded on-device history; source actions and quick reply; per-app filters; progress bars; two compact activity labels; media transport buttons; screen-lock privacy; foreground runtime; boot/update recovery attempt; diagnostics; opt-in ordinary notification transfer.
 
 ## Not yet implemented / not guaranteed
-Split two-activity display, per-app rules, full media metadata/progress cards, native quick reply, advanced navigation parsing, charging/earbuds cards, iPhone system integrations, AOD, universal heads-up suppression or full SystemUI replacement. Lock-screen content is intentionally hidden. No claim of device validation until real testing.
+Separate two-bubble display, full media metadata cards, advanced navigation parsing, charging/earbuds cards, iPhone system integrations, AOD, universal heads-up suppression or full SystemUI replacement. Lock-screen content is intentionally hidden. No claim of device validation until real testing.
 
 ## Build
 JDK 17+, Android SDK platform 36; `./gradlew :app:assembleDebug :app:lintDebug`.

@@ -44,13 +44,18 @@ public class NotificationBridge extends NotificationListenerService {
   }
 
   private void capture(StatusBarNotification s, boolean alert) {
-    if (!Prefs.enabled(this) || s.getPackageName().equals(getPackageName())) return;
+    if (!Prefs.enabled(this)
+        || s.getPackageName().equals(getPackageName())
+        || !Prefs.allowed(this, s.getPackageName())) return;
     Notification n = s.getNotification();
     if ((n.flags & Notification.FLAG_GROUP_SUMMARY) != 0) return;
     Entry e = new Entry();
     e.key = s.getKey();
     e.pkg = s.getPackageName();
     e.time = s.getPostTime();
+    e.progress = n.extras.getInt(Notification.EXTRA_PROGRESS, 0);
+    e.progressMax = n.extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0);
+    e.indeterminate = n.extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false);
     e.title = String.valueOf(n.extras.getCharSequence(Notification.EXTRA_TITLE, ""));
     e.text =
         String.valueOf(
@@ -82,12 +87,24 @@ public class NotificationBridge extends NotificationListenerService {
                 != 0
             || Notification.CATEGORY_CALL.equals(n.category)
             || Notification.CATEGORY_ALARM.equals(n.category)
+            || e.progressMax > 0
+            || e.indeterminate
             || e.media != null
             || e.pkg.equals("android")
             || e.pkg.equals("com.android.systemui");
+    Entry previous = Inbox.find(this, e.key);
+    boolean expand =
+        alert
+            && UpdatePolicy.shouldExpand(
+                previous != null,
+                e.ongoing,
+                e.title,
+                e.text,
+                previous == null ? null : previous.title,
+                previous == null ? null : previous.text);
     boolean saved = Inbox.put(this, e);
     IslandService service = IslandService.getInstance();
-    if (service != null) service.refresh(alert);
+    if (service != null) service.refresh(expand);
     if (TransferPolicy.allowed(
         saved,
         alert,
