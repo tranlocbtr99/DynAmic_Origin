@@ -842,23 +842,12 @@ public class IslandService extends Service {
                 }
               }
             });
-    controlStrip.setOrientation(LinearLayout.HORIZONTAL);
-    controlStrip.setGravity(Gravity.CENTER_VERTICAL);
-    controlStrip.setPadding(dp(10), 0, dp(10), 0);
-    controlStrip.setBackground(new IOSStyle.Glass(this, true, 24));
-    controlStrip.setClipToOutline(true);
-    TextView notifications = text("Thông báo", 12, Color.WHITE);
-    notifications.setGravity(Gravity.CENTER);
-    controlStrip.addView(notifications, new LinearLayout.LayoutParams(0, -1, 1));
-    View divider = new View(this);
-    divider.setBackgroundColor(0x40ffffff);
-    controlStrip.addView(divider, new LinearLayout.LayoutParams(dp(1), dp(16)));
-    TextView recent = text("Gần đây", 12, Color.WHITE);
-    recent.setGravity(Gravity.CENTER);
-    controlStrip.addView(recent, new LinearLayout.LayoutParams(0, -1, 1));
+    controlStrip.setBackgroundColor(Color.TRANSPARENT);
+    controlStrip.setElevation(0);
+    controlStrip.setPadding(0, 0, 0, 0);
     controlStrip.setContentDescription(
-        "Thanh điều khiển: chạm trái mở thông báo mới nhất, chạm phải mở ứng dụng gần đây, nhấn giữ"
-            + " xem thông báo");
+        "Vùng chạm mở rộng của đảo: trái mở thông báo, phải mở ứng dụng gần đây, nhấn giữ xem danh"
+            + " sách");
     controlParams =
         new WindowManager.LayoutParams(
             dp(176),
@@ -869,7 +858,7 @@ public class IslandService extends Service {
                 | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
                 | WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED,
             android.graphics.PixelFormat.TRANSLUCENT);
-    controlParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
+    controlParams.gravity = Gravity.TOP | Gravity.LEFT;
     controlParams.setFitInsetsTypes(0);
     controlParams.layoutInDisplayCutoutMode =
         WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
@@ -881,22 +870,35 @@ public class IslandService extends Service {
     } catch (RuntimeException ex) {
       Prefs.get(this)
           .edit()
-          .putString("error", "Không tạo được thanh điều khiển: " + ex.getClass().getSimpleName())
+          .putString("error", "Không tạo được vùng chạm: " + ex.getClass().getSimpleName())
           .apply();
     }
   }
 
   private void layoutControlStrip() {
     if (!controlAttached || controlStrip == null) return;
-    int width = Math.min(screenWidth - dp(16), dp(Prefs.number(this, "control_width", 176))),
-        height = dp(Prefs.number(this, "control_height", 36));
-    int y = Math.max(statusBarBottom, dp(32)) + dp(Prefs.number(this, "control_gap", 4));
+    int logicalWidth = root.getLayoutParams().width, logicalHeight = root.getLayoutParams().height;
+    int extra = dp(Prefs.number(this, "touch_extra_width", 0));
+    int width = Math.min(naturalWidth - dp(8), logicalWidth + extra);
+    int center =
+        IslandGeometry.center(naturalWidth, cameraCenter, dp(Prefs.number(this, "horizontal", 0)));
+    int x = Math.max(0, Math.min(naturalWidth - width, IslandGeometry.left(center, width)));
+    int y = topPosition() + logicalHeight;
+    if (screenRotation == 0) y = Math.max(y, statusBarBottom);
+    y += dp(Prefs.number(this, "touch_gap", 0));
+    int height = dp(Prefs.number(this, "control_height", 24));
+    int[] frame = PinnedFrame.map(screenRotation, naturalWidth, naturalHeight, x, y, width, height);
     boolean changed =
-        controlParams.width != width || controlParams.height != height || controlParams.y != y;
-    controlParams.width = width;
-    controlParams.height = height;
-    controlParams.y = y;
-    controlStrip.headerHeight(height);
+        controlParams.x != frame[0]
+            || controlParams.y != frame[1]
+            || controlParams.width != frame[2]
+            || controlParams.height != frame[3];
+    controlParams.x = frame[0];
+    controlParams.y = frame[1];
+    controlParams.width = frame[2];
+    controlParams.height = frame[3];
+    controlStrip.headerHeight(frame[3]);
+    controlStrip.axisRotation(screenRotation);
     boolean visible =
         Prefs.get(this).getBoolean("control_strip", true)
             && !expanded
@@ -908,7 +910,7 @@ public class IslandService extends Service {
       try {
         wm.updateViewLayout(controlStrip, controlParams);
       } catch (RuntimeException ex) {
-        Prefs.get(this).edit().putString("error", "Thanh điều khiển cần khởi động lại").apply();
+        Prefs.get(this).edit().putString("error", "Vùng chạm cần khởi động lại").apply();
       }
   }
 

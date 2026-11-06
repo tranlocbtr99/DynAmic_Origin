@@ -60,3 +60,9 @@
 - When inbox/recents expands, strip hides to avoid covering content; collapse restores it.
 - Disable strip, lock/screen-off, reply activity and service stop: no stale touch-blocking window.
 - While locked, strip can only show anonymous inbox or request authentication, subject to OEM overlay policy.
+
+## 0.8.1
+- Exactly one visible island, no separate control-card background/labels/shadow.
+- Tap immediately beneath island: left latest, right recents, hold inbox. Verify extra-width/height/gap calibration and no interception outside this bounded area.
+- Test all rotations: extension follows same physical edge of island and maps left/right back to handset coordinates.
+- Expanded/reply/screen-off hides the extension. Toggle off restores underlying app touch in that region.

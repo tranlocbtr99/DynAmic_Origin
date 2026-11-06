@@ -1,8 +1,8 @@
 # Current state — 2026-11-06
-Version 0.8.0 / code 10; package vn.loctm.dynamicorigin. Initial independent implementation in previously empty repo.
+Version 0.8.1 / code 11; package vn.loctm.dynamicorigin. Initial independent implementation in previously empty repo.
 
 ## Implemented
-- Separate visible control-strip window beneath current status bar, enabled by default after user approval. Left opens latest notification, right recent apps, hold inbox. It hides while panels/reply/screen-off are active, with configurable width/height/gap. Camera island geometry remains independent.
+- User-requested transparent touch extension attached beneath the camera island; no second visible card, labels, background or shadow. Left opens latest notification, right recent apps, hold inbox. It hides while panels/reply/screen-off are active, with configurable extra width/height/gap and rotation-aware hit mapping. Camera island geometry remains independent.
 - Explicit compact width (8–90%) with no 136/208dp or camera-padding floor; height 12–120dp, top 0–240dp, horizontal ±240dp; expanded width, radius, icon size and padding controls. Tap numeric values for validated direct input.
 - User-started foreground service and configurable camera overlay; no accessibility declaration or network permission.
 - Persistent root-owned header gesture detector; notification redraws no longer recreate gesture state, with queued notification refresh while a finger is down.
@@ -28,7 +28,7 @@ Version 0.8.0 / code 10; package vn.loctm.dynamicorigin. Initial independent imp
 ## Validation
 - Android SDK 36 Java compilation succeeded independently.
 - 64 transfer gating combinations (including locked state), 6 expansion/update scenarios 15,000 geometry frames and recent-app ordering/deduplication plus physical tap-boundary and explicit width regression tests and 48 four-rotation physical-rectangle round trips passed.
-- Gradle assembleRelease, assembleDebug and lintDebug succeeded (Android SDK 36, JDK 21). 0 lint errors, 14 warnings (UI localization, gesture click delegation and intentional physical LEFT screen coordinates). Same release certificate verified against 0.1.0.
+- Gradle assembleRelease, assembleDebug and lintDebug succeeded (Android SDK 36, JDK 21). 0 lint errors, 15 warnings (UI localization, gesture click delegation and intentional physical LEFT screen coordinates). Same release certificate verified against 0.1.0.
 - No connected iQOO or KVM available. Software emulator boot was attempted; UI runtime validation is pending until Android finishes initialization. OEM camera placement and service survival remain device QA.
 
 ## Next implementation milestones

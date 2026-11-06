@@ -21,7 +21,11 @@ final class IslandTouchLayout extends LinearLayout {
   private final GestureDetector detector;
   private final Actions actions;
   private boolean tracking;
-  private int headerHeight;
+  private int headerHeight, axisRotation;
+
+  void axisRotation(int rotation) {
+    axisRotation = rotation;
+  }
 
   IslandTouchLayout(Context c, Actions a) {
     super(c);
@@ -39,7 +43,8 @@ final class IslandTouchLayout extends LinearLayout {
 
               @Override
               public boolean onSingleTapUp(MotionEvent e) {
-                if (IslandTap.right(e.getX(), getWidth())) actions.right();
+                if (IslandTap.rotatedRight(
+                    e.getX(), e.getY(), getWidth(), getHeight(), axisRotation)) actions.right();
                 else performClick();
                 return true;
               }

@@ -22,6 +22,11 @@ public class RecentOrderTest {
           || !IslandTap.right(w / 2f, w)
           || !IslandTap.right(w - 1, w)) throw new AssertionError("Physical left/right routing");
     }
+    if (IslandTap.rotatedRight(5, 150, 24, 200, 1)
+        || !IslandTap.rotatedRight(5, 50, 24, 200, 1)
+        || IslandTap.rotatedRight(5, 50, 24, 200, 3)
+        || !IslandTap.rotatedRight(5, 150, 24, 200, 3))
+      throw new AssertionError("Rotated extension hit zones");
     System.out.println(
         "PASS: recent app deduplication/ordering/limit and left/right hit boundaries.");
   }

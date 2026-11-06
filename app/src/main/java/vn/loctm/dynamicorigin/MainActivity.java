@@ -294,15 +294,14 @@ public class MainActivity extends Activity {
     note(
         "Tâm đảo được giữ cố định khi mở, thu gọn hoặc nhận thông báo. Chỉnh một lần để khớp camera"
             + " của bạn.");
-    heading("Thanh điều khiển");
+    heading("Vùng chạm của đảo");
     LinearLayout controlRow = new LinearLayout(this);
     controlRow.setGravity(Gravity.CENTER_VERTICAL);
-    TextView controlTitle =
-        IOSStyle.text(this, "Hiện thanh điều khiển", 16, true, IOSStyle.ink(this));
+    TextView controlTitle = IOSStyle.text(this, "Mở rộng vùng chạm", 16, true, IOSStyle.ink(this));
     controlTitle.setGravity(Gravity.CENTER_VERTICAL);
     controlRow.addView(controlTitle, new LinearLayout.LayoutParams(0, dp(48), 1));
     IOSToggle controls = new IOSToggle(this);
-    controls.setContentDescription("Hiện thanh điều khiển dưới thanh trạng thái");
+    controls.setContentDescription("Mở rộng vùng chạm trong suốt dưới đảo");
     controls.setChecked(Prefs.get(this).getBoolean("control_strip", true));
     controls.onChange(
         on -> {
@@ -311,13 +310,14 @@ public class MainActivity extends Activity {
         });
     controlRow.addView(controls);
     section.addView(controlRow);
-    slider("Chiều rộng thanh", "control_width", 100, 280, 176, "dp");
-    slider("Chiều cao thanh", "control_height", 28, 56, 36, "dp");
-    slider("Cách thanh trạng thái", "control_gap", 0, 80, 4, "dp");
+    slider("Mở rộng ngang", "touch_extra_width", 0, 80, 0, "dp");
+    slider("Chiều cao vùng chạm", "control_height", 16, 56, 24, "dp");
+    slider("Khoảng cách dưới đảo", "touch_gap", 0, 40, 0, "dp");
     note(
-        "Thanh này nhận chạm bên dưới vùng hệ thống, không di chuyển đảo khỏi camera. Chạm trái:"
-            + " thông báo mới nhất; chạm phải: ứng dụng gần đây; nhấn giữ: danh sách thông báo."
-            + " Thanh tự ẩn khi bảng mở để không che nội dung.");
+        "Vùng trong suốt nối ngay dưới đảo, không có nền hay chữ và không tạo thẻ thứ hai. Chạm"
+            + " trái: thông báo mới nhất; chạm phải: ứng dụng gần đây; nhấn giữ: danh sách thông"
+            + " báo. Phần bị thanh trạng thái che vẫn do hệ thống nhận chạm.");
+
     heading("Thông báo");
     LinearLayout transferRow = new LinearLayout(this);
     transferRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -390,7 +390,7 @@ public class MainActivity extends Activity {
           IOSStyle.dialog(d);
         });
     note(
-        "0.8.0 · Xử lý trên thiết bị · Không cần trợ năng\n"
+        "0.8.1 · Xử lý trên thiết bị · Không cần trợ năng\n"
             + "Giữ quyền thông báo của ứng dụng nguồn bật. Tắt banner của từng ứng dụng để giảm"
             + " hiển thị trùng.");
     LinearLayout dock = new LinearLayout(this);

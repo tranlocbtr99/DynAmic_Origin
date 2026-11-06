@@ -21,4 +21,4 @@ Physical position is locked across app rotation. PinnedFrame maps a natural-orie
 
 Lock-screen mode is anonymous/count-only; require KeyguardManager authentication before opening source intents, recent apps or content. Never cancel source notifications while locked. Never auto-launch an Activity to cover keyguard. Ingestion diagnostics must distinguish permission/binding failures from empty source content; do not claim OEM delivery without device evidence.
 
-The separate control strip is intentionally in logical display coordinates below the status bar; do not merge its placement with the handset-fixed camera island. Keep it visible (not an invisible touch trap), non-modal, optional, and hidden while panels are expanded.
+User explicitly changed the control strip to a transparent, bounded touch extension beneath the island. It follows the handset-fixed island, has no visible card/labels, remains optional/non-modal, and hides while panels are expanded. Never enlarge it to a full-screen invisible input layer.
