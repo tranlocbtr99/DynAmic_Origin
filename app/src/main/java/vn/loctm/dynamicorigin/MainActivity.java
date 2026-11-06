@@ -294,6 +294,30 @@ public class MainActivity extends Activity {
     note(
         "Tâm đảo được giữ cố định khi mở, thu gọn hoặc nhận thông báo. Chỉnh một lần để khớp camera"
             + " của bạn.");
+    heading("Thanh điều khiển");
+    LinearLayout controlRow = new LinearLayout(this);
+    controlRow.setGravity(Gravity.CENTER_VERTICAL);
+    TextView controlTitle =
+        IOSStyle.text(this, "Hiện thanh điều khiển", 16, true, IOSStyle.ink(this));
+    controlTitle.setGravity(Gravity.CENTER_VERTICAL);
+    controlRow.addView(controlTitle, new LinearLayout.LayoutParams(0, dp(48), 1));
+    IOSToggle controls = new IOSToggle(this);
+    controls.setContentDescription("Hiện thanh điều khiển dưới thanh trạng thái");
+    controls.setChecked(Prefs.get(this).getBoolean("control_strip", true));
+    controls.onChange(
+        on -> {
+          Prefs.get(this).edit().putBoolean("control_strip", on).apply();
+          if (IslandService.getInstance() != null) IslandService.getInstance().refresh(false);
+        });
+    controlRow.addView(controls);
+    section.addView(controlRow);
+    slider("Chiều rộng thanh", "control_width", 100, 280, 176, "dp");
+    slider("Chiều cao thanh", "control_height", 28, 56, 36, "dp");
+    slider("Cách thanh trạng thái", "control_gap", 0, 80, 4, "dp");
+    note(
+        "Thanh này nhận chạm bên dưới vùng hệ thống, không di chuyển đảo khỏi camera. Chạm trái:"
+            + " thông báo mới nhất; chạm phải: ứng dụng gần đây; nhấn giữ: danh sách thông báo."
+            + " Thanh tự ẩn khi bảng mở để không che nội dung.");
     heading("Thông báo");
     LinearLayout transferRow = new LinearLayout(this);
     transferRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -366,7 +390,7 @@ public class MainActivity extends Activity {
           IOSStyle.dialog(d);
         });
     note(
-        "0.7.0 · Xử lý trên thiết bị · Không cần trợ năng\n"
+        "0.8.0 · Xử lý trên thiết bị · Không cần trợ năng\n"
             + "Giữ quyền thông báo của ứng dụng nguồn bật. Tắt banner của từng ứng dụng để giảm"
             + " hiển thị trùng.");
     LinearLayout dock = new LinearLayout(this);

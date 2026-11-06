@@ -53,3 +53,10 @@
 - Transfer ON while locked must leave originals intact.
 - Tap count/hold on keyguard; content and actions only after successful credential/biometric authentication. Cancel authentication and verify no private content.
 - Compare overlay lock visibility on actual OriginOS; if hidden, public native summary remains subject to system lock-notification settings.
+
+## 0.8.0 control strip
+- In another normal app: left/right/hold on the visible strip below status bar must invoke latest notification/recents/inbox.
+- Camera island must not move when strip settings change. Rotate: strip stays beneath the current status bar, camera island retains physical anchor.
+- When inbox/recents expands, strip hides to avoid covering content; collapse restores it.
+- Disable strip, lock/screen-off, reply activity and service stop: no stale touch-blocking window.
+- While locked, strip can only show anonymous inbox or request authentication, subject to OEM overlay policy.

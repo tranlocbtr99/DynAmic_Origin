@@ -25,6 +25,9 @@ public class IslandService extends Service {
   private WindowManager.LayoutParams params;
   private IslandTouchLayout root;
   private FrameLayout overlayFrame;
+  private IslandTouchLayout controlStrip;
+  private WindowManager.LayoutParams controlParams;
+  private boolean controlAttached;
   private int naturalWidth, naturalHeight, cachedNaturalWidth = -1;
   private boolean pendingRender, pendingAlert;
   private int statusBarBottom;
@@ -236,6 +239,7 @@ public class IslandService extends Service {
     applyWindowFrame(dp(120), dp(Prefs.number(this, "height", 36)));
     wm.addView(overlayFrame, params);
     attached = true;
+    attachControlStrip();
 
     setIslandVisibility(
         getSystemService(PowerManager.class).isInteractive() ? View.VISIBLE : View.GONE);
@@ -264,7 +268,7 @@ public class IslandService extends Service {
     handler.post(
         () -> {
           if (root == null) return;
-          if (root.touching()) {
+          if (root.touching() || (controlStrip != null && controlStrip.touching())) {
             pendingRender = true;
             pendingAlert |= alert;
             return;
@@ -790,12 +794,121 @@ public class IslandService extends Service {
     root.setRotation(-90f * screenRotation);
     root.setTranslationX(screenRotation == 2 ? width : screenRotation == 3 ? height : 0);
     root.setTranslationY(screenRotation == 1 ? width : screenRotation == 2 ? height : 0);
+    layoutControlStrip();
     if (attached)
       try {
         wm.updateViewLayout(overlayFrame, params);
       } catch (RuntimeException ex) {
         Prefs.get(this).edit().putString("error", ex.toString()).apply();
         stopSelf();
+      }
+  }
+
+  private void attachControlStrip() {
+    controlStrip =
+        new IslandTouchLayout(
+            this,
+            new IslandTouchLayout.Actions() {
+              public void left() {
+                if (locked()) {
+                  requestUnlock();
+                  return;
+                }
+                java.util.List<Entry> all = Inbox.list(IslandService.this);
+                if (all.isEmpty()) showInbox();
+                else open(all.get(0));
+              }
+
+              public void right() {
+                showRecentApps();
+              }
+
+              public void hold() {
+                showInbox();
+              }
+
+              public void collapse() {
+                expanded = false;
+                recentMode = false;
+                render();
+              }
+
+              public void finished() {
+                if (pendingRender) {
+                  boolean alert = pendingAlert;
+                  pendingRender = false;
+                  pendingAlert = false;
+                  refresh(alert);
+                }
+              }
+            });
+    controlStrip.setOrientation(LinearLayout.HORIZONTAL);
+    controlStrip.setGravity(Gravity.CENTER_VERTICAL);
+    controlStrip.setPadding(dp(10), 0, dp(10), 0);
+    controlStrip.setBackground(new IOSStyle.Glass(this, true, 24));
+    controlStrip.setClipToOutline(true);
+    TextView notifications = text("Thông báo", 12, Color.WHITE);
+    notifications.setGravity(Gravity.CENTER);
+    controlStrip.addView(notifications, new LinearLayout.LayoutParams(0, -1, 1));
+    View divider = new View(this);
+    divider.setBackgroundColor(0x40ffffff);
+    controlStrip.addView(divider, new LinearLayout.LayoutParams(dp(1), dp(16)));
+    TextView recent = text("Gần đây", 12, Color.WHITE);
+    recent.setGravity(Gravity.CENTER);
+    controlStrip.addView(recent, new LinearLayout.LayoutParams(0, -1, 1));
+    controlStrip.setContentDescription(
+        "Thanh điều khiển: chạm trái mở thông báo mới nhất, chạm phải mở ứng dụng gần đây, nhấn giữ"
+            + " xem thông báo");
+    controlParams =
+        new WindowManager.LayoutParams(
+            dp(176),
+            dp(36),
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                | WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED,
+            android.graphics.PixelFormat.TRANSLUCENT);
+    controlParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
+    controlParams.setFitInsetsTypes(0);
+    controlParams.layoutInDisplayCutoutMode =
+        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+    controlParams.y = Math.max(statusBarBottom, dp(32)) + dp(Prefs.number(this, "control_gap", 4));
+    try {
+      wm.addView(controlStrip, controlParams);
+      controlAttached = true;
+      layoutControlStrip();
+    } catch (RuntimeException ex) {
+      Prefs.get(this)
+          .edit()
+          .putString("error", "Không tạo được thanh điều khiển: " + ex.getClass().getSimpleName())
+          .apply();
+    }
+  }
+
+  private void layoutControlStrip() {
+    if (!controlAttached || controlStrip == null) return;
+    int width = Math.min(screenWidth - dp(16), dp(Prefs.number(this, "control_width", 176))),
+        height = dp(Prefs.number(this, "control_height", 36));
+    int y = Math.max(statusBarBottom, dp(32)) + dp(Prefs.number(this, "control_gap", 4));
+    boolean changed =
+        controlParams.width != width || controlParams.height != height || controlParams.y != y;
+    controlParams.width = width;
+    controlParams.height = height;
+    controlParams.y = y;
+    controlStrip.headerHeight(height);
+    boolean visible =
+        Prefs.get(this).getBoolean("control_strip", true)
+            && !expanded
+            && !replyVisible
+            && root.getVisibility() == View.VISIBLE
+            && getSystemService(PowerManager.class).isInteractive();
+    controlStrip.setVisibility(visible ? View.VISIBLE : View.GONE);
+    if (changed)
+      try {
+        wm.updateViewLayout(controlStrip, controlParams);
+      } catch (RuntimeException ex) {
+        Prefs.get(this).edit().putString("error", "Thanh điều khiển cần khởi động lại").apply();
       }
   }
 
@@ -851,6 +964,7 @@ public class IslandService extends Service {
   private void setIslandVisibility(int visibility) {
     root.setVisibility(visibility);
     if (overlayFrame != null) overlayFrame.setVisibility(visibility);
+    layoutControlStrip();
   }
 
   private void toast(String s) {
@@ -905,6 +1019,10 @@ public class IslandService extends Service {
     recentRequest++;
     handler.removeCallbacksAndMessages(null);
     if (animator != null) animator.cancel();
+    if (controlAttached) {
+      wm.removeView(controlStrip);
+      controlAttached = false;
+    }
     if (attached && root != null) wm.removeView(overlayFrame);
     attached = false;
     reference.clear();

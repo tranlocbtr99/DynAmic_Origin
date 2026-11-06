@@ -1,7 +1,8 @@
 # Current state — 2026-11-06
-Version 0.7.0 / code 9; package vn.loctm.dynamicorigin. Initial independent implementation in previously empty repo.
+Version 0.8.0 / code 10; package vn.loctm.dynamicorigin. Initial independent implementation in previously empty repo.
 
 ## Implemented
+- Separate visible control-strip window beneath current status bar, enabled by default after user approval. Left opens latest notification, right recent apps, hold inbox. It hides while panels/reply/screen-off are active, with configurable width/height/gap. Camera island geometry remains independent.
 - Explicit compact width (8–90%) with no 136/208dp or camera-padding floor; height 12–120dp, top 0–240dp, horizontal ±240dp; expanded width, radius, icon size and padding controls. Tap numeric values for validated direct input.
 - User-started foreground service and configurable camera overlay; no accessibility declaration or network permission.
 - Persistent root-owned header gesture detector; notification redraws no longer recreate gesture state, with queued notification refresh while a finger is down.
