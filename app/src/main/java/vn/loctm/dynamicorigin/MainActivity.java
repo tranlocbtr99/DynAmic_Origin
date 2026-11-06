@@ -220,11 +220,12 @@ public class MainActivity extends Activity {
             + " thông báo.");
     heading("Căn chỉnh camera");
     IOSToggle safe = new IOSToggle(this);
-    safe.setChecked(Prefs.get(this).getBoolean("safe_interaction", true));
-    safe.setContentDescription("Chế độ tương tác ổn định");
+    safe.setChecked(Prefs.get(this).getBoolean("safe_interaction", false));
+    safe.setContentDescription("Đặt dưới thanh trạng thái");
     LinearLayout safeRow = new LinearLayout(this);
     safeRow.setGravity(Gravity.CENTER_VERTICAL);
-    TextView safeTitle = IOSStyle.text(this, "Tương tác ổn định", 16, true, IOSStyle.ink(this));
+    TextView safeTitle =
+        IOSStyle.text(this, "Đặt dưới thanh trạng thái", 16, true, IOSStyle.ink(this));
     safeRow.addView(safeTitle, new LinearLayout.LayoutParams(0, dp(48), 1));
     safeRow.addView(safe);
     section.addView(safeRow);
@@ -333,7 +334,7 @@ public class MainActivity extends Activity {
           IOSStyle.dialog(d);
         });
     note(
-        "0.5.0 · Xử lý trên thiết bị · Không cần trợ năng\n"
+        "0.5.1 · Xử lý trên thiết bị · Không cần trợ năng\n"
             + "Giữ quyền thông báo của ứng dụng nguồn bật. Tắt banner của từng ứng dụng để giảm"
             + " hiển thị trùng.");
     LinearLayout dock = new LinearLayout(this);

@@ -695,7 +695,7 @@ public class IslandService extends Service {
   }
 
   private boolean safeInteraction() {
-    return Prefs.get(this).getBoolean("safe_interaction", true);
+    return Prefs.get(this).getBoolean("safe_interaction", false);
   }
 
   private int topPosition() {

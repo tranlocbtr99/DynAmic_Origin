@@ -4,7 +4,15 @@ import android.content.*;
 
 final class Prefs {
   static android.content.SharedPreferences get(Context c) {
-    return c.getSharedPreferences("island", 0);
+    android.content.SharedPreferences prefs = c.getSharedPreferences("island", 0);
+    // One-time correction of 0.5.0's automatic below-status-bar default.
+    if (!prefs.getBoolean("camera_default_051", false))
+      prefs
+          .edit()
+          .putBoolean("safe_interaction", false)
+          .putBoolean("camera_default_051", true)
+          .commit();
+    return prefs;
   }
 
   static boolean enabled(Context c) {

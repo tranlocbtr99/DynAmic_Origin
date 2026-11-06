@@ -12,3 +12,5 @@ Position regressions: read IslandGeometry.java and docs/DESIGN_SPEC.md before Is
 UI changes: IOSStyle.java and IOSToggle.java own shared materials/controls. Keep the camera island opaque black; document Android rendering differences rather than promise an exact iOS clone.
 
 Touch regressions: IslandTouchLayout owns header gestures for the lifetime of the overlay. Never re-create its detector during notification render. Safe interaction mode must stay below protected status-bar windows; do not promise touch interception at camera on all OEM firmware. Rotation uses DisplayManager events and current Display metrics, not only Service.onConfigurationChanged.
+
+User requires camera placement. Never enable below-status-bar positioning automatically as a touch workaround. That mode is explicit opt-in only. Preserve the one-time 0.5.1 migration that reverses 0.5.0's default.

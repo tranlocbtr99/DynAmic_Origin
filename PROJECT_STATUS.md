@@ -1,10 +1,10 @@
 # Current state — 2026-11-06
-Version 0.5.0 / code 5; package vn.loctm.dynamicorigin. Initial independent implementation in previously empty repo.
+Version 0.5.1 / code 6; package vn.loctm.dynamicorigin. Initial independent implementation in previously empty repo.
 
 ## Implemented
 - User-started foreground service and configurable camera overlay; no accessibility declaration or network permission.
 - Persistent root-owned header gesture detector; notification redraws no longer recreate gesture state, with queued notification refresh while a finger is down.
-- Safe interaction mode defaults ON: island sits immediately below status bar. Camera-area mode remains optional but system windows may intercept touch.
+- Camera placement is the default again. One-time migration disables 0.5.0 automatic below-status-bar mode without changing user calibration. Below-status-bar placement is explicit opt-in only; system windows may still intercept camera-area touch.
 - DisplayManager listener plus live Display metrics/cutout handles rotation while another app is foreground; landscape uses top center.
 - Source icon/title or live progress replaces the single-dot notification indicator.
 - Compact persistent pill; expand by long press or new notification; physical left tap opens newest notification, right tap opens recent apps; swipe-up collapse; 220ms resize.
