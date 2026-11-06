@@ -14,7 +14,7 @@ Transfer of ordinary notifications is optional. Capture is persisted before requ
 Persistent configurable overlay with stable screen anchor; iOS-inspired light/dark controls; compact/expanded inbox; bounded on-device history; source actions and quick reply; per-app filters; progress bars; two compact activity labels; media transport buttons; screen-lock privacy; foreground runtime; boot/update recovery attempt; diagnostics; opt-in ordinary notification transfer.
 
 ## Not yet implemented / not guaranteed
-Separate two-bubble display, full media metadata cards, advanced navigation parsing, charging/earbuds cards, iPhone system integrations, AOD, universal heads-up suppression or full SystemUI replacement. Lock-screen content is intentionally hidden. No claim of device validation until real testing.
+Separate two-bubble display, full media metadata cards, advanced navigation parsing, charging/earbuds cards, iPhone system integrations, AOD, universal heads-up suppression or full SystemUI replacement. Lock-screen private content is intentionally hidden; 0.7.0 requests an anonymous island/count on the lock screen. No claim of device validation until real testing.
 
 ## Build
 JDK 17+, Android SDK platform 36; `./gradlew :app:assembleDebug :app:lintDebug`.
@@ -42,3 +42,7 @@ Compact width now honors the chosen percentage regardless of notification presen
 
 ## 0.6.1 fixed physical position
 The island is now pinned in natural handset coordinates, including its width/height. A transformed outer window maps this same rectangle into the app's rotated display coordinates; its content is counter-rotated so another app's orientation does not choose a new location. No global orientation lock is imposed. Camera x is captured once per natural display width and normalized if startup happens in landscape. Existing manual calibration remains unchanged. This supersedes 0.5.x landscape top-center behavior.
+
+## 0.7.0 notification ingestion and lock screen
+Use **Đồng bộ lại thông báo** to replay active notifications or request listener reconnection. Connection and last received app are shown in settings. Extraction covers big/plain text, line arrays, message bundles and custom notifications without text. Group summaries are skipped only when a matching child notification exists. Keep source app notifications enabled.
+The app no longer hides its island merely because keyguard is locked. It requests lock-screen visibility and displays anonymous counts only; app launching, recent apps and notification content require keyguard authentication initiated by an explicit tap. Incoming notifications remain in the system while locked. A public, content-free foreground summary provides a fallback because OriginOS may still hide application overlays on keyguard. No full-screen activity is launched automatically, no AOD guarantee, no root/accessibility or keyguard bypass.

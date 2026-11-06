@@ -45,3 +45,11 @@
 - Rotate in another app at 0/90/180/270 degrees; overlay must re-anchor based on current display geometry.
 - Compact pill must show icon/title/count or media/download status, not just a single dot.
 - Protected apps may hide overlays regardless of safe mode; no bypass should be attempted.
+
+## 0.7.0
+- Revoke/regrant listener access, sync, and compare connected state plus last received timestamp with a real message from another app.
+- Test plain, big-text, MessagingStyle, line-array, custom and summary-only notifications; no callback crash for missing/null extras.
+- Lock after private content is expanded: screen off hides island, screen on renders count-only before showing; no title/source/recent-app exposure.
+- Transfer ON while locked must leave originals intact.
+- Tap count/hold on keyguard; content and actions only after successful credential/biometric authentication. Cancel authentication and verify no private content.
+- Compare overlay lock visibility on actual OriginOS; if hidden, public native summary remains subject to system lock-notification settings.

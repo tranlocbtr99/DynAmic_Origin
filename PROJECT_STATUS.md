@@ -1,5 +1,5 @@
 # Current state — 2026-11-06
-Version 0.6.1 / code 8; package vn.loctm.dynamicorigin. Initial independent implementation in previously empty repo.
+Version 0.7.0 / code 9; package vn.loctm.dynamicorigin. Initial independent implementation in previously empty repo.
 
 ## Implemented
 - Explicit compact width (8–90%) with no 136/208dp or camera-padding floor; height 12–120dp, top 0–240dp, horizontal ±240dp; expanded width, radius, icon size and padding controls. Tap numeric values for validated direct input.
@@ -11,6 +11,8 @@ Version 0.6.1 / code 8; package vn.loctm.dynamicorigin. Initial independent impl
 - Compact persistent pill; expand by long press or new notification; physical left tap opens newest notification, right tap opens recent apps; swipe-up collapse; 220ms resize.
 - Stable display-space camera anchor, independent from overlay-local insets. Fixed top, horizontal calibration/reset and size-only 280ms transitions; duplicate targets do not restart animations.
 - iOS-inspired light/dark grouped settings, capsule navigation, custom switches, glass control rims, black expanded island and updated reply/app-filter screens. See docs/DESIGN_SPEC.md.
+- Broader notification extraction: big text, plain text, lines, MessagingStyle bundles, generic fallback for custom notifications; standalone group summaries retained. Listener sync/rebind action, explicit all-type default filter and last-received diagnostics.
+- Lock-screen island requested with anonymous count; content/recent apps/actions require keyguard authentication. Native public summary is fallback if OEM hides the overlay. No cancellation while locked and no automatic Activity launch.
 - Notification listener; grouped-summary suppression; upsert by source key; bounded durable local history.
 - Source open/actions; session media previous/play-pause/next. Quick reply uses a private input Activity and the source RemoteInput; only sends after explicit user submission.
 - Optional source cancellation gated by durable save, new event, visible attached island and protected-item exclusion.
@@ -24,8 +26,8 @@ Version 0.6.1 / code 8; package vn.loctm.dynamicorigin. Initial independent impl
 
 ## Validation
 - Android SDK 36 Java compilation succeeded independently.
-- 32 transfer gating combinations, 6 expansion/update scenarios 15,000 geometry frames and recent-app ordering/deduplication plus physical tap-boundary and explicit width regression tests and 48 four-rotation physical-rectangle round trips passed.
-- Gradle assembleRelease, assembleDebug and lintDebug succeeded (Android SDK 36, JDK 21). 0 lint errors, 12 warnings (UI localization, gesture click delegation and intentional physical LEFT screen coordinates). Same release certificate verified against 0.1.0.
+- 64 transfer gating combinations (including locked state), 6 expansion/update scenarios 15,000 geometry frames and recent-app ordering/deduplication plus physical tap-boundary and explicit width regression tests and 48 four-rotation physical-rectangle round trips passed.
+- Gradle assembleRelease, assembleDebug and lintDebug succeeded (Android SDK 36, JDK 21). 0 lint errors, 14 warnings (UI localization, gesture click delegation and intentional physical LEFT screen coordinates). Same release certificate verified against 0.1.0.
 - No connected iQOO or KVM available. Software emulator boot was attempted; UI runtime validation is pending until Android finishes initialization. OEM camera placement and service survival remain device QA.
 
 ## Next implementation milestones

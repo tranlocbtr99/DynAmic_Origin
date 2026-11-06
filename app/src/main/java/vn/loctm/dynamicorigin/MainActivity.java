@@ -218,6 +218,27 @@ public class MainActivity extends Activity {
     note(
         "Chạm trái: mở thông báo mới nhất. Chạm phải: ứng dụng vừa dùng. Nhấn giữ: xem danh sách"
             + " thông báo.");
+    row(
+        "Đồng bộ lại thông báo",
+        Prefs.get(this).getString("listener_status", "Chưa có trạng thái kết nối"),
+        false,
+        () -> {
+          NotificationBridge.sync(this);
+          Toast.makeText(
+                  this,
+                  "Đã yêu cầu đồng bộ. Nếu chưa kết nối, tắt rồi bật lại quyền Truy cập thông báo.",
+                  Toast.LENGTH_LONG)
+              .show();
+          body.postDelayed(this::render, 800);
+        });
+    long received = Prefs.get(this).getLong("last_notification_saved", 0);
+    note(
+        received == 0
+            ? "Chưa ghi nhận thông báo từ ứng dụng khác."
+            : "Lần nhận gần nhất: "
+                + Prefs.get(this).getString("last_notification_app", "")
+                + " · "
+                + android.text.format.DateUtils.getRelativeTimeSpanString(received));
     heading("Căn chỉnh camera");
     IOSToggle safe = new IOSToggle(this);
     safe.setChecked(Prefs.get(this).getBoolean("safe_interaction", false));
@@ -345,7 +366,7 @@ public class MainActivity extends Activity {
           IOSStyle.dialog(d);
         });
     note(
-        "0.6.1 · Xử lý trên thiết bị · Không cần trợ năng\n"
+        "0.7.0 · Xử lý trên thiết bị · Không cần trợ năng\n"
             + "Giữ quyền thông báo của ứng dụng nguồn bật. Tắt banner của từng ứng dụng để giảm"
             + " hiển thị trùng.");
     LinearLayout dock = new LinearLayout(this);

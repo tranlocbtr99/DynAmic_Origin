@@ -69,10 +69,17 @@ public class IslandService extends Service {
       new BroadcastReceiver() {
         public void onReceive(Context c, Intent i) {
           if (root == null) return;
-          setIslandVisibility(
-              Intent.ACTION_SCREEN_OFF.equals(i.getAction()) || locked() || replyVisible
-                  ? View.GONE
-                  : View.VISIBLE);
+          if (Intent.ACTION_SCREEN_OFF.equals(i.getAction())) {
+            expanded = false;
+            recentMode = false;
+            setIslandVisibility(View.GONE);
+          } else {
+            expanded = false;
+            recentMode = false;
+            setIslandVisibility(replyVisible ? View.GONE : View.VISIBLE);
+            render();
+            NotificationBridge.sync(IslandService.this);
+          }
         }
       };
 
@@ -133,14 +140,14 @@ public class IslandService extends Service {
               .setContentText("Chạm để căn chỉnh đảo và quản lý thông báo")
               .setContentIntent(open)
               .setOngoing(true)
+              .setVisibility(Notification.VISIBILITY_PUBLIC)
               .addAction(new Notification.Action.Builder(null, "Tắt đảo", stop).build())
               .build();
       startForeground(17, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
       boolean fresh = root == null;
       if (fresh) attach();
       else render();
-      if (fresh && NotificationBridge.getInstance() != null)
-        NotificationBridge.getInstance().replay();
+      NotificationBridge.sync(this);
       Prefs.get(this).edit().remove("error").apply();
     } catch (RuntimeException ex) {
       Prefs.get(this).edit().putString("error", ex.toString()).apply();
@@ -156,6 +163,10 @@ public class IslandService extends Service {
             this,
             new IslandTouchLayout.Actions() {
               public void left() {
+                if (locked()) {
+                  requestUnlock();
+                  return;
+                }
                 java.util.List<Entry> list = Inbox.list(IslandService.this);
                 if (list.isEmpty()) showInbox();
                 else open(list.get(0));
@@ -207,7 +218,8 @@ public class IslandService extends Service {
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                 | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
                 | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-                | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+                | WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED,
             android.graphics.PixelFormat.TRANSLUCENT);
     params.gravity = Gravity.TOP | Gravity.LEFT;
     params.setFitInsetsTypes(0);
@@ -225,7 +237,8 @@ public class IslandService extends Service {
     wm.addView(overlayFrame, params);
     attached = true;
 
-    setIslandVisibility(locked() ? View.GONE : View.VISIBLE);
+    setIslandVisibility(
+        getSystemService(PowerManager.class).isInteractive() ? View.VISIBLE : View.GONE);
     render();
   }
 
@@ -256,13 +269,14 @@ public class IslandService extends Service {
             pendingAlert |= alert;
             return;
           }
-          if (alert && !locked() && !(recentMode && expanded)) {
+          if (alert && !(recentMode && expanded)) {
             recentMode = false;
             expanded = true;
             visibleNotifications = 8;
             resetScroll = true;
           }
           render();
+          updateLockSummary();
           if (alert && !recentMode) {
             handler.removeCallbacks(collapse);
             handler.postDelayed(collapse, Prefs.number(this, "duration", 7) * 1000L);
@@ -293,6 +307,10 @@ public class IslandService extends Service {
     root.headerHeight(h);
     params.y = topPosition();
     java.util.List<Entry> list = Inbox.list(this);
+    if (locked()) {
+      renderLocked(available, h, idle, list.size());
+      return;
+    }
     LinearLayout header = new LinearLayout(this);
     header.setGravity(Gravity.CENTER_VERTICAL);
     int padding = Math.min(dp(Prefs.number(this, "padding", 10)), idle / 8);
@@ -532,7 +550,10 @@ public class IslandService extends Service {
 
   private void showRecentApps() {
     resetScroll = true;
-    if (locked()) return;
+    if (locked()) {
+      requestUnlock();
+      return;
+    }
     recentMode = true;
     expanded = true;
     recentLoading = RecentApps.permitted(this);
@@ -638,7 +659,7 @@ public class IslandService extends Service {
     replyVisible = visible;
     if (root != null)
       setIslandVisibility(
-          visible || locked() || !getSystemService(PowerManager.class).isInteractive()
+          visible || !getSystemService(PowerManager.class).isInteractive()
               ? View.GONE
               : View.VISIBLE);
   }
@@ -778,6 +799,55 @@ public class IslandService extends Service {
       }
   }
 
+  private void updateLockSummary() {
+    int count = Inbox.list(this).size();
+    PendingIntent view =
+        PendingIntent.getActivity(
+            this,
+            7,
+            new Intent(this, UnlockActivity.class),
+            PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+    Notification notification =
+        new Notification.Builder(this, "runtime")
+            .setSmallIcon(R.drawable.ic_island)
+            .setContentTitle("DynAmic Origin")
+            .setContentText(count + " thông báo · Mở khóa để xem")
+            .setContentIntent(view)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
+            .build();
+    getSystemService(NotificationManager.class).notify(17, notification);
+  }
+
+  private void requestUnlock() {
+    try {
+      startActivity(new Intent(this, UnlockActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+    } catch (RuntimeException ex) {
+      toast("Mở khóa điện thoại để xem nội dung");
+    }
+  }
+
+  private void renderLocked(int available, int h, int idle, int count) {
+    LinearLayout header = new LinearLayout(this);
+    header.setGravity(Gravity.CENTER);
+    header.setPadding(dp(6), 0, dp(6), 0);
+    header.addView(text(count > 0 ? count + " thông báo" : "Đang chờ", 12, Color.WHITE));
+    root.addView(header, new LinearLayout.LayoutParams(-1, h));
+    if (expanded) {
+      TextView message = text("Mở khóa để xem thông báo", 15, 0xffcccccc);
+      message.setGravity(Gravity.CENTER);
+      message.setPadding(dp(14), dp(12), dp(14), dp(12));
+      root.addView(message);
+      Button unlock = IOSStyle.button(this, "Mở khóa", true, true);
+      unlock.setOnClickListener(v -> requestUnlock());
+      LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, dp(44));
+      p.setMargins(dp(14), 0, dp(14), dp(14));
+      root.addView(unlock, p);
+    }
+    resize(expanded ? Math.min(available, dp(280)) : idle, expanded ? h + dp(120) : h);
+  }
+
   private void setIslandVisibility(int visibility) {
     root.setVisibility(visibility);
     if (overlayFrame != null) overlayFrame.setVisibility(visibility);
@@ -799,6 +869,10 @@ public class IslandService extends Service {
   }
 
   private void open(Entry e) {
+    if (locked()) {
+      requestUnlock();
+      return;
+    }
     recentMode = false;
     expanded = false;
     render();

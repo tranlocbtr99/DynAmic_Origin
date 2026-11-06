@@ -10,9 +10,10 @@
  <application android:theme="@style/AppTheme" android:label="DynAmic Origin" android:icon="@drawable/ic_island" android:allowBackup="false" android:dataExtractionRules="@xml/data_extraction" android:supportsRtl="true">
   <activity android:name=".MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>
   <activity android:name=".ReplyActivity" android:exported="false" android:theme="@style/GlassDialog" android:windowSoftInputMode="adjustResize"/>
+  <activity android:name=".UnlockActivity" android:exported="false" android:theme="@style/GlassDialog"/>
   <activity android:name=".AppRulesActivity" android:exported="false"/>
   <service android:name=".IslandService" android:exported="false" android:stopWithTask="false" android:foregroundServiceType="specialUse"><property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Persistent user-enabled camera island showing notifications and media controls"/></service>
-  <service android:name=".NotificationBridge" android:label="DynAmic Origin — thông báo" android:exported="true" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"><intent-filter><action android:name="android.service.notification.NotificationListenerService"/></intent-filter></service>
+  <service android:name=".NotificationBridge" android:label="DynAmic Origin — thông báo" android:exported="true" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"><intent-filter><action android:name="android.service.notification.NotificationListenerService"/></intent-filter><meta-data android:name="android.service.notification.default_filter_types" android:value="conversations|alerting|silent|ongoing"/></service>
   <receiver android:name=".RecoveryReceiver" android:exported="false"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/></intent-filter></receiver>
  </application>
 </manifest>

@@ -6,7 +6,8 @@ final class TransferPolicy {
       boolean liveEvent,
       boolean overlayReady,
       boolean enabled,
-      boolean protectedItem) {
-    return saved && liveEvent && overlayReady && enabled && !protectedItem;
+      boolean protectedItem,
+      boolean locked) {
+    return saved && liveEvent && overlayReady && enabled && !protectedItem && !locked;
   }
 }

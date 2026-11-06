@@ -18,3 +18,5 @@ User requires camera placement. Never enable below-status-bar positioning automa
 Calibration: do not reintroduce notification-dependent minimum widths (136/208dp) or automatic height growth that overrides the user's numeric dimensions. Respect explicit compact sizes; adapt/truncate content instead.
 
 Physical position is locked across app rotation. PinnedFrame maps a natural-orientation rectangle into the display; do not restore the former landscape top-center fallback or calculate widths from rotated display width.
+
+Lock-screen mode is anonymous/count-only; require KeyguardManager authentication before opening source intents, recent apps or content. Never cancel source notifications while locked. Never auto-launch an Activity to cover keyguard. Ingestion diagnostics must distinguish permission/binding failures from empty source content; do not claim OEM delivery without device evidence.
