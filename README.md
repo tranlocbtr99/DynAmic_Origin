@@ -6,7 +6,7 @@ Android camera island for iQOO and other Android 14+ devices. Independent implem
 2. Allow runtime notifications, then press **Bật đảo** while the app is visible.
 3. Tune width, height, horizontal alignment and top offset to surround the camera. The overlay is below critical system windows; some firmware may prevent camera-area touch or display.
 4. On OriginOS enable unrestricted battery, auto-start and associated startup as supported by the installed firmware.
-5. Long press the island for the inbox, tap for the newest item, swipe up to collapse.
+5. Long press for the inbox; tap the physical left half to open the newest notification, and the right half for recently used apps. Swipe up to collapse.
 
 Transfer of ordinary notifications is optional. Capture is persisted before requesting cancellation. Ongoing, foreground service, call, alarm, media and core system notifications are retained. This cannot prevent an initial system banner. Keep source notification permissions enabled; turn off source channel banners manually if desired. Source PendingIntents may expire after cancellation: opening the app is the fallback, quick reply is available when the source exposes a mutable free-form RemoteInput action. Reply tokens may expire after transfer; failures are shown without claiming delivery.
 
@@ -26,3 +26,6 @@ CI runs once per push/PR, cancels superseded jobs, caches Gradle and uploads a d
 Camera bounds now come from display WindowMetrics once per screen geometry, never from the resized overlay. The center and top stay fixed while the window changes size. Use **Đặt lại vị trí** once if old calibration is off, then fine-tune horizontal/top offsets. This fixes a feedback path in 0.2.0 that could move the island repeatedly.
 
 The UI follows Apple material hierarchy and iOS geometry, but Android cannot reproduce proprietary iOS rendering 100%. Camera island stays black; glass is concentrated in controls. See docs/DESIGN_SPEC.md for design sources and limitations.
+
+## 0.4.0 compact inbox and recent apps
+Notifications default to short rows with one-line title/body; tap to reveal actions. First 8 entries are shown, with load more. Right-half tap opens a custom recent-app list, not Android Overview. Enable Usage Access from the app or the prompt inside the island. It reads the past 24h of foreground-resume events only on demand, filters to launchable apps, deduplicates, and keeps up to 12 entries in memory. No usage history is written to disk or sent online. Notification functionality does not require Usage Access.

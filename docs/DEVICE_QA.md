@@ -29,3 +29,11 @@
 - Test manual horizontal offset and reset; test minimum/maximum widths.
 - Check light/dark grouped settings, readable control rims, 44dp touch targets, reply keyboard and app-filter switches.
 - Disable animations and verify size/switch transitions are immediate.
+
+## 0.4.0
+- Tap physical left/right on idle and expanded headers; no child label should steal right-half touches. Long press still opens notifications.
+- Confirm left opens newest notification even if a different ongoing media card exists.
+- Deny Usage Access: right tap shows grant guidance; left still works. Grant then return and tap right again.
+- Open A, B, A: list order A then B, no duplicates; home/island excluded. Revoke access: no cached names shown.
+- Expand one notification, scroll/load more, delete/reply; actions hidden in collapsed rows and scroll retained.
+- A notification arriving while viewing recent apps is saved without interrupting that panel. After collapsing, subsequent notifications can open normally.

@@ -27,6 +27,14 @@ public class IslandService extends Service {
   private final Handler handler = new Handler(Looper.getMainLooper());
   private boolean expanded, attached, replyVisible;
   private Entry primaryEntry;
+  private boolean recentMode, recentLoading;
+  private String detailKey;
+  private ScrollView panelScroll;
+  private boolean resetScroll;
+  private int visibleNotifications = 8, recentRequest;
+  private java.util.List<RecentApps.App> recentApps = java.util.Collections.emptyList();
+  private final java.util.concurrent.ExecutorService recentWorker =
+      java.util.concurrent.Executors.newSingleThreadExecutor();
   private ValueAnimator animator;
   private int cameraBottom, cameraCenter = -1, cameraWidth;
   private int screenWidth,
@@ -38,6 +46,7 @@ public class IslandService extends Service {
   private final Runnable collapse =
       () -> {
         expanded = false;
+        recentMode = false;
         render();
       };
   private final BroadcastReceiver screen =
@@ -166,6 +175,7 @@ public class IslandService extends Service {
   }
 
   void showInbox() {
+    recentMode = false;
     expanded = true;
     handler.removeCallbacks(collapse);
     render();
@@ -175,9 +185,14 @@ public class IslandService extends Service {
     handler.post(
         () -> {
           if (root == null) return;
-          if (alert && !locked()) expanded = true;
+          if (alert && !locked() && !(recentMode && expanded)) {
+            recentMode = false;
+            expanded = true;
+            visibleNotifications = 8;
+            resetScroll = true;
+          }
           render();
-          if (alert) {
+          if (alert && !recentMode) {
             handler.removeCallbacks(collapse);
             handler.postDelayed(collapse, Prefs.number(this, "duration", 7) * 1000L);
           }
@@ -196,9 +211,9 @@ public class IslandService extends Service {
     view.setOnClickListener(
         v -> {
           java.util.List<Entry> all = Inbox.list(IslandService.this);
-          if (primaryEntry != null) open(primaryEntry);
-          else if (!all.isEmpty()) open(all.get(0));
+          if (!all.isEmpty()) open(all.get(0));
           else {
+            recentMode = false;
             expanded = true;
             render();
           }
@@ -212,11 +227,13 @@ public class IslandService extends Service {
               }
 
               public boolean onSingleTapUp(android.view.MotionEvent e) {
-                view.performClick();
+                if (IslandTap.right(e.getX(), view.getWidth())) showRecentApps();
+                else view.performClick();
                 return true;
               }
 
               public void onLongPress(android.view.MotionEvent e) {
+                recentMode = false;
                 expanded = !expanded;
                 handler.removeCallbacks(collapse);
                 render();
@@ -226,17 +243,24 @@ public class IslandService extends Service {
                   android.view.MotionEvent a, android.view.MotionEvent b, float vx, float vy) {
                 if (a != null && b.getY() < a.getY() - dp(10)) {
                   expanded = false;
+                  recentMode = false;
                   render();
                   return true;
                 }
                 return false;
               }
             });
+    view.setContentDescription(
+        "Chạm trái mở thông báo mới nhất, chạm phải mở ứng dụng gần đây, nhấn giữ mở danh sách"
+            + " thông báo");
     view.setOnTouchListener((v, e) -> gesture.onTouchEvent(e));
   }
 
   private void render() {
     if (root == null || !attached) return;
+    final int oldScroll = resetScroll || panelScroll == null ? 0 : panelScroll.getScrollY();
+    resetScroll = false;
+    panelScroll = null;
     root.removeAllViews();
     int sw = screenWidth, sh = screenHeight;
     int center = IslandGeometry.center(sw, cameraCenter, dp(Prefs.number(this, "horizontal", 0)));
@@ -262,7 +286,8 @@ public class IslandService extends Service {
     header.addView(left, new LinearLayout.LayoutParams(0, h, 1));
     View gap = new View(this);
     header.addView(gap, new LinearLayout.LayoutParams(Math.max(cameraWidth + dp(12), dp(32)), h));
-    TextView count = text(list.isEmpty() ? "" : String.valueOf(list.size()), 12, Color.WHITE);
+    TextView count = text("▦", 18, 0xffd1d1d6);
+    count.setContentDescription("Ứng dụng gần đây");
     count.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
     header.addView(count, new LinearLayout.LayoutParams(0, h, 1));
     java.util.List<Entry> activities = new java.util.ArrayList<>();
@@ -274,19 +299,12 @@ public class IslandService extends Service {
       left.setGravity(Gravity.CENTER_VERTICAL);
       left.setEllipsize(android.text.TextUtils.TruncateAt.END);
     }
-    if (activities.size() > 1) {
-      Entry second = activities.get(1);
-      count.setText(compactLabel(second));
-      count.setSingleLine(true);
-      count.setEllipsize(android.text.TextUtils.TruncateAt.END);
-      count.setOnClickListener(v -> open(second));
-    }
     root.addView(header);
     pillTouch(header);
     if (expanded) {
       LinearLayout bar = new LinearLayout(this);
       bar.setPadding(dp(22), dp(6), dp(14), dp(12));
-      TextView title = text("Thông báo", 20, Color.WHITE);
+      TextView title = text(recentMode ? "Ứng dụng gần đây" : "Thông báo", 20, Color.WHITE);
       title.setTypeface(
           android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
       bar.addView(title, new LinearLayout.LayoutParams(0, dp(38), 1));
@@ -299,134 +317,159 @@ public class IslandService extends Service {
       close.setOnClickListener(
           v -> {
             expanded = false;
+            recentMode = false;
             render();
           });
       bar.addView(close);
       root.addView(bar);
       ScrollView scroll = new ScrollView(this);
+      panelScroll = scroll;
+      scroll.post(() -> scroll.scrollTo(0, oldScroll));
       LinearLayout rows = new LinearLayout(this);
       rows.setOrientation(LinearLayout.VERTICAL);
       rows.setPadding(dp(14), 0, dp(14), dp(16));
       scroll.addView(rows);
       root.addView(scroll);
-      if (list.isEmpty()) rows.addView(text("Chưa có thông báo. Đảo đang chờ.", 14, 0xffaaaaaa));
-      for (Entry e : list) {
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.VERTICAL);
-        row.setPadding(dp(16), dp(16), dp(16), dp(16));
-        row.setBackground(IOSStyle.solid(this, 0xff141416, 22));
-        TextView app = text(e.app, 12, 0xffb0b0b8);
-        LinearLayout meta = new LinearLayout(this);
-        meta.setGravity(Gravity.CENTER_VERTICAL);
-        if (e.icon != null) {
-          ImageView icon = new ImageView(this);
-          icon.setImageDrawable(e.icon);
-          LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(dp(24), dp(24));
-          ip.setMarginEnd(dp(9));
-          meta.addView(icon, ip);
-        }
-        app.setSingleLine(true);
-        app.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        meta.addView(app, new LinearLayout.LayoutParams(0, dp(28), 1));
-        TextView age =
-            text(
-                android.text.format.DateUtils.getRelativeTimeSpanString(
-                        e.time, System.currentTimeMillis(), 60000)
-                    .toString(),
-                10,
-                0xff8e8e93);
-        meta.addView(age);
-        row.addView(meta);
-        TextView t = text(e.title, 17, Color.WHITE);
-        t.setTypeface(
-            android.graphics.Typeface.create(
-                "sans-serif-medium", android.graphics.Typeface.NORMAL));
-        t.setPadding(0, dp(8), 0, dp(6));
-        t.setMaxLines(2);
-        row.addView(t);
-        TextView body = text(e.text, 15, 0xffc5c5cc);
-        body.setLineSpacing(dp(3), 1);
-        body.setMaxLines(4);
-        row.addView(body);
-        if (!e.removed && (e.progressMax > 0 || e.indeterminate)) {
-          ProgressBar progress =
-              new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
-          progress.setIndeterminate(e.indeterminate);
-          if (!e.indeterminate) {
-            progress.setMax(e.progressMax);
-            progress.setProgress(Math.max(0, Math.min(e.progressMax, e.progress)));
+      if (recentMode) {
+        recentRows(rows);
+      } else {
+        if (list.isEmpty()) rows.addView(text("Chưa có thông báo. Đảo đang chờ.", 14, 0xffaaaaaa));
+        for (Entry e : list.subList(0, Math.min(visibleNotifications, list.size()))) {
+          boolean details = e.key.equals(detailKey);
+          LinearLayout row = new LinearLayout(this);
+          row.setOrientation(LinearLayout.VERTICAL);
+          row.setPadding(dp(14), dp(10), dp(14), dp(10));
+          row.setOnClickListener(v -> toggleDetails(e.key));
+          row.setBackground(IOSStyle.solid(this, 0xff141416, 22));
+          TextView app = text(e.app, 12, 0xffb0b0b8);
+          LinearLayout meta = new LinearLayout(this);
+          meta.setGravity(Gravity.CENTER_VERTICAL);
+          if (e.icon != null) {
+            ImageView icon = new ImageView(this);
+            icon.setImageDrawable(e.icon);
+            LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(dp(20), dp(20));
+            ip.setMarginEnd(dp(9));
+            meta.addView(icon, ip);
           }
-          row.addView(progress, new LinearLayout.LayoutParams(-1, dp(8)));
-        }
-        t.setOnClickListener(v -> open(e));
-        body.setOnClickListener(v -> open(e));
-        LinearLayout actions = new LinearLayout(this);
-        Button open = IOSStyle.button(this, "Mở", false, true);
-        open.setOnClickListener(v -> open(e));
-        LinearLayout.LayoutParams openParams = new LinearLayout.LayoutParams(0, dp(42), 1);
-        openParams.setMarginEnd(dp(8));
-        actions.addView(open, openParams);
-        Button del = IOSStyle.button(this, "Xóa", false, true);
-        del.setOnClickListener(
-            v -> {
-              NotificationBridge.dismiss(e.key);
-              Inbox.remove(this, e.key);
-              render();
-            });
-        actions.addView(del, new LinearLayout.LayoutParams(0, dp(42), 1));
-        LinearLayout.LayoutParams actionParams = new LinearLayout.LayoutParams(-1, -2);
-        actionParams.topMargin = dp(14);
-        row.addView(actions, actionParams);
-        if (e.media != null && !e.removed) {
-          LinearLayout controls = new LinearLayout(this);
-          android.media.session.MediaController mc =
-              new android.media.session.MediaController(this, e.media);
-          for (int i = 0; i < 3; i++) {
-            final int which = i;
-            Button b = IOSStyle.button(this, new String[] {"⏮", "▶ / Ⅱ", "⏭"}[i], false, true);
-            b.setContentDescription(
-                new String[] {"Bài trước", "Phát hoặc tạm dừng", "Bài tiếp theo"}[i]);
-            b.setOnClickListener(
+          app.setSingleLine(true);
+          app.setEllipsize(android.text.TextUtils.TruncateAt.END);
+          meta.addView(app, new LinearLayout.LayoutParams(0, dp(22), 1));
+          TextView age =
+              text(
+                  android.text.format.DateUtils.getRelativeTimeSpanString(
+                          e.time, System.currentTimeMillis(), 60000)
+                      .toString(),
+                  10,
+                  0xff8e8e93);
+          meta.addView(age);
+          row.addView(meta);
+          TextView t = text(e.title, 17, Color.WHITE);
+          t.setTypeface(
+              android.graphics.Typeface.create(
+                  "sans-serif-medium", android.graphics.Typeface.NORMAL));
+          t.setPadding(0, dp(5), 0, dp(3));
+          t.setMaxLines(details ? 3 : 1);
+          t.setEllipsize(android.text.TextUtils.TruncateAt.END);
+          row.addView(t);
+          TextView body = text(e.text, 15, 0xffc5c5cc);
+          body.setLineSpacing(dp(3), 1);
+          body.setMaxLines(details ? 8 : 1);
+          body.setEllipsize(android.text.TextUtils.TruncateAt.END);
+          row.addView(body);
+          if (!e.removed && (e.progressMax > 0 || e.indeterminate)) {
+            ProgressBar progress =
+                new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+            progress.setIndeterminate(e.indeterminate);
+            if (!e.indeterminate) {
+              progress.setMax(e.progressMax);
+              progress.setProgress(Math.max(0, Math.min(e.progressMax, e.progress)));
+            }
+            row.addView(progress, new LinearLayout.LayoutParams(-1, dp(8)));
+          }
+          t.setOnClickListener(v -> toggleDetails(e.key));
+          body.setOnClickListener(v -> toggleDetails(e.key));
+          if (details) {
+            LinearLayout actions = new LinearLayout(this);
+            Button open = IOSStyle.button(this, "Mở", false, true);
+            open.setOnClickListener(v -> open(e));
+            LinearLayout.LayoutParams openParams = new LinearLayout.LayoutParams(0, dp(42), 1);
+            openParams.setMarginEnd(dp(8));
+            actions.addView(open, openParams);
+            Button del = IOSStyle.button(this, "Xóa", false, true);
+            del.setOnClickListener(
                 v -> {
-                  try {
-                    android.media.session.MediaController.TransportControls tc =
-                        mc.getTransportControls();
-                    if (which == 0) tc.skipToPrevious();
-                    else if (which == 2) tc.skipToNext();
-                    else {
-                      android.media.session.PlaybackState st = mc.getPlaybackState();
-                      if (st != null
-                          && st.getState() == android.media.session.PlaybackState.STATE_PLAYING)
-                        tc.pause();
-                      else tc.play();
-                    }
-                  } catch (RuntimeException ex) {
-                    toast("Ứng dụng không cho phép điều khiển");
-                  }
+                  NotificationBridge.dismiss(e.key);
+                  Inbox.remove(this, e.key);
+                  render();
                 });
-            LinearLayout.LayoutParams controlParams = new LinearLayout.LayoutParams(0, dp(46), 1);
-            controlParams.setMargins(dp(3), dp(10), dp(3), 0);
-            controls.addView(b, controlParams);
+            actions.addView(del, new LinearLayout.LayoutParams(0, dp(42), 1));
+            LinearLayout.LayoutParams actionParams = new LinearLayout.LayoutParams(-1, -2);
+            actionParams.topMargin = dp(14);
+            row.addView(actions, actionParams);
+            if (e.media != null && !e.removed) {
+              LinearLayout controls = new LinearLayout(this);
+              android.media.session.MediaController mc =
+                  new android.media.session.MediaController(this, e.media);
+              for (int i = 0; i < 3; i++) {
+                final int which = i;
+                Button b = IOSStyle.button(this, new String[] {"⏮", "▶ / Ⅱ", "⏭"}[i], false, true);
+                b.setContentDescription(
+                    new String[] {"Bài trước", "Phát hoặc tạm dừng", "Bài tiếp theo"}[i]);
+                b.setOnClickListener(
+                    v -> {
+                      try {
+                        android.media.session.MediaController.TransportControls tc =
+                            mc.getTransportControls();
+                        if (which == 0) tc.skipToPrevious();
+                        else if (which == 2) tc.skipToNext();
+                        else {
+                          android.media.session.PlaybackState st = mc.getPlaybackState();
+                          if (st != null
+                              && st.getState() == android.media.session.PlaybackState.STATE_PLAYING)
+                            tc.pause();
+                          else tc.play();
+                        }
+                      } catch (RuntimeException ex) {
+                        toast("Ứng dụng không cho phép điều khiển");
+                      }
+                    });
+                LinearLayout.LayoutParams controlParams =
+                    new LinearLayout.LayoutParams(0, dp(46), 1);
+                controlParams.setMargins(dp(3), dp(10), dp(3), 0);
+                controls.addView(b, controlParams);
+              }
+              row.addView(controls);
+            }
+            if (e.actions != null && (!e.removed || e.transferred))
+              for (Notification.Action a : e.actions) {
+                if (a.actionIntent == null) continue;
+                Button b = IOSStyle.button(this, a.title.toString(), false, true);
+                b.setOnClickListener(
+                    v -> {
+                      if (a.getRemoteInputs() != null) {
+                        startReply(e, a);
+                      } else send(a.actionIntent, e.pkg);
+                    });
+                LinearLayout.LayoutParams actionLayout = new LinearLayout.LayoutParams(-1, dp(42));
+                actionLayout.topMargin = dp(8);
+                row.addView(b, actionLayout);
+              }
           }
-          row.addView(controls);
+          rows.addView(row);
+          View line = new View(this);
+          rows.addView(line, new LinearLayout.LayoutParams(-1, dp(10)));
         }
-        if (e.actions != null && (!e.removed || e.transferred))
-          for (Notification.Action a : e.actions) {
-            if (a.actionIntent == null) continue;
-            Button b = IOSStyle.button(this, a.title.toString(), false, true);
-            b.setOnClickListener(
-                v -> {
-                  if (a.getRemoteInputs() != null) {
-                    startReply(e, a);
-                  } else send(a.actionIntent, e.pkg);
-                });
-            LinearLayout.LayoutParams actionLayout = new LinearLayout.LayoutParams(-1, dp(42));
-            actionLayout.topMargin = dp(8);
-            row.addView(b, actionLayout);
-          }
-        rows.addView(row);
-        View line = new View(this);
-        rows.addView(line, new LinearLayout.LayoutParams(-1, dp(10)));
+        if (visibleNotifications < list.size()) {
+          Button more =
+              IOSStyle.button(
+                  this, "Xem thêm · " + (list.size() - visibleNotifications), false, true);
+          more.setOnClickListener(
+              v -> {
+                visibleNotifications += 8;
+                render();
+              });
+          rows.addView(more, new LinearLayout.LayoutParams(-1, dp(44)));
+        }
       }
     }
     int targetWidth =
@@ -442,6 +485,109 @@ public class IslandService extends Service {
       targetHeight = root.getMeasuredHeight();
     }
     resize(targetWidth, targetHeight);
+  }
+
+  private void toggleDetails(String key) {
+    detailKey = key.equals(detailKey) ? null : key;
+    handler.removeCallbacks(collapse);
+    render();
+  }
+
+  private void showRecentApps() {
+    resetScroll = true;
+    if (locked()) return;
+    recentMode = true;
+    expanded = true;
+    recentLoading = RecentApps.permitted(this);
+    recentApps = java.util.Collections.emptyList();
+    handler.removeCallbacks(collapse);
+    render();
+    final int request = ++recentRequest;
+    if (!recentLoading) return;
+    recentWorker.execute(
+        () -> {
+          java.util.List<RecentApps.App> result;
+          try {
+            result = RecentApps.query(this);
+          } catch (RuntimeException ex) {
+            result = java.util.Collections.emptyList();
+          }
+          final java.util.List<RecentApps.App> completed = result;
+          handler.post(
+              () -> {
+                if (!attached || request != recentRequest) return;
+                recentLoading = false;
+                recentApps = completed;
+                if (recentMode && expanded) render();
+              });
+        });
+  }
+
+  private void recentRows(LinearLayout rows) {
+    if (!RecentApps.permitted(this)) {
+      TextView help =
+          text(
+              "Cho phép truy cập dữ liệu sử dụng để xem các ứng dụng vừa mở. Không cần trợ năng.",
+              14,
+              0xffb0b0b8);
+      help.setPadding(dp(8), dp(8), dp(8), dp(14));
+      rows.addView(help);
+      Button allow = IOSStyle.button(this, "Cấp quyền truy cập sử dụng", true, true);
+      allow.setOnClickListener(
+          v -> {
+            expanded = false;
+            recentMode = false;
+            render();
+            try {
+              startActivity(
+                  new Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS)
+                      .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            } catch (RuntimeException ex) {
+              toast("Mở Truy cập dữ liệu sử dụng trong Cài đặt");
+            }
+          });
+      rows.addView(allow, new LinearLayout.LayoutParams(-1, dp(46)));
+      return;
+    }
+    if (recentLoading) {
+      rows.addView(text("Đang lấy ứng dụng gần đây…", 14, 0xffaaaaaa));
+      return;
+    }
+    if (recentApps.isEmpty())
+      rows.addView(
+          text(
+              "Chưa có ứng dụng gần đây trong 24 giờ qua. Nếu vừa cấp quyền, hãy mở vài ứng dụng"
+                  + " rồi chạm phải đảo lần nữa.",
+              14,
+              0xffaaaaaa));
+    for (RecentApps.App app : recentApps) {
+      LinearLayout row = new LinearLayout(this);
+      row.setGravity(Gravity.CENTER_VERTICAL);
+      row.setPadding(dp(14), dp(10), dp(14), dp(10));
+      row.setBackground(new IOSStyle.Glass(this, true, 22));
+      ImageView icon = new ImageView(this);
+      icon.setImageDrawable(app.icon);
+      LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(dp(36), dp(36));
+      ip.setMarginEnd(dp(12));
+      row.addView(icon, ip);
+      TextView name = text(app.name, 16, Color.WHITE);
+      name.setSingleLine(true);
+      name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+      row.addView(name, new LinearLayout.LayoutParams(0, dp(40), 1));
+      name.setGravity(Gravity.CENTER_VERTICAL);
+      row.addView(text("›", 24, 0xffaaaaaa));
+      row.setContentDescription("Mở " + app.name);
+      row.setOnClickListener(
+          v -> {
+            expanded = false;
+            recentMode = false;
+            render();
+            launch(app.pkg);
+          });
+      LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, -2);
+      rp.bottomMargin = dp(8);
+      rows.addView(row, rp);
+    }
   }
 
   private String compactLabel(Entry e) {
@@ -552,6 +698,7 @@ public class IslandService extends Service {
   }
 
   private void open(Entry e) {
+    recentMode = false;
     expanded = false;
     render();
     if (e.open != null) send(e.open, e.pkg);
@@ -589,6 +736,8 @@ public class IslandService extends Service {
 
   @Override
   public void onDestroy() {
+    recentWorker.shutdownNow();
+    recentRequest++;
     handler.removeCallbacksAndMessages(null);
     if (animator != null) animator.cancel();
     if (attached && root != null) wm.removeView(root);

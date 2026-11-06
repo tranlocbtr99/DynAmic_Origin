@@ -5,7 +5,7 @@
 - Durable bounded local inbox (80 entries, title <=300 chars/body <=4000) before cancellation. No network permission and backup disabled.
 - Transfer is opt-in; protect flags/category/session/system packages. Preserve original notifications for live activities.
 - History retains text only across process death; PendingIntents/actions/tokens remain in memory only.
-- UI hides when keyguard locked. No accessibility, screenshot scraping, usage access or permission escalation.
+- UI hides when keyguard locked. No accessibility, screenshot scraping or permission escalation. Optional Usage Access is described in the 0.4.0 section.
 - Boot/update recovery best effort; Android/OEM may block start. Store diagnostic and require visible user launch when necessary.
 - Stable release signing identity is separate from disposable debug builds. CI never uploads keys.
 
@@ -21,3 +21,6 @@ The third-party Origin Isle implementation was studied for feasibility; no sourc
 ## 0.2.0 updates
 Private ReplyActivity validates current action identity, RemoteInput key, keyguard and app rule before dispatch. Draft text never persists or sends automatically. Overlay is hidden during composition. Transferred action tokens are retained in memory best-effort; cancellation errors are surfaced.
 App exclusions apply before capture and to inbox presentation, while original history can be re-enabled. Ongoing updates render without expanding; ordinary message content changes can expand.
+
+## 0.4.0 recents
+RecentApps queries public UsageStatsManager ACTIVITY_RESUMED events for the last 24h only after an explicit right tap and granted usage app-op. Work is off the UI thread; request generations suppress stale callbacks. RecentOrder deduplicates by max timestamp. This is a custom launch list, not privileged system task/Overview access. PACKAGE_USAGE_STATS manifest lint exception is scoped to that declaration because user-granted app-op access is the documented non-system route.

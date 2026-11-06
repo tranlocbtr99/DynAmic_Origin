@@ -210,6 +210,14 @@ public class MainActivity extends Activity {
                 new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                     .putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName()));
         });
+    row(
+        "Ứng dụng gần đây",
+        "Cấp quyền để dùng thao tác chạm phải đảo",
+        RecentApps.permitted(this),
+        () -> go(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)));
+    note(
+        "Chạm trái: mở thông báo mới nhất. Chạm phải: ứng dụng vừa dùng. Nhấn giữ: xem danh sách"
+            + " thông báo.");
     heading("Căn chỉnh camera");
     slider("Chiều rộng", "width", 24, 55, 30, "%");
     slider("Chiều cao", "height", 28, 64, 36, "dp");
@@ -306,7 +314,7 @@ public class MainActivity extends Activity {
           IOSStyle.dialog(d);
         });
     note(
-        "0.3.0 · Xử lý trên thiết bị · Không cần trợ năng\n"
+        "0.4.0 · Xử lý trên thiết bị · Không cần trợ năng\n"
             + "Giữ quyền thông báo của ứng dụng nguồn bật. Tắt banner của từng ứng dụng để giảm"
             + " hiển thị trùng.");
     LinearLayout dock = new LinearLayout(this);
