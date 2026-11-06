@@ -51,6 +51,7 @@ public class ReplyActivity extends Activity {
       return;
     }
     setTitle("Trả lời · " + e.app);
+    IOSStyle.dialog(this);
     LinearLayout layout = new LinearLayout(this);
     layout.setOrientation(LinearLayout.VERTICAL);
     int pad = (int) (20 * getResources().getDisplayMetrics().density);
@@ -58,6 +59,7 @@ public class ReplyActivity extends Activity {
     TextView context = new TextView(this);
     context.setText(e.title);
     context.setMaxLines(2);
+    IOSStyle.text(context, 18, true, IOSStyle.ink(this));
     layout.addView(context);
     editor = new EditText(this);
     editor.setHint(input.getLabel());
@@ -67,16 +69,17 @@ public class ReplyActivity extends Activity {
             | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
     editor.setMaxLines(5);
     editor.setFilters(new InputFilter[] {new InputFilter.LengthFilter(2000)});
+    IOSStyle.text(editor, 17, false, IOSStyle.ink(this));
     layout.addView(editor);
     LinearLayout buttons = new LinearLayout(this);
-    Button cancel = new Button(this);
-    cancel.setText("Hủy");
+    Button cancel = IOSStyle.button(this, "Hủy", false, false);
     cancel.setOnClickListener(v -> finish());
-    buttons.addView(cancel);
-    Button send = new Button(this);
-    send.setText("Gửi");
+    LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, IOSStyle.dp(this, 46), 1);
+    cp.setMarginEnd(IOSStyle.dp(this, 10));
+    buttons.addView(cancel, cp);
+    Button send = IOSStyle.button(this, "Gửi", true, false);
     send.setOnClickListener(v -> sendReply());
-    buttons.addView(send);
+    buttons.addView(send, new LinearLayout.LayoutParams(0, IOSStyle.dp(this, 46), 1));
     layout.addView(buttons);
     setContentView(layout);
     editor.requestFocus();

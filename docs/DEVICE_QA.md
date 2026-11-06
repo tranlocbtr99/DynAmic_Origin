@@ -20,3 +20,12 @@
 - Download updates change progress without repeatedly expanding; source stays alive.
 - Two ongoing activities show distinct labels; tap secondary opens that source.
 - Ordinary transfer cancellation no longer cancels the delayed collapse timer.
+
+## 0.3.0 position and visual regression
+- Idle for 2 minutes; camera center and top must not move.
+- Expand/collapse 30 times, including while progress/media updates arrive; compare screen-coordinate center and top.
+- Hide/show status bar through fullscreen app transitions; anchor must not follow local insets.
+- Change keyboard, display density, rotation and light/dark mode; only display geometry changes should recapture camera bounds.
+- Test manual horizontal offset and reset; test minimum/maximum widths.
+- Check light/dark grouped settings, readable control rims, 44dp touch targets, reply keyboard and app-filter switches.
+- Disable animations and verify size/switch transitions are immediate.

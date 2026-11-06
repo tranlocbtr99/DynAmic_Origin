@@ -16,6 +16,7 @@ public class AppRulesActivity extends Activity {
   @Override
   public void onCreate(Bundle state) {
     super.onCreate(state);
+    IOSStyle.page(this);
     for (ResolveInfo info :
         getPackageManager()
             .queryIntentActivities(
@@ -29,23 +30,39 @@ public class AppRulesActivity extends Activity {
     body.setOrientation(LinearLayout.VERTICAL);
     int p = (int) (18 * getResources().getDisplayMetrics().density);
     body.setPadding(p, p, p, p);
-    Button back = new Button(this);
-    back.setText("‹ Cài đặt đảo");
+    body.setBackgroundColor(IOSStyle.dark(this) ? 0xff0b0b10 : 0xfff2f2f7);
+    Button back = IOSStyle.button(this, "‹ Đảo", false, false);
     back.setOnClickListener(v -> finish());
-    body.addView(back);
+    body.addView(back, new LinearLayout.LayoutParams(IOSStyle.dp(this, 96), IOSStyle.dp(this, 44)));
+    TextView title = IOSStyle.text(this, "Ứng dụng", 32, true, IOSStyle.ink(this));
+    title.setPadding(0, p, 0, p);
+    body.addView(title);
     TextView help = new TextView(this);
     help.setText(
         "Tắt ứng dụng để ngừng thu nhận và chuyển thông báo của ứng dụng đó. Bản hệ thống tiếp tục"
             + " hoạt động bình thường.");
+    IOSStyle.text(help, 13, false, IOSStyle.secondary(this));
+    help.setPadding(0, 0, 0, p);
     body.addView(help);
     EditText search = new EditText(this);
     search.setHint("Tìm ứng dụng");
-    body.addView(search);
+    IOSStyle.text(search, 16, false, IOSStyle.ink(this));
+    search.setSingleLine(true);
+    search.setBackground(new IOSStyle.Glass(this, IOSStyle.dark(this), 18));
+    search.setPadding(p, 0, p, 0);
+    body.addView(search, new LinearLayout.LayoutParams(-1, IOSStyle.dp(this, 48)));
     ScrollView scroll = new ScrollView(this);
     rows = new LinearLayout(this);
     rows.setOrientation(LinearLayout.VERTICAL);
     scroll.addView(rows);
     body.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+    body.setOnApplyWindowInsetsListener(
+        (v, insets) -> {
+          android.graphics.Insets bars =
+              insets.getInsets(android.view.WindowInsets.Type.systemBars());
+          body.setPadding(p, p + bars.top, p, p + bars.bottom);
+          return insets;
+        });
     setContentView(body);
     show("");
     search.addTextChangedListener(
@@ -68,22 +85,28 @@ public class AppRulesActivity extends Activity {
     for (Map.Entry<String, String> app : sorted) {
       String pkg = app.getKey(), name = app.getValue();
       if (!name.toLowerCase(Locale.ROOT).contains(q) && !pkg.contains(q)) continue;
-      LinearLayout row = new LinearLayout(this);
-      row.setOrientation(LinearLayout.VERTICAL);
-      Switch toggle = new Switch(this);
-      toggle.setText(name);
+      LinearLayout row = IOSStyle.card(this);
+      LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, -2);
+      rowParams.topMargin = IOSStyle.dp(this, 12);
+      LinearLayout heading = new LinearLayout(this);
+      heading.setGravity(android.view.Gravity.CENTER_VERTICAL);
+      TextView nameLabel = IOSStyle.text(this, name, 16, true, IOSStyle.ink(this));
+      heading.addView(nameLabel, new LinearLayout.LayoutParams(0, IOSStyle.dp(this, 48), 1));
+      nameLabel.setGravity(android.view.Gravity.CENTER_VERTICAL);
+      IOSToggle toggle = new IOSToggle(this);
+      toggle.setContentDescription(name);
       toggle.setChecked(Prefs.allowed(this, pkg));
-      toggle.setOnCheckedChangeListener(
-          (v, on) -> {
+      toggle.onChange(
+          on -> {
             Prefs.allow(this, pkg, on);
             NotificationBridge bridge = NotificationBridge.getInstance();
             if (on && bridge != null) bridge.replay();
             IslandService service = IslandService.getInstance();
             if (service != null) service.refresh(false);
           });
-      row.addView(toggle);
-      Button settings = new Button(this);
-      settings.setText("Cài đặt banner / thông báo");
+      heading.addView(toggle);
+      row.addView(heading);
+      Button settings = IOSStyle.button(this, "Banner và thông báo ›", false, false);
       settings.setOnClickListener(
           v -> {
             try {
@@ -94,8 +117,8 @@ public class AppRulesActivity extends Activity {
               Toast.makeText(this, "Không mở được cài đặt ứng dụng", Toast.LENGTH_SHORT).show();
             }
           });
-      row.addView(settings);
-      rows.addView(row);
+      row.addView(settings, new LinearLayout.LayoutParams(-1, IOSStyle.dp(this, 42)));
+      rows.addView(row, rowParams);
     }
   }
 }

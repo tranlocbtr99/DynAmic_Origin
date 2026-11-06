@@ -5,9 +5,9 @@
  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
  <queries><intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent></queries>
- <application android:theme="@android:style/Theme.Material.NoActionBar" android:label="DynAmic Origin" android:icon="@drawable/ic_island" android:allowBackup="false" android:dataExtractionRules="@xml/data_extraction" android:supportsRtl="true">
+ <application android:theme="@style/AppTheme" android:label="DynAmic Origin" android:icon="@drawable/ic_island" android:allowBackup="false" android:dataExtractionRules="@xml/data_extraction" android:supportsRtl="true">
   <activity android:name=".MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>
-  <activity android:name=".ReplyActivity" android:exported="false" android:theme="@android:style/Theme.Material.Dialog.Alert" android:windowSoftInputMode="adjustResize"/>
+  <activity android:name=".ReplyActivity" android:exported="false" android:theme="@style/GlassDialog" android:windowSoftInputMode="adjustResize"/>
   <activity android:name=".AppRulesActivity" android:exported="false"/>
   <service android:name=".IslandService" android:exported="false" android:stopWithTask="false" android:foregroundServiceType="specialUse"><property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Persistent user-enabled camera island showing notifications and media controls"/></service>
   <service android:name=".NotificationBridge" android:label="DynAmic Origin — thông báo" android:exported="true" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"><intent-filter><action android:name="android.service.notification.NotificationListenerService"/></intent-filter></service>

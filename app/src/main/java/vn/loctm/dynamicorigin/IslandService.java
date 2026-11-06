@@ -29,6 +29,12 @@ public class IslandService extends Service {
   private Entry primaryEntry;
   private ValueAnimator animator;
   private int cameraBottom, cameraCenter = -1, cameraWidth;
+  private int screenWidth,
+      screenHeight,
+      screenDensity,
+      screenRotation,
+      animationTargetW = -1,
+      animationTargetH = -1;
   private final Runnable collapse =
       () -> {
         expanded = false;
@@ -120,10 +126,11 @@ public class IslandService extends Service {
   private void attach() {
     root = new LinearLayout(this);
     root.setOrientation(LinearLayout.VERTICAL);
-    root.setElevation(dp(8));
+    root.setElevation(dp(4));
     GradientDrawable bg = new GradientDrawable();
     bg.setColor(Color.BLACK);
     bg.setCornerRadius(dp(28));
+    bg.setStroke(1, 0x20ffffff);
     root.setBackground(bg);
     root.setClipToOutline(true);
     params =
@@ -135,34 +142,33 @@ public class IslandService extends Service {
                 | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
                 | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             android.graphics.PixelFormat.TRANSLUCENT);
-    params.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
+    params.gravity = Gravity.TOP | Gravity.LEFT;
+    params.setFitInsetsTypes(0);
+    params.setFitInsetsIgnoringVisibility(true);
+    readScreenAnchor();
+    params.x =
+        IslandGeometry.left(
+            IslandGeometry.center(
+                screenWidth, cameraCenter, dp(Prefs.number(this, "horizontal", 0))),
+            params.width);
+    params.y = Math.max(0, dp(Prefs.number(this, "offset", 8)));
     params.layoutInDisplayCutoutMode =
         WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
-    root.setOnApplyWindowInsetsListener(
-        (v, insets) -> {
-          DisplayCutout c = insets.getDisplayCutout();
-          if (c != null) {
-            for (android.graphics.Rect b : c.getBoundingRects())
-              if (b.top < dp(100)) {
-                int old = cameraBottom;
-                cameraBottom = b.bottom;
-                cameraCenter = b.centerX();
-                cameraWidth = b.width();
-                if (old != cameraBottom) handler.post(() -> render());
-                break;
-              }
-          }
-          return insets;
-        });
     wm.addView(root, params);
     attached = true;
-    root.requestApplyInsets();
+
     root.setVisibility(locked() ? View.GONE : View.VISIBLE);
     render();
   }
 
   boolean ready() {
     return attached && root != null && root.getVisibility() == View.VISIBLE;
+  }
+
+  void showInbox() {
+    expanded = true;
+    handler.removeCallbacks(collapse);
+    render();
   }
 
   void refresh(boolean alert) {
@@ -182,7 +188,7 @@ public class IslandService extends Service {
     TextView t = new TextView(this);
     t.setText(s);
     t.setTextColor(color);
-    t.setTextSize(size);
+    IOSStyle.text(t, size, false, color);
     return t;
   }
 
@@ -232,9 +238,9 @@ public class IslandService extends Service {
   private void render() {
     if (root == null || !attached) return;
     root.removeAllViews();
-    int sw = wm.getCurrentWindowMetrics().getBounds().width(),
-        sh = wm.getCurrentWindowMetrics().getBounds().height();
-    int available = sw - dp(16);
+    int sw = screenWidth, sh = screenHeight;
+    int center = IslandGeometry.center(sw, cameraCenter, dp(Prefs.number(this, "horizontal", 0)));
+    int available = IslandGeometry.maxWidth(sw, center, dp(8));
     int idle =
         Math.min(
             available, Math.max(cameraWidth + dp(30), sw * Prefs.number(this, "width", 30) / 100));
@@ -246,12 +252,13 @@ public class IslandService extends Service {
                 : 0);
     h = Math.min(dp(96), h);
     params.y = Math.max(0, dp(Prefs.number(this, "offset", 8)));
-    params.x = cameraCenter > 0 ? cameraCenter - sw / 2 : 0;
+
     java.util.List<Entry> list = Inbox.list(this);
     LinearLayout header = new LinearLayout(this);
     header.setGravity(Gravity.CENTER_VERTICAL);
-    header.setPadding(dp(12), 0, dp(12), 0);
+    header.setPadding(dp(14), 0, dp(14), 0);
     TextView left = text(list.isEmpty() ? "" : "●", 13, 0xff70caff);
+    left.setGravity(Gravity.CENTER_VERTICAL);
     header.addView(left, new LinearLayout.LayoutParams(0, h, 1));
     View gap = new View(this);
     header.addView(gap, new LinearLayout.LayoutParams(Math.max(cameraWidth + dp(12), dp(32)), h));
@@ -278,10 +285,16 @@ public class IslandService extends Service {
     pillTouch(header);
     if (expanded) {
       LinearLayout bar = new LinearLayout(this);
-      bar.setPadding(dp(16), dp(4), dp(12), dp(4));
-      TextView title = text("Thông báo", 17, Color.WHITE);
+      bar.setPadding(dp(22), dp(6), dp(14), dp(12));
+      TextView title = text("Thông báo", 20, Color.WHITE);
+      title.setTypeface(
+          android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
       bar.addView(title, new LinearLayout.LayoutParams(0, dp(38), 1));
-      TextView close = text("Thu gọn", 13, 0xff70caff);
+      TextView close = text("⌃", 23, 0xffb8b8c0);
+      close.setContentDescription("Thu gọn");
+      close.setBackground(new IOSStyle.Glass(this, true, 22));
+      close.setMinWidth(dp(44));
+      close.setMinHeight(dp(44));
       close.setGravity(Gravity.CENTER);
       close.setOnClickListener(
           v -> {
@@ -293,21 +306,46 @@ public class IslandService extends Service {
       ScrollView scroll = new ScrollView(this);
       LinearLayout rows = new LinearLayout(this);
       rows.setOrientation(LinearLayout.VERTICAL);
-      rows.setPadding(dp(16), 0, dp(16), dp(12));
+      rows.setPadding(dp(14), 0, dp(14), dp(16));
       scroll.addView(rows);
       root.addView(scroll);
       if (list.isEmpty()) rows.addView(text("Chưa có thông báo. Đảo đang chờ.", 14, 0xffaaaaaa));
       for (Entry e : list) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.VERTICAL);
-        row.setPadding(0, dp(10), 0, dp(10));
-        TextView app =
-            text(e.app + (e.removed ? " · đã lưu" : " · đang hoạt động"), 11, 0xff83bfff);
-        row.addView(app);
-        TextView t = text(e.title, 15, Color.WHITE);
+        row.setPadding(dp(16), dp(16), dp(16), dp(16));
+        row.setBackground(IOSStyle.solid(this, 0xff141416, 22));
+        TextView app = text(e.app, 12, 0xffb0b0b8);
+        LinearLayout meta = new LinearLayout(this);
+        meta.setGravity(Gravity.CENTER_VERTICAL);
+        if (e.icon != null) {
+          ImageView icon = new ImageView(this);
+          icon.setImageDrawable(e.icon);
+          LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(dp(24), dp(24));
+          ip.setMarginEnd(dp(9));
+          meta.addView(icon, ip);
+        }
+        app.setSingleLine(true);
+        app.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        meta.addView(app, new LinearLayout.LayoutParams(0, dp(28), 1));
+        TextView age =
+            text(
+                android.text.format.DateUtils.getRelativeTimeSpanString(
+                        e.time, System.currentTimeMillis(), 60000)
+                    .toString(),
+                10,
+                0xff8e8e93);
+        meta.addView(age);
+        row.addView(meta);
+        TextView t = text(e.title, 17, Color.WHITE);
+        t.setTypeface(
+            android.graphics.Typeface.create(
+                "sans-serif-medium", android.graphics.Typeface.NORMAL));
+        t.setPadding(0, dp(8), 0, dp(6));
         t.setMaxLines(2);
         row.addView(t);
-        TextView body = text(e.text, 13, 0xffcccccc);
+        TextView body = text(e.text, 15, 0xffc5c5cc);
+        body.setLineSpacing(dp(3), 1);
         body.setMaxLines(4);
         row.addView(body);
         if (!e.removed && (e.progressMax > 0 || e.indeterminate)) {
@@ -323,28 +361,31 @@ public class IslandService extends Service {
         t.setOnClickListener(v -> open(e));
         body.setOnClickListener(v -> open(e));
         LinearLayout actions = new LinearLayout(this);
-        Button open = new Button(this);
-        open.setText("Mở");
+        Button open = IOSStyle.button(this, "Mở", false, true);
         open.setOnClickListener(v -> open(e));
-        actions.addView(open);
-        Button del = new Button(this);
-        del.setText("Xóa");
+        LinearLayout.LayoutParams openParams = new LinearLayout.LayoutParams(0, dp(42), 1);
+        openParams.setMarginEnd(dp(8));
+        actions.addView(open, openParams);
+        Button del = IOSStyle.button(this, "Xóa", false, true);
         del.setOnClickListener(
             v -> {
               NotificationBridge.dismiss(e.key);
               Inbox.remove(this, e.key);
               render();
             });
-        actions.addView(del);
-        row.addView(actions);
+        actions.addView(del, new LinearLayout.LayoutParams(0, dp(42), 1));
+        LinearLayout.LayoutParams actionParams = new LinearLayout.LayoutParams(-1, -2);
+        actionParams.topMargin = dp(14);
+        row.addView(actions, actionParams);
         if (e.media != null && !e.removed) {
           LinearLayout controls = new LinearLayout(this);
           android.media.session.MediaController mc =
               new android.media.session.MediaController(this, e.media);
           for (int i = 0; i < 3; i++) {
             final int which = i;
-            Button b = new Button(this);
-            b.setText(new String[] {"Trước", "▶ / Ⅱ", "Sau"}[i]);
+            Button b = IOSStyle.button(this, new String[] {"⏮", "▶ / Ⅱ", "⏭"}[i], false, true);
+            b.setContentDescription(
+                new String[] {"Bài trước", "Phát hoặc tạm dừng", "Bài tiếp theo"}[i]);
             b.setOnClickListener(
                 v -> {
                   try {
@@ -363,27 +404,29 @@ public class IslandService extends Service {
                     toast("Ứng dụng không cho phép điều khiển");
                   }
                 });
-            controls.addView(b, new LinearLayout.LayoutParams(0, dp(48), 1));
+            LinearLayout.LayoutParams controlParams = new LinearLayout.LayoutParams(0, dp(46), 1);
+            controlParams.setMargins(dp(3), dp(10), dp(3), 0);
+            controls.addView(b, controlParams);
           }
           row.addView(controls);
         }
         if (e.actions != null && (!e.removed || e.transferred))
           for (Notification.Action a : e.actions) {
             if (a.actionIntent == null) continue;
-            Button b = new Button(this);
-            b.setText(a.title);
+            Button b = IOSStyle.button(this, a.title.toString(), false, true);
             b.setOnClickListener(
                 v -> {
                   if (a.getRemoteInputs() != null) {
                     startReply(e, a);
                   } else send(a.actionIntent, e.pkg);
                 });
-            row.addView(b);
+            LinearLayout.LayoutParams actionLayout = new LinearLayout.LayoutParams(-1, dp(42));
+            actionLayout.topMargin = dp(8);
+            row.addView(b, actionLayout);
           }
         rows.addView(row);
         View line = new View(this);
-        line.setBackgroundColor(0xff24242a);
-        rows.addView(line, new LinearLayout.LayoutParams(-1, dp(1)));
+        rows.addView(line, new LinearLayout.LayoutParams(-1, dp(10)));
       }
     }
     int targetWidth =
@@ -435,25 +478,62 @@ public class IslandService extends Service {
   }
 
   private void resize(int w, int h) {
+    if (animationTargetW == w && animationTargetH == h && animator != null && animator.isRunning())
+      return;
     if (animator != null) animator.cancel();
+    animationTargetW = w;
+    animationTargetH = h;
+    if (params.width == w && params.height == h) {
+      applyWindowFrame(w, h);
+      return;
+    }
     int ow = params.width, oh = params.height;
     animator = ValueAnimator.ofFloat(0, 1);
-    animator.setDuration(220);
-    animator.setInterpolator(new android.view.animation.DecelerateInterpolator());
+    animator.setDuration(ValueAnimator.areAnimatorsEnabled() ? 280 : 0);
+    animator.setInterpolator(new android.view.animation.PathInterpolator(0.2f, 0.8f, 0.2f, 1f));
     animator.addUpdateListener(
         a -> {
           float f = (float) a.getAnimatedValue();
-          params.width = (int) (ow + (w - ow) * f);
-          params.height = (int) (oh + (h - oh) * f);
-          if (attached)
-            try {
-              wm.updateViewLayout(root, params);
-            } catch (RuntimeException ex) {
-              attached = false;
-              stopSelf();
-            }
+          applyWindowFrame(Math.round(ow + (w - ow) * f), Math.round(oh + (h - oh) * f));
         });
     animator.start();
+  }
+
+  private void readScreenAnchor() {
+    WindowMetrics metrics = wm.getMaximumWindowMetrics();
+    screenWidth = metrics.getBounds().width();
+    screenHeight = metrics.getBounds().height();
+    screenDensity = getResources().getDisplayMetrics().densityDpi;
+    screenRotation = wm.getDefaultDisplay().getRotation();
+    cameraCenter = screenWidth / 2;
+    cameraWidth = 0;
+    cameraBottom = 0;
+    DisplayCutout cutout = metrics.getWindowInsets().getDisplayCutout();
+    if (cutout != null) {
+      for (android.graphics.Rect rect : cutout.getBoundingRects())
+        if (rect.top < dp(100) && rect.width() < screenWidth / 2 && rect.height() > 0) {
+          cameraCenter = rect.centerX();
+          cameraWidth = rect.width();
+          cameraBottom = rect.bottom;
+          break;
+        }
+    }
+  }
+
+  private void applyWindowFrame(int width, int height) {
+    params.width = width;
+    params.height = height;
+    int center =
+        IslandGeometry.center(screenWidth, cameraCenter, dp(Prefs.number(this, "horizontal", 0)));
+    params.x = IslandGeometry.left(center, width);
+    params.y = Math.max(0, dp(Prefs.number(this, "offset", 8)));
+    if (attached)
+      try {
+        wm.updateViewLayout(root, params);
+      } catch (RuntimeException ex) {
+        Prefs.get(this).edit().putString("error", ex.toString()).apply();
+        stopSelf();
+      }
   }
 
   private void toast(String s) {
@@ -492,11 +572,18 @@ public class IslandService extends Service {
   @Override
   public void onConfigurationChanged(Configuration c) {
     super.onConfigurationChanged(c);
-    cameraCenter = -1;
-    cameraBottom = 0;
-    cameraWidth = 0;
-    if (root != null) root.requestApplyInsets();
-    expanded = false;
+    WindowMetrics metrics = wm.getMaximumWindowMetrics();
+    int rotation = wm.getDefaultDisplay().getRotation();
+    if (screenWidth != metrics.getBounds().width()
+        || screenHeight != metrics.getBounds().height()
+        || screenDensity != getResources().getDisplayMetrics().densityDpi
+        || screenRotation != rotation) {
+      if (animator != null) animator.cancel();
+      readScreenAnchor();
+      animationTargetW = -1;
+      animationTargetH = -1;
+      expanded = false;
+    }
     render();
   }
 

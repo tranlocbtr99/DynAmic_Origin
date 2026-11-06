@@ -7,3 +7,6 @@ Do not claim a notification listener intercepts before system delivery. Do not d
 Preserve applicationId and signing key for upgrades. Never commit keystores, local.properties or passwords.
 Validate changes with ./gradlew :app:assembleDebug :app:lintDebug. Real-device QA checklist is docs/DEVICE_QA.md. Never report hardware results without actual device evidence.
 For each change update PROJECT_STATUS.md with behavior, verification and unresolved limitations. Avoid full-repo dumps, repeated builds and broad unrelated refactors.
+
+Position regressions: read IslandGeometry.java and docs/DESIGN_SPEC.md before IslandService. Never feed overlay-local WindowInsets cutout rectangles back into screen coordinates.
+UI changes: IOSStyle.java and IOSToggle.java own shared materials/controls. Keep the camera island opaque black; document Android rendering differences rather than promise an exact iOS clone.
