@@ -348,7 +348,7 @@ public class IslandService extends Service {
         new LinearLayout.LayoutParams(
             Math.min(idle / 3, safeInteraction() ? dp(12) : Math.max(cameraWidth + dp(12), dp(32))),
             h));
-    TextView count = text("▦", 18, 0xffd1d1d6);
+    TextView count = text("", 18, 0xffd1d1d6);
     count.setContentDescription("Ứng dụng gần đây");
     count.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
     header.addView(count, new LinearLayout.LayoutParams(0, h, 1));

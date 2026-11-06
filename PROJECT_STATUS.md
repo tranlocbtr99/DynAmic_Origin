@@ -1,7 +1,8 @@
 # Current state — 2026-11-06
-Version 0.8.1 / code 11; package vn.loctm.dynamicorigin. Initial independent implementation in previously empty repo.
+Version 0.8.2 / code 12; package vn.loctm.dynamicorigin. Initial independent implementation in previously empty repo.
 
 ## Implemented
+- Removed the white grid glyph from the island’s right side at user request. Right-half recent-app gesture remains unchanged.
 - User-requested transparent touch extension attached beneath the camera island; no second visible card, labels, background or shadow. Left opens latest notification, right recent apps, hold inbox. It hides while panels/reply/screen-off are active, with configurable extra width/height/gap and rotation-aware hit mapping. Camera island geometry remains independent.
 - Explicit compact width (8–90%) with no 136/208dp or camera-padding floor; height 12–120dp, top 0–240dp, horizontal ±240dp; expanded width, radius, icon size and padding controls. Tap numeric values for validated direct input.
 - User-started foreground service and configurable camera overlay; no accessibility declaration or network permission.

@@ -390,7 +390,7 @@ public class MainActivity extends Activity {
           IOSStyle.dialog(d);
         });
     note(
-        "0.8.1 · Xử lý trên thiết bị · Không cần trợ năng\n"
+        "0.8.2 · Xử lý trên thiết bị · Không cần trợ năng\n"
             + "Giữ quyền thông báo của ứng dụng nguồn bật. Tắt banner của từng ứng dụng để giảm"
             + " hiển thị trùng.");
     LinearLayout dock = new LinearLayout(this);
