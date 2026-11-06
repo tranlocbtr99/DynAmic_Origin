@@ -279,19 +279,16 @@ public class IslandService extends Service {
     int sw = screenWidth, sh = screenHeight;
     int center = IslandGeometry.center(sw, cameraCenter, dp(Prefs.number(this, "horizontal", 0)));
     int available = IslandGeometry.maxWidth(sw, center, dp(8));
-    int idle =
-        Math.min(
-            available, Math.max(cameraWidth + dp(30), sw * Prefs.number(this, "width", 30) / 100));
+    int idle = IslandSizing.width(sw, Prefs.number(this, "width", 30), available);
     int h = dp(Prefs.number(this, "height", 36));
-    if (!safeInteraction() && cameraBottom > 0)
-      h = Math.max(h, cameraBottom - topPosition() + dp(4));
-    h = Math.min(dp(96), h);
+    ((GradientDrawable) root.getBackground()).setCornerRadius(dp(Prefs.number(this, "radius", 26)));
     root.headerHeight(h);
     params.y = topPosition();
     java.util.List<Entry> list = Inbox.list(this);
     LinearLayout header = new LinearLayout(this);
     header.setGravity(Gravity.CENTER_VERTICAL);
-    header.setPadding(dp(14), 0, dp(14), 0);
+    int padding = Math.min(dp(Prefs.number(this, "padding", 10)), idle / 8);
+    header.setPadding(padding, 0, padding, 0);
     TextView left = text(list.isEmpty() ? "◉" : String.valueOf(list.size()), 13, 0xff70caff);
     left.setGravity(Gravity.CENTER_VERTICAL);
     LinearLayout leading = new LinearLayout(this);
@@ -301,7 +298,15 @@ public class IslandService extends Service {
     if (newest != null && newest.icon != null) {
       ImageView sourceIcon = new ImageView(this);
       sourceIcon.setImageDrawable(newest.icon);
-      LinearLayout.LayoutParams iconSize = new LinearLayout.LayoutParams(dp(22), dp(22));
+      LinearLayout.LayoutParams iconSize =
+          new LinearLayout.LayoutParams(
+              Math.max(
+                  1,
+                  Math.min(dp(Prefs.number(this, "icon_size", 22)), Math.min(h - dp(2), idle / 5))),
+              Math.max(
+                  1,
+                  Math.min(
+                      dp(Prefs.number(this, "icon_size", 22)), Math.min(h - dp(2), idle / 5))));
       iconSize.setMarginEnd(dp(6));
       leading.addView(sourceIcon, iconSize);
     }
@@ -311,7 +316,8 @@ public class IslandService extends Service {
     header.addView(
         gap,
         new LinearLayout.LayoutParams(
-            safeInteraction() ? dp(12) : Math.max(cameraWidth + dp(12), dp(32)), h));
+            Math.min(idle / 3, safeInteraction() ? dp(12) : Math.max(cameraWidth + dp(12), dp(32))),
+            h));
     TextView count = text("▦", 18, 0xffd1d1d6);
     count.setContentDescription("Ứng dụng gần đây");
     count.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
@@ -497,8 +503,8 @@ public class IslandService extends Service {
     }
     int targetWidth =
         expanded
-            ? Math.min(available, dp(440))
-            : Math.min(available, Math.max(idle, list.isEmpty() ? dp(136) : dp(208)));
+            ? IslandSizing.width(sw, Prefs.number(this, "expanded_width", 92), available)
+            : idle;
     int targetHeight = h;
     if (expanded) {
       root.measure(

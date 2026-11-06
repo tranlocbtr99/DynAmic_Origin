@@ -14,3 +14,5 @@ UI changes: IOSStyle.java and IOSToggle.java own shared materials/controls. Keep
 Touch regressions: IslandTouchLayout owns header gestures for the lifetime of the overlay. Never re-create its detector during notification render. Safe interaction mode must stay below protected status-bar windows; do not promise touch interception at camera on all OEM firmware. Rotation uses DisplayManager events and current Display metrics, not only Service.onConfigurationChanged.
 
 User requires camera placement. Never enable below-status-bar positioning automatically as a touch workaround. That mode is explicit opt-in only. Preserve the one-time 0.5.1 migration that reverses 0.5.0's default.
+
+Calibration: do not reintroduce notification-dependent minimum widths (136/208dp) or automatic height growth that overrides the user's numeric dimensions. Respect explicit compact sizes; adapt/truncate content instead.

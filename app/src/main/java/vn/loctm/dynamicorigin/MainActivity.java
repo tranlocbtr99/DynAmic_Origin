@@ -239,10 +239,17 @@ public class MainActivity extends Activity {
             + " camera; vùng này có thể bị hệ thống chặn chạm. Khi xoay ngang, đảo chuyển về giữa"
             + " cạnh trên.");
 
-    slider("Chiều rộng", "width", 24, 55, 30, "%");
-    slider("Chiều cao", "height", 28, 64, 36, "dp");
-    slider("Khoảng cách mép trên", "offset", 0, 70, 8, "dp");
-    slider("Dịch ngang", "horizontal", -60, 60, 0, "dp");
+    slider("Chiều rộng", "width", 8, 90, 30, "%");
+    slider("Chiều cao", "height", 12, 120, 36, "dp");
+    slider("Khoảng cách mép trên", "offset", 0, 240, 8, "dp");
+    slider("Dịch ngang", "horizontal", -240, 240, 0, "dp");
+    slider("Chiều rộng bảng mở", "expanded_width", 40, 100, 92, "%");
+    slider("Độ bo góc", "radius", 0, 60, 26, "dp");
+    slider("Cỡ biểu tượng", "icon_size", 12, 32, 22, "dp");
+    slider("Đệm hai bên", "padding", 0, 24, 10, "dp");
+    note(
+        "Chạm vào con số để nhập chính xác. Kích thước thu gọn giữ nguyên cả khi có thông báo; nếu"
+            + " thu rất nhỏ, nội dung có thể bị rút gọn.");
     Button reset = IOSStyle.button(this, "Đặt lại vị trí", false, false);
     LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, dp(44));
     rp.setMargins(0, dp(10), 0, dp(6));
@@ -255,6 +262,10 @@ public class MainActivity extends Activity {
               .putInt("height", 36)
               .putInt("offset", 8)
               .putInt("horizontal", 0)
+              .putInt("expanded_width", 92)
+              .putInt("radius", 26)
+              .putInt("icon_size", 22)
+              .putInt("padding", 10)
               .apply();
           if (IslandService.getInstance() != null) IslandService.getInstance().refresh(false);
           render();
@@ -334,7 +345,7 @@ public class MainActivity extends Activity {
           IOSStyle.dialog(d);
         });
     note(
-        "0.5.1 · Xử lý trên thiết bị · Không cần trợ năng\n"
+        "0.6.0 · Xử lý trên thiết bị · Không cần trợ năng\n"
             + "Giữ quyền thông báo của ứng dụng nguồn bật. Tắt banner của từng ứng dụng để giảm"
             + " hiển thị trùng.");
     LinearLayout dock = new LinearLayout(this);
@@ -389,6 +400,52 @@ public class MainActivity extends Activity {
     seek.setMax(max - min);
     seek.setProgress(Prefs.number(this, key, fallback) - min);
     section.addView(seek, new LinearLayout.LayoutParams(-1, dp(38)));
+    value.setTextColor(IOSStyle.BLUE);
+    value.setPadding(dp(8), dp(8), 0, dp(8));
+    value.setContentDescription("Nhập " + name);
+    value.setOnClickListener(
+        v -> {
+          EditText input = new EditText(this);
+          input.setSingleLine(true);
+          input.setInputType(
+              android.text.InputType.TYPE_CLASS_NUMBER
+                  | (min < 0 ? android.text.InputType.TYPE_NUMBER_FLAG_SIGNED : 0));
+          input.setText(String.valueOf(Prefs.number(this, key, fallback)));
+          input.selectAll();
+          AlertDialog dialog =
+              new AlertDialog.Builder(this)
+                  .setTitle(name)
+                  .setMessage(min + " – " + max + " " + unit)
+                  .setView(input)
+                  .setPositiveButton("Áp dụng", null)
+                  .setNegativeButton("Hủy", null)
+                  .create();
+          dialog.setOnShowListener(
+              d -> {
+                IOSStyle.dialog(dialog);
+                dialog
+                    .getButton(AlertDialog.BUTTON_POSITIVE)
+                    .setOnClickListener(
+                        b -> {
+                          try {
+                            int number = Integer.parseInt(input.getText().toString().trim());
+                            if (number < min || number > max) {
+                              input.setError("Nhập từ " + min + " đến " + max);
+                              return;
+                            }
+                            Prefs.get(this).edit().putInt(key, number).apply();
+                            seek.setProgress(number - min);
+                            value.setText(number + " " + unit);
+                            if (IslandService.getInstance() != null)
+                              IslandService.getInstance().refresh(false);
+                            dialog.dismiss();
+                          } catch (NumberFormatException ex) {
+                            input.setError("Nhập số nguyên hợp lệ");
+                          }
+                        });
+              });
+          dialog.show();
+        });
     seek.setOnSeekBarChangeListener(
         new SeekBar.OnSeekBarChangeListener() {
           public void onStartTrackingTouch(SeekBar s) {}
