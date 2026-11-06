@@ -28,3 +28,6 @@ Rotation now uses DisplayManager.DisplayListener and the current Display's real 
 
 ## 0.6.0 explicit sizing
 User feedback revealed a compact width floor overrode the percentage slider. IslandSizing now computes requested display percentage capped only by available screen space. No content/state-driven width floor remains. Height is explicitly user-controlled as well; camera-covering automatic height growth is removed. Geometry and material controls offer validated numeric entry as well as sliders.
+
+## 0.6.1 handset-fixed geometry
+PinnedFrame transforms the natural-orientation rectangle through 0/90/180/270 degrees. A FrameLayout owns the actual rotated window dimensions; the interactive child retains its natural dimensions and receives an inverse rotation/translation. The system maps touch coordinates through that child transform. Resize percentages use natural display width, not whichever app's logical landscape width is current. Display listeners update only this mapping, without selecting a new physical anchor or imposing another app's orientation. Four-rotation round-trip tests cover 48 rectangle cases. Hardware/compositor rotation transitions remain unverified on iQOO.

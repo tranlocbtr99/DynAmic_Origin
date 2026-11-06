@@ -24,6 +24,8 @@ public class IslandService extends Service {
   private WindowManager wm;
   private WindowManager.LayoutParams params;
   private IslandTouchLayout root;
+  private FrameLayout overlayFrame;
+  private int naturalWidth, naturalHeight, cachedNaturalWidth = -1;
   private boolean pendingRender, pendingAlert;
   private int statusBarBottom;
   private android.hardware.display.DisplayManager displays;
@@ -67,7 +69,7 @@ public class IslandService extends Service {
       new BroadcastReceiver() {
         public void onReceive(Context c, Intent i) {
           if (root == null) return;
-          root.setVisibility(
+          setIslandVisibility(
               Intent.ACTION_SCREEN_OFF.equals(i.getAction()) || locked() || replyVisible
                   ? View.GONE
                   : View.VISIBLE);
@@ -186,6 +188,10 @@ public class IslandService extends Service {
               }
             });
     root.setOrientation(LinearLayout.VERTICAL);
+    overlayFrame = new FrameLayout(this);
+    overlayFrame.setClipChildren(false);
+    overlayFrame.setClipToPadding(false);
+    overlayFrame.addView(root, new FrameLayout.LayoutParams(dp(120), dp(36)));
     root.setElevation(dp(4));
     GradientDrawable bg = new GradientDrawable();
     bg.setColor(Color.BLACK);
@@ -200,7 +206,8 @@ public class IslandService extends Service {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                 | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-                | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             android.graphics.PixelFormat.TRANSLUCENT);
     params.gravity = Gravity.TOP | Gravity.LEFT;
     params.setFitInsetsTypes(0);
@@ -214,10 +221,11 @@ public class IslandService extends Service {
     params.y = topPosition();
     params.layoutInDisplayCutoutMode =
         WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
-    wm.addView(root, params);
+    applyWindowFrame(dp(120), dp(Prefs.number(this, "height", 36)));
+    wm.addView(overlayFrame, params);
     attached = true;
 
-    root.setVisibility(locked() ? View.GONE : View.VISIBLE);
+    setIslandVisibility(locked() ? View.GONE : View.VISIBLE);
     render();
   }
 
@@ -276,7 +284,7 @@ public class IslandService extends Service {
     resetScroll = false;
     panelScroll = null;
     root.removeAllViews();
-    int sw = screenWidth, sh = screenHeight;
+    int sw = naturalWidth, sh = naturalHeight;
     int center = IslandGeometry.center(sw, cameraCenter, dp(Prefs.number(this, "horizontal", 0)));
     int available = IslandGeometry.maxWidth(sw, center, dp(8));
     int idle = IslandSizing.width(sw, Prefs.number(this, "width", 30), available);
@@ -629,7 +637,7 @@ public class IslandService extends Service {
   void replyVisibility(boolean visible) {
     replyVisible = visible;
     if (root != null)
-      root.setVisibility(
+      setIslandVisibility(
           visible || locked() || !getSystemService(PowerManager.class).isInteractive()
               ? View.GONE
               : View.VISIBLE);
@@ -658,11 +666,11 @@ public class IslandService extends Service {
     if (animator != null) animator.cancel();
     animationTargetW = w;
     animationTargetH = h;
-    if (params.width == w && params.height == h) {
+    if (root.getLayoutParams().width == w && root.getLayoutParams().height == h) {
       applyWindowFrame(w, h);
       return;
     }
-    int ow = params.width, oh = params.height;
+    int ow = root.getLayoutParams().width, oh = root.getLayoutParams().height;
     animator = ValueAnimator.ofFloat(0, 1);
     animator.setDuration(ValueAnimator.areAnimatorsEnabled() ? 280 : 0);
     animator.setInterpolator(new android.view.animation.PathInterpolator(0.2f, 0.8f, 0.2f, 1f));
@@ -682,22 +690,32 @@ public class IslandService extends Service {
     screenHeight = real.heightPixels;
     screenDensity = real.densityDpi;
     screenRotation = display.getRotation();
-    cameraCenter = screenWidth / 2;
-    cameraWidth = 0;
-    cameraBottom = 0;
+    naturalWidth = (screenRotation % 2 == 0) ? screenWidth : screenHeight;
+    naturalHeight = (screenRotation % 2 == 0) ? screenHeight : screenWidth;
+    boolean capture = cachedNaturalWidth != naturalWidth;
+    if (capture) {
+      cameraCenter = naturalWidth / 2;
+      cameraWidth = 0;
+      cameraBottom = 0;
+      cachedNaturalWidth = naturalWidth;
+    }
     WindowMetrics metrics = wm.getMaximumWindowMetrics();
     statusBarBottom =
         metrics.getWindowInsets().getInsetsIgnoringVisibility(WindowInsets.Type.statusBars()).top;
     DisplayCutout cutout = display.getCutout();
-    if (cutout != null)
+    if (capture && cutout != null)
       for (android.graphics.Rect rect : cutout.getBoundingRects())
-        if (rect.top < dp(100) && rect.width() < screenWidth / 2 && rect.height() > 0) {
-          cameraCenter = rect.centerX();
-          cameraWidth = rect.width();
-          cameraBottom = rect.bottom;
+        if (rect.width() < screenWidth / 2
+            && rect.height() < screenHeight / 2
+            && rect.width() > 0
+            && rect.height() > 0) {
+          cameraCenter =
+              PinnedFrame.cameraX(
+                  screenRotation, naturalWidth, naturalHeight, rect.centerX(), rect.centerY());
+          cameraWidth = screenRotation % 2 == 0 ? rect.width() : rect.height();
           break;
         }
-    if (safeInteraction() || screenWidth > screenHeight) cameraCenter = screenWidth / 2;
+    if (safeInteraction()) cameraCenter = naturalWidth / 2;
   }
 
   private boolean safeInteraction() {
@@ -706,7 +724,7 @@ public class IslandService extends Service {
 
   private int topPosition() {
     int manual = Math.max(0, dp(Prefs.number(this, "offset", 8)));
-    return safeInteraction() ? Math.max(statusBarBottom, dp(24)) + manual : manual;
+    return safeInteraction() ? dp(32) + manual : manual;
   }
 
   private void updateDisplayGeometry() {
@@ -729,19 +747,40 @@ public class IslandService extends Service {
   }
 
   private void applyWindowFrame(int width, int height) {
-    params.width = width;
-    params.height = height;
     int center =
-        IslandGeometry.center(screenWidth, cameraCenter, dp(Prefs.number(this, "horizontal", 0)));
-    params.x = IslandGeometry.left(center, width);
-    params.y = topPosition();
+        IslandGeometry.center(naturalWidth, cameraCenter, dp(Prefs.number(this, "horizontal", 0)));
+    int[] frame =
+        PinnedFrame.map(
+            screenRotation,
+            naturalWidth,
+            naturalHeight,
+            IslandGeometry.left(center, width),
+            topPosition(),
+            width,
+            height);
+    params.x = frame[0];
+    params.y = frame[1];
+    params.width = frame[2];
+    params.height = frame[3];
+    FrameLayout.LayoutParams logical = new FrameLayout.LayoutParams(width, height);
+    root.setLayoutParams(logical);
+    root.setPivotX(0);
+    root.setPivotY(0);
+    root.setRotation(-90f * screenRotation);
+    root.setTranslationX(screenRotation == 2 ? width : screenRotation == 3 ? height : 0);
+    root.setTranslationY(screenRotation == 1 ? width : screenRotation == 2 ? height : 0);
     if (attached)
       try {
-        wm.updateViewLayout(root, params);
+        wm.updateViewLayout(overlayFrame, params);
       } catch (RuntimeException ex) {
         Prefs.get(this).edit().putString("error", ex.toString()).apply();
         stopSelf();
       }
+  }
+
+  private void setIslandVisibility(int visibility) {
+    root.setVisibility(visibility);
+    if (overlayFrame != null) overlayFrame.setVisibility(visibility);
   }
 
   private void toast(String s) {
@@ -792,7 +831,7 @@ public class IslandService extends Service {
     recentRequest++;
     handler.removeCallbacksAndMessages(null);
     if (animator != null) animator.cancel();
-    if (attached && root != null) wm.removeView(root);
+    if (attached && root != null) wm.removeView(overlayFrame);
     attached = false;
     reference.clear();
     unregisterReceiver(screen);

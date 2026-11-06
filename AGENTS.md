@@ -16,3 +16,5 @@ Touch regressions: IslandTouchLayout owns header gestures for the lifetime of th
 User requires camera placement. Never enable below-status-bar positioning automatically as a touch workaround. That mode is explicit opt-in only. Preserve the one-time 0.5.1 migration that reverses 0.5.0's default.
 
 Calibration: do not reintroduce notification-dependent minimum widths (136/208dp) or automatic height growth that overrides the user's numeric dimensions. Respect explicit compact sizes; adapt/truncate content instead.
+
+Physical position is locked across app rotation. PinnedFrame maps a natural-orientation rectangle into the display; do not restore the former landscape top-center fallback or calculate widths from rotated display width.

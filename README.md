@@ -39,3 +39,6 @@ The default is camera placement. Upgrading automatically reverses 0.5.0's below-
 
 ## 0.6.0 calibration
 Compact width now honors the chosen percentage regardless of notification presence. Removed hardcoded 136/208dp and camera-width floors; compact height no longer silently grows to cover cutout bounds. Width 8–90%, height 12–120dp, top 0–240dp, horizontal -240–240dp, expanded width 40–100%, corner radius 0–60dp, icons 12–32dp, side padding 0–24dp. Tap a numeric value to enter an integer; invalid/out-of-range values are rejected. Screen-edge bounds remain enforced. Small dimensions can truncate labels or expose part of the camera; manual sizes are respected. Existing calibration and camera mode remain unchanged.
+
+## 0.6.1 fixed physical position
+The island is now pinned in natural handset coordinates, including its width/height. A transformed outer window maps this same rectangle into the app's rotated display coordinates; its content is counter-rotated so another app's orientation does not choose a new location. No global orientation lock is imposed. Camera x is captured once per natural display width and normalized if startup happens in landscape. Existing manual calibration remains unchanged. This supersedes 0.5.x landscape top-center behavior.

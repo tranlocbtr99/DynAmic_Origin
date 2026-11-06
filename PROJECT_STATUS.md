@@ -1,12 +1,12 @@
 # Current state — 2026-11-06
-Version 0.6.0 / code 7; package vn.loctm.dynamicorigin. Initial independent implementation in previously empty repo.
+Version 0.6.1 / code 8; package vn.loctm.dynamicorigin. Initial independent implementation in previously empty repo.
 
 ## Implemented
 - Explicit compact width (8–90%) with no 136/208dp or camera-padding floor; height 12–120dp, top 0–240dp, horizontal ±240dp; expanded width, radius, icon size and padding controls. Tap numeric values for validated direct input.
 - User-started foreground service and configurable camera overlay; no accessibility declaration or network permission.
 - Persistent root-owned header gesture detector; notification redraws no longer recreate gesture state, with queued notification refresh while a finger is down.
 - Camera placement is the default again. One-time migration disables 0.5.0 automatic below-status-bar mode without changing user calibration. Below-status-bar placement is explicit opt-in only; system windows may still intercept camera-area touch.
-- DisplayManager listener plus live Display metrics/cutout handles rotation while another app is foreground; landscape uses top center.
+- DisplayManager listener plus live Display metrics/cutout handles rotation while another app is foreground; a natural-orientation rectangle is now pinned to the handset through all four rotations. Landscape no longer selects a new top-center anchor.
 - Source icon/title or live progress replaces the single-dot notification indicator.
 - Compact persistent pill; expand by long press or new notification; physical left tap opens newest notification, right tap opens recent apps; swipe-up collapse; 220ms resize.
 - Stable display-space camera anchor, independent from overlay-local insets. Fixed top, horizontal calibration/reset and size-only 280ms transitions; duplicate targets do not restart animations.
@@ -24,7 +24,7 @@ Version 0.6.0 / code 7; package vn.loctm.dynamicorigin. Initial independent impl
 
 ## Validation
 - Android SDK 36 Java compilation succeeded independently.
-- 32 transfer gating combinations, 6 expansion/update scenarios 15,000 geometry frames and recent-app ordering/deduplication plus physical tap-boundary and explicit width regression tests passed.
+- 32 transfer gating combinations, 6 expansion/update scenarios 15,000 geometry frames and recent-app ordering/deduplication plus physical tap-boundary and explicit width regression tests and 48 four-rotation physical-rectangle round trips passed.
 - Gradle assembleRelease, assembleDebug and lintDebug succeeded (Android SDK 36, JDK 21). 0 lint errors, 12 warnings (UI localization, gesture click delegation and intentional physical LEFT screen coordinates). Same release certificate verified against 0.1.0.
 - No connected iQOO or KVM available. Software emulator boot was attempted; UI runtime validation is pending until Android finishes initialization. OEM camera placement and service survival remain device QA.
 

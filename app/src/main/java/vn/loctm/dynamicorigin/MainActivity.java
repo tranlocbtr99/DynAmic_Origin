@@ -236,8 +236,8 @@ public class MainActivity extends Activity {
         });
     note(
         "Bật: đảo nằm ngay dưới thanh trạng thái để nhận chạm trên ứng dụng khác. Tắt: đặt quanh"
-            + " camera; vùng này có thể bị hệ thống chặn chạm. Khi xoay ngang, đảo chuyển về giữa"
-            + " cạnh trên.");
+            + " camera; vùng này có thể bị hệ thống chặn chạm. Khi xoay ngang, đảo giữ nguyên vị"
+            + " trí vật lý thay vì chuyển về giữa cạnh trên.");
 
     slider("Chiều rộng", "width", 8, 90, 30, "%");
     slider("Chiều cao", "height", 12, 120, 36, "dp");
@@ -345,7 +345,7 @@ public class MainActivity extends Activity {
           IOSStyle.dialog(d);
         });
     note(
-        "0.6.0 · Xử lý trên thiết bị · Không cần trợ năng\n"
+        "0.6.1 · Xử lý trên thiết bị · Không cần trợ năng\n"
             + "Giữ quyền thông báo của ứng dụng nguồn bật. Tắt banner của từng ứng dụng để giảm"
             + " hiển thị trùng.");
     LinearLayout dock = new LinearLayout(this);
