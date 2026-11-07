@@ -180,7 +180,8 @@ internal object SuperX {
         val click: android.app.PendingIntent?,
         val ongoing: Boolean = false,
         val progress: Int? = null,
-        val actions: List<Notification.Action> = emptyList()
+        val actions: List<Notification.Action> = emptyList(),
+        val idle: Boolean = false
     )
 
     private fun register(manager: NotificationManager): String? = try {
@@ -208,7 +209,7 @@ internal object SuperX {
     }
 
     private fun payload(card: Card, revision: Int, lockscreen: Boolean) = Bundle().apply {
-        val chip = card.progress?.let { "$it%" } ?: card.text.take(24)
+        val chip = if (card.idle) "" else card.progress?.let { "$it%" } ?: card.text.take(24)
         putInt("$N.operation", 0)
         putBoolean("$N.showNotify", true)
         putInt("$N.template", 4)
@@ -217,7 +218,7 @@ internal object SuperX {
         putBoolean("$N.sound", false)
         putBoolean("$N.dismissWhenKill", true)
         putBoolean("$N.disableInvertColor", true)
-        putInt("$N.displays", 256 or 65536 or (if (lockscreen) 16 else 0))
+        putInt("$N.displays", 256 or (if (lockscreen) 16 or 65536 else 0))
         card.click?.let { putParcelable("$N.clickResp", it) }
         putBundle("$N.baseInfos", Bundle().apply {
             val key = "$N.baseInfos"
@@ -245,6 +246,10 @@ internal object SuperX {
             putInt("$I.leftTemplate", 1)
             putInt("$I.rightTemplate", if (card.progress == null) 4 else 2)
             putBoolean("$I.showBarWhenCard", false)
+            if (card.idle) {
+                putBoolean("$I.permanent", true)
+                putBoolean("$I.forceShow", true)
+            }
             putInt("$I.islandClick", 0)
             card.click?.let { putParcelable("$I.clickResp", it) }
             putBundle("$I.leftInfo", Bundle().apply {
@@ -253,7 +258,7 @@ internal object SuperX {
             })
             putBundle("$I.rightInfo", Bundle().apply {
                 if (card.progress == null) {
-                    putCharSequence("$I.rightInfo.content", chip)
+                    if (chip.isNotEmpty()) putCharSequence("$I.rightInfo.content", chip)
                     card.click?.let { putParcelable("$I.rightInfo.clickResp", it) }
                 } else {
                     putInt("$I.rightInfo.progressValue", card.progress)
