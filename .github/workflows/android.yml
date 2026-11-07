@@ -38,3 +38,10 @@ jobs:
           name: LTM-Origin-Bridge-debug
           path: app/build/outputs/apk/*/debug/*.apk
           retention-days: 7
+      - name: Upload APK verification utility
+        if: github.ref == 'refs/heads/native-superx'
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-verifier
+          path: ${{ env.ANDROID_HOME }}/build-tools/36.0.0/lib/apksigner.jar
+          retention-days: 7
