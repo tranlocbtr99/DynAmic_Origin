@@ -123,7 +123,7 @@ object NativeProbe {
                 .setOnlyAlertOnce(true)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
                 .build()
-            manager.notify(ID, notification)
+            manager.notify("VIVO_SUPERX_TAG", ID, notification)
             Diagnostics.record(context, if (revision == 1) "SEND_REQUESTED_V2" else "UPDATE_REQUESTED_V2")
         } catch (e: Exception) {
             Diagnostics.record(context, "POST_ERROR_" + e.javaClass.simpleName)
@@ -137,12 +137,12 @@ object NativeProbe {
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setExtras(Bundle().apply { putInt("notification.superx.operation", 2) })
                 .build()
-            manager.notify(ID, end)
+            manager.notify("VIVO_SUPERX_TAG", ID, end)
             Diagnostics.record(context, "UNMOUNT_REQUESTED_V2")
         } catch (e: Exception) {
             Diagnostics.record(context, "UNMOUNT_ERROR_" + e.javaClass.simpleName)
         } finally {
-            manager.cancel(ID)
+            manager.cancel("VIVO_SUPERX_TAG", ID)
             Diagnostics.record(context, "CANCEL_REQUESTED_V2")
         }
     }
