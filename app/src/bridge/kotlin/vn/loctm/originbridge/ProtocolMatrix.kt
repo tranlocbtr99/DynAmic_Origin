@@ -90,7 +90,7 @@ object ProtocolMatrix {
             putBundle("notification.superx.island", island)
         }
         return try {
-            manager.notify(ID, Notification.Builder(context, CHANNEL)
+            manager.notify("VIVO_SUPERX_TAG", ID, Notification.Builder(context, CHANNEL)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setContentTitle(title).setContentText(content)
                 .setExtras(extras).setOnlyAlertOnce(true).setOngoing(true).build())
@@ -104,7 +104,7 @@ object ProtocolMatrix {
     fun clear(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         try {
-            manager.notify(ID, Notification.Builder(context, CHANNEL)
+            manager.notify("VIVO_SUPERX_TAG", ID, Notification.Builder(context, CHANNEL)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setExtras(Bundle().apply {
                     putInt("notification.superx.operation", 2)
@@ -112,7 +112,7 @@ object ProtocolMatrix {
                     putBoolean("notification.superx.showNotify", false)
                 }).build())
         } catch (_: Exception) { }
-        manager.cancel(ID)
+        manager.cancel("VIVO_SUPERX_TAG", ID)
         Diagnostics.record(context, "MATRIX_CLEARED")
     }
 }
