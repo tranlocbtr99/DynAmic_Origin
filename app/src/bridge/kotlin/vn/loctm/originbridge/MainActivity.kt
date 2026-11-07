@@ -46,12 +46,29 @@ class MainActivity : Activity() {
             setPadding(dp(20), dp(40), dp(20), dp(32))
         }
         scroll.addView(root)
-        root.addView(label("LTM Origin Bridge", 30f, true))
+        root.addView(label(applicationInfo.loadLabel(packageManager).toString(), 30f, true))
         root.addView(label("OriginOS 6 · Giai đoạn 1\nKiểm chứng giao thức SystemUI nguyên bản. Không overlay, không root."))
         action("Cấp quyền thông báo", "Cần để gửi thẻ chẩn đoán") {
             if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
                 requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 11)
             else startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
+        }
+        if (packageName == BridgeListener.NATIVE_PACKAGE) {
+            action("Quyền đọc thông báo", "Cho phép DynAmic nhận thông báo từ ứng dụng khác") {
+                startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+            }
+            val enabled = BridgeListener.enabled(this)
+            action(
+                if (enabled) "Tắt chuyển thông báo" else "Bật chuyển thông báo",
+                "Gửi tên ứng dụng và liên kết mở thông báo gốc qua SuperX."
+            ) {
+                if (!enabled && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 11)
+                } else {
+                    BridgeListener.setEnabled(this, !enabled)
+                    recreate()
+                }
+            }
         }
         action("Gửi thẻ thử nghiệm", "Gửi thông báo với dữ liệu OEM thử nghiệm") { attempt(false) }
         action("Cập nhật thẻ", "Giữ cùng notification ID, thay nội dung để kiểm tra trùng lặp") { attempt(true) }
@@ -99,7 +116,7 @@ class MainActivity : Activity() {
                 adb shell getprop ro.vivo.os.version
                 adb shell getprop ro.build.version.release
                 adb shell dumpsys notification
-                adb shell dumpsys package vn.loctm.originbridge
+                adb shell dumpsys package $packageName
                 adb shell pm list packages | grep -iE 'vivo|superx|island'
             """.trimIndent()
             android.app.AlertDialog.Builder(this)
