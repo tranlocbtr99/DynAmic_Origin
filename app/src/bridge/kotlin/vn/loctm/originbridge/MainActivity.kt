@@ -2,6 +2,10 @@ package vn.loctm.originbridge
 
 import android.Manifest
 import android.app.Activity
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
+import android.widget.Button
+import android.widget.CheckBox
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -18,6 +22,29 @@ import android.widget.Toast
 class MainActivity : Activity() {
     private lateinit var root: LinearLayout
     private var revision = 0
+    private var pulse: ObjectAnimator? = null
+    private val native get() = packageName == BridgeListener.NATIVE_PACKAGE
+    private val policy = """
+        1. Phạm vi và mục đích
+        LTMori xử lý thông báo trên thiết bị để hiển thị thẻ SuperX của OriginOS. Quyền truy cập thông báo chỉ cần cho tính năng chuyển thẻ và phải được cấp trong Cài đặt Android.
+
+        2. Dữ liệu được xử lý
+        Khi bật chuyển thông báo, app có thể đọc tên ứng dụng, tiêu đề, nội dung, biểu tượng, tiến độ và hành động của thông báo. App dùng các dữ liệu này để dựng thẻ và chuyển dữ liệu thẻ đến hệ thống OriginOS trên cùng thiết bị. Bộ lọc ứng dụng cho phép chọn nguồn hiển thị.
+
+        3. Lưu trữ và chia sẻ
+        LTMori lưu lựa chọn, trạng thái đồng ý và mã chẩn đoán cục bộ. App không duy trì lịch sử nội dung tin nhắn, không yêu cầu tài khoản, không khai báo quyền Internet và không gửi dữ liệu đến máy chủ của tác giả. Hệ điều hành có thể quản lý thẻ như một thông báo hệ thống.
+
+        4. Màn hình khóa
+        Tùy chọn thẻ màn hình khóa mặc định tắt. Khi bật, LTMori dùng tên ứng dụng và thông báo chung, bỏ nội dung riêng tư và hành động. App bỏ qua thông báo nguồn được đánh dấu bí mật.
+
+        5. Quyền kiểm soát
+        Bạn có thể tắt chuyển thông báo, thu hồi quyền trong Cài đặt Android, xóa dữ liệu ứng dụng hoặc chọn Rút lại đồng ý trong LTMori. Khi rút lại, app dừng chuyển tiếp, gỡ thẻ của mình và xóa nhật ký chẩn đoán. Quyền Android có thể được thu hồi riêng trong Cài đặt.
+
+        6. Liên hệ
+        Designed by LocTM. Liên hệ về dữ liệu và quyền riêng tư qua tranlocbtr99@gmail.com.
+
+        Kết thúc chính sách · Phiên bản 1
+    """.trimIndent()
     private fun dp(v: Int) = (v * resources.displayMetrics.density + .5f).toInt()
     private fun label(value: String, size: Float = 15f, bold: Boolean = false): TextView =
         TextView(this).apply {
@@ -34,7 +61,15 @@ class MainActivity : Activity() {
             background = GradientDrawable().apply { setColor(0xff242b3d.toInt()); cornerRadius = dp(20).toFloat() }
             addView(label(title, 18f, true))
             addView(label(description, 13f).apply { setTextColor(0xffbdc7d8.toInt()) })
-            setOnClickListener { click() }
+            isFocusable = true
+            setOnClickListener {
+                if (native && ValueAnimator.areAnimatorsEnabled()) {
+                    animate().scaleX(.98f).scaleY(.98f).setDuration(85).withEndAction {
+                        animate().scaleX(1f).scaleY(1f).setDuration(125).start()
+                        click()
+                    }.start()
+                } else click()
+            }
         }
         root.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) })
     }
@@ -46,6 +81,12 @@ class MainActivity : Activity() {
             setPadding(dp(20), dp(40), dp(20), dp(32))
         }
         scroll.addView(root)
+        if (native && !BridgeListener.accepted(this)) {
+            setContentView(scroll)
+            showWelcome()
+            return
+        }
+        if (native) showPreview(animated = false)
         root.addView(label(applicationInfo.loadLabel(packageManager).toString(), 30f, true))
         root.addView(label("OriginOS 6 · Đảo thông báo của hệ thống"))
         action("Cấp quyền thông báo", "Cần để gửi thẻ chẩn đoán") {
@@ -131,9 +172,96 @@ class MainActivity : Activity() {
         root.addView(label("KẾT QUẢ NGHIỆM THU\nChưa kiểm chứng trên thiết bị. Việc gửi thông báo thành công không chứng minh SystemUI đã hiển thị Origin Island gốc.", 13f))
         setContentView(scroll)
     }
+    private fun showPreview(animated: Boolean) {
+        val preview = label(if (animated) "•••" else "●   LTMori", 16f, true).apply {
+            gravity = android.view.Gravity.CENTER
+            background = GradientDrawable().apply {
+                setColor(Color.BLACK)
+                cornerRadius = dp(28).toFloat()
+                setStroke(dp(1), 0xff3e526d.toInt())
+            }
+        }
+        root.addView(preview, LinearLayout.LayoutParams(dp(144), dp(48)).apply {
+            gravity = android.view.Gravity.CENTER_HORIZONTAL
+            bottomMargin = dp(18)
+        })
+        if (animated && ValueAnimator.areAnimatorsEnabled()) {
+            pulse = ObjectAnimator.ofFloat(preview, "alpha", .42f, 1f).apply {
+                duration = 700
+                repeatMode = ValueAnimator.REVERSE
+                repeatCount = ValueAnimator.INFINITE
+                start()
+            }
+        }
+    }
+
+    private fun showWelcome() {
+        showPreview(animated = true)
+        root.addView(label("Chào mừng đến với LTMori", 30f, true))
+        root.addView(label("Đảo thông báo cho OriginOS · Designed by LocTM"))
+        val consent = CheckBox(this).apply {
+            text = "Tôi đã đọc và đồng ý với chính sách bảo mật"
+            isEnabled = false
+        }
+        val start = Button(this).apply {
+            text = "Bắt đầu sử dụng"
+            isEnabled = false
+            setOnClickListener {
+                if (consent.isEnabled && consent.isChecked) {
+                    BridgeListener.accept(this@MainActivity)
+                    recreate()
+                }
+            }
+        }
+        action("Đọc chính sách bảo mật", "Cuộn đến cuối chính sách để mở ô đồng ý") {
+            showPolicy {
+                consent.isEnabled = true
+                consent.requestFocus()
+            }
+        }
+        consent.setOnCheckedChangeListener { _, checked -> start.isEnabled = checked && consent.isEnabled }
+        root.addView(consent)
+        root.addView(start)
+    }
+
+    private fun showPolicy(onRead: (() -> Unit)? = null) {
+        val body = ScrollView(this)
+        body.addView(label(policy, 16f).apply {
+            setTextColor(0xffe4edfa.toInt())
+            setPadding(dp(20), dp(12), dp(20), dp(12))
+            setLineSpacing(dp(4).toFloat(), 1f)
+        })
+        val dialog = android.app.AlertDialog.Builder(this).setTitle("Chính sách bảo mật")
+            .setView(body)
+            .setPositiveButton(if (onRead == null) "Đóng" else "Đã đọc hết") { _, _ -> onRead?.invoke() }
+            .show()
+        if (onRead != null) {
+            val done = dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE)
+            done.isEnabled = false
+            val enableAtEnd = {
+                if (body.height > 0 && !body.canScrollVertically(1)) done.isEnabled = true
+            }
+            body.setOnScrollChangeListener { _, _, _, _, _ -> enableAtEnd() }
+            body.post { enableAtEnd() }
+        }
+    }
+
+    override fun onDestroy() {
+        pulse?.cancel()
+        super.onDestroy()
+    }
+
     private fun showNativeSettings() {
         action("Quyền đọc thông báo", "Cho phép DynAmic nhận thông báo từ ứng dụng khác") {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+        }
+        val idle = BridgeListener.idleEnabled(this)
+        action(if (idle) "Tắt đảo chờ" else "Bật đảo chờ",
+            "Giữ thẻ LTMori cạnh camera khi rảnh. Cần quyền gửi và đọc thông báo.") {
+            if (idle || canPost()) {
+                BridgeListener.setIdle(this, !idle)
+                recreate()
+            }
         }
         val enabled = BridgeListener.enabled(this)
         action(if (enabled) "Tắt chuyển thông báo" else "Bật chuyển thông báo",
@@ -172,7 +300,7 @@ class MainActivity : Activity() {
                 val open = android.app.PendingIntent.getActivity(this, 0,
                     Intent(this, MainActivity::class.java), android.app.PendingIntent.FLAG_IMMUTABLE)
                 val card = SuperX.Card(
-                    "DynAmic Origin", "Thẻ thử $revision", "DynAmic Origin",
+                    "LTMori", "Thẻ thử $revision", "LTMori",
                     android.graphics.drawable.Icon.createWithResource(this, android.R.drawable.ic_dialog_info),
                     open
                 )
@@ -185,6 +313,26 @@ class MainActivity : Activity() {
         }
         action("Kết thúc thẻ mẫu", "Gửi lệnh kết thúc SuperX") {
             runCatching { SuperX.end(this, BridgeListener.SAMPLE_ID) }
+        }
+        action("Tuyên bố bảo mật dữ liệu", "Dữ liệu xử lý trên thiết bị · Xem lại chính sách") {
+            showPolicy()
+        }
+        action("Rút lại đồng ý", "Dừng chuyển tiếp và xóa nhật ký chẩn đoán") {
+            android.app.AlertDialog.Builder(this).setTitle("Rút lại đồng ý?")
+                .setPositiveButton("Rút lại") { _, _ ->
+                    BridgeListener.withdraw(this)
+                    recreate()
+                }.setNegativeButton("Hủy", null).show()
+        }
+        val version = packageManager.getPackageInfo(packageName, 0).versionName.orEmpty()
+        action("Designed by LocTM", "LTMori · Phiên bản $version · Ủng hộ tác giả") {
+            val number = "4444444790"
+            android.app.AlertDialog.Builder(this).setTitle("Ủng hộ tác giả")
+                .setMessage("Nếu LTMori hữu ích, bạn có thể ủng hộ qua Techcombank.\n\nTran Minh Loc\n$number")
+                .setPositiveButton("Sao chép số tài khoản") { _, _ ->
+                    getSystemService(android.content.ClipboardManager::class.java)
+                        ?.setPrimaryClip(android.content.ClipData.newPlainText("Techcombank", number))
+                }.setNegativeButton("Đóng", null).show()
         }
         action("Xem nhật ký", "Kiểm tra lỗi quyền, kênh và phản hồi từ OriginOS") {
             android.app.AlertDialog.Builder(this).setTitle("Nhật ký SuperX")
