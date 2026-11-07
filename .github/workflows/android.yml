@@ -38,6 +38,17 @@ jobs:
           name: LTM-Origin-Bridge-debug
           path: app/build/outputs/apk/*/debug/*.apk
           retention-days: 7
+      - name: Build native release APK
+        if: github.ref == 'refs/heads/native-superx'
+        run: ./gradlew :app:assembleNativeSuperxRelease --no-daemon
+      - name: Upload unsigned native release APK
+        if: github.ref == 'refs/heads/native-superx'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ltmori-unsigned-release
+          path: app/build/outputs/apk/nativeSuperx/release/*-unsigned.apk
+          if-no-files-found: error
+          retention-days: 7
       - name: Upload APK verification utility
         if: github.ref == 'refs/heads/native-superx'
         uses: actions/upload-artifact@v4
