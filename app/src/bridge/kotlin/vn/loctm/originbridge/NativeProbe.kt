@@ -31,6 +31,8 @@ object NativeProbe {
             arrayListOf(context.packageName), arrayListOf("true")
         )
         "SCENE_REGISTERED"
+    } catch (e: java.lang.reflect.InvocationTargetException) {
+        "SCENE_UNAVAILABLE_" + (e.targetException?.javaClass?.simpleName ?: "UNKNOWN")
     } catch (e: Exception) {
         "SCENE_UNAVAILABLE_" + e.javaClass.simpleName
     }
@@ -68,9 +70,7 @@ object NativeProbe {
         return lines.joinToString("\n")
     }
 
-    private fun payload(context: Context, revision: Int): Bundle {
-        val title = "LTM Origin Bridge"
-        val content = "Kiểm chứng lần $revision"
+    internal fun payload(context: Context, title: String, content: String): Bundle {
         val icon = Icon.createWithResource(context, android.R.drawable.ic_dialog_info)
         return Bundle().apply {
             putInt("notification.superx.operation", 0)
@@ -127,7 +127,7 @@ object NativeProbe {
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setContentTitle("LTM Origin Bridge")
                 .setContentText("Kiểm chứng lần $revision")
-                .setExtras(payload(context, revision))
+                .setExtras(payload(context, "LTM Origin Bridge", "Kiểm chứng lần $revision"))
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
