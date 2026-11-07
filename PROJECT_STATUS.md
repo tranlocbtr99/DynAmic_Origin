@@ -1,3 +1,10 @@
+# Native SuperX rebuild — 2026-11-07
+
+- Native2 uses one shared sender for samples and forwarded notifications. Its independently implemented wire protocol registers the 15 observed scene names, posts a NAVIGATION base card on a new silent HIGH channel, uses SuperX click callbacks, and sends operation 2 before cancelling.
+- Notifications have independent IDs and revision counters. The app displays text, source icon, progress when available and one eligible action. It skips system apps, group summaries and secret notifications, and supports exclusions. One-shot cards expire after eight seconds. Source notifications are preserved.
+- Lockscreen is opt-in and forwards only app labels, with no action or private content on those cards. Foreground-only diagnostics remain a separate flavor.
+- Physical OriginOS rendering, tap routing, AOD and lockscreen still require iQOO testing. Dedicated upstream templates for navigation, sports, OTP, payments and media, and the upstream background keep-alive mechanisms, are not included in this build.
+
 # Native SuperX experiment — 2026-11-07
 
 - The opt-in nativeSuperx variant uses the AMap application ID required by the tested Origin Isle approach. This variant conflicts with AMap and Origin Isle installations sharing that ID. The diagnostic variant retains its ID, and the existing DynAmic 0.8.2 APK can coexist.
