@@ -1,5 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
   <queries>
     <intent>
       <action android:name="android.intent.action.MAIN"/>
@@ -10,7 +12,11 @@
     <activity android:name="vn.loctm.originbridge.MainActivity" android:exported="true">
       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
     </activity>
-    <activity android:name="vn.loctm.originbridge.CardOpenActivity" android:exported="false" android:theme="@android:style/Theme.NoDisplay"/>
+    <service android:name="vn.loctm.originbridge.CardPublisherService" android:exported="false"
+        android:foregroundServiceType="specialUse">
+      <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+          android:value="User-enabled continuous forwarding of Android notifications to OriginOS SuperX"/>
+    </service>
     <service android:name="vn.loctm.originbridge.BridgeListener" android:exported="true" android:label="${bridgeLabel}" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
       <intent-filter><action android:name="android.service.notification.NotificationListenerService"/></intent-filter>
     </service>
