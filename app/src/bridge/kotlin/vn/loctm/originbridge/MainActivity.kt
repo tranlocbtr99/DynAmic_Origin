@@ -71,6 +71,20 @@ class MainActivity : Activity() {
                     }
                 }.setNegativeButton("Đóng", null).show()
         }
+        action("Ghi kết quả quan sát", "Lưu kết quả thực tế sau khi thử trên máy") {
+            val cases = ProtocolMatrix.cases.map { it.id }.toTypedArray()
+            android.app.AlertDialog.Builder(this).setTitle("Chọn phép thử đã quan sát")
+                .setItems(cases) { _, index ->
+                    val chosen = ProtocolMatrix.cases[index].id
+                    val outcomes = arrayOf("Đảo gốc xuất hiện", "Chỉ khay thông báo", "Không hiển thị", "Có lỗi / khác")
+                    android.app.AlertDialog.Builder(this).setTitle("Kết quả: $chosen")
+                        .setItems(outcomes) { _, outcome ->
+                            val code = arrayOf("NATIVE_VISIBLE", "SHADE_ONLY", "NOT_VISIBLE", "OTHER")[outcome]
+                            Diagnostics.record(this, "MATRIX_RESULT_${chosen}_${code}")
+                            Toast.makeText(this, "Đã lưu kết quả quan sát", Toast.LENGTH_SHORT).show()
+                        }.setNegativeButton("Hủy", null).show()
+                }.setNegativeButton("Đóng", null).show()
+        }
         action("Gỡ thẻ ma trận", "Kết thúc phép thử và hủy thông báo ma trận") {
             ProtocolMatrix.clear(this)
             Toast.makeText(this, "Đã yêu cầu gỡ thẻ ma trận", Toast.LENGTH_SHORT).show()
