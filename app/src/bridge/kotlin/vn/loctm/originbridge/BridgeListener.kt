@@ -16,7 +16,8 @@ class BridgeListener : NotificationListenerService() {
         val id: Int,
         val revision: Int,
         val card: SuperX.Card,
-        val expiry: Runnable?
+        val expiry: Runnable?,
+        val retried: Boolean = false
     )
 
     private val handler = Handler(Looper.getMainLooper())
@@ -24,10 +25,27 @@ class BridgeListener : NotificationListenerService() {
     private var nextId = 20000
     private var idleVisible = false
     private var idleRevision = 0
+    private var idleEnding = false
+    private val pending = linkedMapOf<String, StatusBarNotification>()
+    private val finishIdleHandoff = Runnable {
+        idleEnding = false
+        val waiting = pending.values.toList()
+        pending.clear()
+        waiting.forEach(::onNotificationPosted)
+        refreshIdle()
+    }
+    private var lastOutcome = ""
+    private fun outcome(value: String) {
+        if (value != lastOutcome) {
+            lastOutcome = value
+            Diagnostics.record(this, value)
+        }
+    }
 
     override fun onListenerConnected() {
         if (packageName != NATIVE_PACKAGE) return
         current = this
+        if (accepted(this)) outcome("LISTENER_CONNECTED")
         getSystemService(NotificationManager::class.java)?.activeNotifications
             ?.filter { it.tag == SuperX.TAG && it.notification.channelId == SuperX.CHANNEL && it.id != SAMPLE_ID }
             ?.forEach { SuperX.end(this, it.id) }
@@ -43,13 +61,24 @@ class BridgeListener : NotificationListenerService() {
             discardRejectedCopy(sbn)
             return
         }
-        if (!enabled(this) || sbn.packageName in systemPackages || !appEnabled(this, sbn.packageName)) return
+        if (!accepted(this) || sbn.packageName in systemPackages) return
+        if (!enabled(this)) return outcome("FORWARD_DISABLED")
+        if (!appEnabled(this, sbn.packageName)) return outcome("SOURCE_EXCLUDED")
         val source = sbn.notification
-        if ((source.flags and Notification.FLAG_GROUP_SUMMARY) != 0 ||
-            source.visibility == Notification.VISIBILITY_SECRET
-        ) return
+        if (source.visibility == Notification.VISIBILITY_SECRET) return outcome("SOURCE_SECRET")
+        if ((source.flags and Notification.FLAG_GROUP_SUMMARY) != 0 &&
+            activeNotifications?.any {
+                it.groupKey == sbn.groupKey && it.packageName == sbn.packageName &&
+                    (it.notification.flags and Notification.FLAG_GROUP_SUMMARY) == 0
+            } == true
+        ) return outcome("SOURCE_GROUP_DUPLICATE")
         val locked = getSystemService(KeyguardManager::class.java)?.isKeyguardLocked != false
-        if (locked && !lockscreen(this)) return
+        if (locked && !lockscreen(this)) return outcome("SOURCE_LOCKED")
+        if (idleVisible || idleEnding) {
+            pending[sbn.key] = sbn
+            hideIdle()
+            return
+        }
         try {
             publish(sbn, locked)
         } catch (error: RuntimeException) {
@@ -96,10 +125,10 @@ class BridgeListener : NotificationListenerService() {
         val revision = (previous?.revision ?: 0) + 1
         val result = SuperX.post(this, id, revision, card, lockscreen(this))
         if (result != "SUPERX_POSTED") {
-            Diagnostics.record(this, result)
+            outcome(result)
             return
         }
-        hideIdle()
+        outcome("FORWARD_POSTED")
         previous?.expiry?.let(handler::removeCallbacks)
         val expiry = if (ongoing) null else Runnable { remove(sbn.key) }
         cards[sbn.key] = Active(id, revision, card, expiry)
@@ -112,11 +141,36 @@ class BridgeListener : NotificationListenerService() {
         ) return
         getSystemService(NotificationManager::class.java)?.cancel(sbn.id)
         if (sbn.id == IDLE_ID) idleVisible = false
-        if (accepted(this)) Diagnostics.record(this, "SUPERX_REJECTED")
+        if (!accepted(this)) return
+        outcome("SUPERX_REJECTED")
+        val entry = cards.entries.firstOrNull { it.value.id == sbn.id } ?: return
+        val active = entry.value
+        if (enabled(this) && !active.retried &&
+            (getSystemService(KeyguardManager::class.java)?.isKeyguardLocked == false || lockscreen(this))
+        ) {
+            val basic = active.card.copy(
+                icon = Icon.createWithResource(this, android.R.drawable.ic_dialog_info),
+                actions = emptyList(),
+                progress = null
+            )
+            val result = runCatching {
+                SuperX.post(this, active.id, active.revision + 1, basic, lockscreen(this))
+            }.getOrNull()
+            if (result == "SUPERX_POSTED") {
+                cards[entry.key] = active.copy(revision = active.revision + 1, card = basic, retried = true)
+                return
+            }
+        }
+        cards.remove(entry.key)
+        active.expiry?.let(handler::removeCallbacks)
+        refreshIdle()
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
-        if (sbn.packageName != packageName) remove(sbn.key)
+        if (sbn.packageName != packageName) {
+            pending.remove(sbn.key)
+            remove(sbn.key)
+        }
     }
 
     private fun refreshIdle() {
@@ -124,7 +178,7 @@ class BridgeListener : NotificationListenerService() {
             hideIdle()
             return
         }
-        if (idleVisible) return
+        if (idleVisible || idleEnding) return
         val intent = android.content.Intent(this, MainActivity::class.java)
         val open = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
         val card = SuperX.Card("LTMori", "Đảo đang chờ", "LTMori",
@@ -139,6 +193,8 @@ class BridgeListener : NotificationListenerService() {
         if (!idleVisible) return
         idleVisible = false
         runCatching { SuperX.end(this, IDLE_ID) }
+        idleEnding = true
+        handler.postDelayed(finishIdleHandoff, SuperX.END_DELAY_MS + 50)
     }
 
     private fun remove(key: String) {
@@ -151,13 +207,19 @@ class BridgeListener : NotificationListenerService() {
     override fun onListenerDisconnected() {
         if (current === this) current = null
         hideIdle()
+        handler.removeCallbacks(finishIdleHandoff)
+        pending.clear()
+        idleEnding = false
         cards.keys.toList().forEach(::remove)
-        if (enabled(this)) requestRebind(android.content.ComponentName(this, BridgeListener::class.java))
+        if (enabled(this) || idleEnabled(this)) requestRebind(android.content.ComponentName(this, BridgeListener::class.java))
     }
 
     override fun onDestroy() {
         if (current === this) current = null
         hideIdle()
+        handler.removeCallbacks(finishIdleHandoff)
+        pending.clear()
+        idleEnding = false
         cards.keys.toList().forEach(::remove)
         super.onDestroy()
     }
@@ -170,6 +232,16 @@ class BridgeListener : NotificationListenerService() {
         private val systemPackages = setOf("android", "com.android.systemui")
         private fun prefs(context: Context) =
             context.getSharedPreferences("superx", Context.MODE_PRIVATE)
+
+        fun connectionStatus(context: Context): String {
+            val manager = context.getSystemService(NotificationManager::class.java)
+            val component = android.content.ComponentName(context, BridgeListener::class.java)
+            return when {
+                manager?.isNotificationListenerAccessGranted(component) != true -> "Chưa cấp quyền đọc"
+                current == null -> "Đã cấp quyền · Đang chờ kết nối"
+                else -> "Đã kết nối"
+            }
+        }
 
         fun enabled(context: Context): Boolean =
             accepted(context) && prefs(context).getBoolean("forward", false)
@@ -217,10 +289,17 @@ class BridgeListener : NotificationListenerService() {
         fun setEnabled(context: Context, enabled: Boolean) {
             prefs(context).edit().putBoolean("forward", enabled).apply()
             if (!enabled) endActive(context, includeIdle = false)
+            else current?.let { listener ->
+                listener.activeNotifications?.filter {
+                    it.packageName != context.packageName && it.packageName !in systemPackages &&
+                        appEnabled(context, it.packageName)
+                }?.maxByOrNull { it.postTime }?.let(listener::onNotificationPosted)
+            }
         }
 
         private fun endActive(context: Context, includeIdle: Boolean = true) {
             current?.let { listener ->
+                listener.pending.clear()
                 listener.cards.keys.toList().forEach(listener::remove)
                 if (includeIdle) listener.hideIdle()
             }
