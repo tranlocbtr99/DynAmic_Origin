@@ -22,6 +22,7 @@ object ProtocolMatrix {
     fun post(context: Context, test: Case): String {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return "NO_MANAGER"
         manager.createNotificationChannel(NotificationChannel(CHANNEL, "OriginOS protocol matrix", NotificationManager.IMPORTANCE_LOW))
+        Diagnostics.record(context, NativeProbe.sceneRegistration(context))
         val icon = Icon.createWithResource(context, android.R.drawable.ic_dialog_info)
         val title = "LTM Origin Bridge"
         val content = "Protocol: ${test.id}"
