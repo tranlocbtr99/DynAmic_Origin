@@ -9,13 +9,14 @@ import android.os.Bundle
 
 /** Isolated manual probes. Never schedules repeated notifications or modifies SystemUI. */
 object ProtocolMatrix {
-    data class Case(val id: String, val scene: String, val rightTemplate: Int, val forceShow: Boolean = false, val permanent: Boolean = false)
+    data class Case(val id: String, val scene: String, val rightTemplate: Int, val forceShow: Boolean = false, val permanent: Boolean = false, val nativeShape: Boolean = false)
     val cases = listOf(
         Case("BASE_TRAIN", "TRAIN", 6),
         Case("TEXT_TRAIN", "TRAIN", 4),
         Case("PROGRESS_TRAIN", "TRAIN", 2),
         Case("FORCE_TRAIN", "TRAIN", 6, forceShow = true),
-        Case("PERMANENT_TRAIN", "TRAIN", 6, permanent = true)
+        Case("PERMANENT_TRAIN", "TRAIN", 6, permanent = true),
+        Case("NATIVE_SHAPE_TRAIN", "TRAIN", 6, forceShow = true, nativeShape = true)
     )
     private const val CHANNEL = "ltm_protocol_matrix_high_v2"
     private const val ID = 61062
@@ -30,6 +31,16 @@ object ProtocolMatrix {
             putInt("island.superx.leftTemplate", 1)
             putInt("island.superx.rightTemplate", test.rightTemplate)
             if (test.forceShow) putBoolean("island.superx.forceShow", true)
+            if (test.nativeShape) {
+                putInt("island.superx.template", 0)
+                putInt("island.superx.priority", 4)
+                putInt("island.superx.islandType", 2)
+                putInt("island.superx.showTime", 7)
+                putBoolean("island.superx.dismissCard", false)
+                putBoolean("island.superx.forceShowCard", false)
+                putBoolean("island.superx.showBarWhenCard", false)
+                putString("island.superx.eventInfo", """{"mode":"single","source":"sort"}""")
+            }
             if (test.permanent) putBoolean("island.superx.permanent", true)
             putBundle("island.superx.leftInfo", Bundle().apply {
                 putString("island.superx.leftInfo.content", title)
@@ -55,7 +66,11 @@ object ProtocolMatrix {
         }
         val extras = Bundle().apply {
             putInt("notification.superx.operation", 0)
-            putBoolean("notification.superx.showNotify", true)
+            putBoolean("notification.superx.showNotify", !test.nativeShape)
+            if (test.nativeShape) {
+                putBoolean("notification.superx.islandNotify", true)
+                putBoolean("notification.superx.sound", false)
+            }
             putInt("notification.superx.template", if (test.rightTemplate == 2) 2 else 1)
             putString("notification.superx.scene", test.scene)
             putInt("notification.superx.changedRecord", 0)
