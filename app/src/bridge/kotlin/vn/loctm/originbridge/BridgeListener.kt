@@ -26,6 +26,7 @@ class BridgeListener : NotificationListenerService() {
     private var idleVisible = false
     private var idleRevision = 0
     private var idleEnding = false
+    private val restoreIdle = Runnable { refreshIdle() }
     private val pending = linkedMapOf<String, StatusBarNotification>()
     private val finishIdleHandoff = Runnable {
         idleEnding = false
@@ -201,13 +202,17 @@ class BridgeListener : NotificationListenerService() {
         val active = cards.remove(key) ?: return
         active.expiry?.let(handler::removeCallbacks)
         runCatching { SuperX.end(this, active.id) }
-        refreshIdle()
+        if (current === this) {
+            handler.removeCallbacks(restoreIdle)
+            handler.postDelayed(restoreIdle, SuperX.END_DELAY_MS + 50)
+        }
     }
 
     override fun onListenerDisconnected() {
         if (current === this) current = null
         hideIdle()
         handler.removeCallbacks(finishIdleHandoff)
+        handler.removeCallbacks(restoreIdle)
         pending.clear()
         idleEnding = false
         cards.keys.toList().forEach(::remove)
@@ -218,6 +223,7 @@ class BridgeListener : NotificationListenerService() {
         if (current === this) current = null
         hideIdle()
         handler.removeCallbacks(finishIdleHandoff)
+        handler.removeCallbacks(restoreIdle)
         pending.clear()
         idleEnding = false
         cards.keys.toList().forEach(::remove)
