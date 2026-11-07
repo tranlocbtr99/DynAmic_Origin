@@ -94,6 +94,24 @@ class MainActivity : Activity() {
                 .setMessage(NativeProbe.environmentReport(this))
                 .setPositiveButton("Đóng", null).show()
         }
+        action("ADB / Shizuku · hướng dẫn chẩn đoán", "Các lệnh chỉ đọc, không thay đổi quyền hoặc cấu hình hệ thống") {
+            val commands = """
+                adb shell getprop ro.vivo.os.version
+                adb shell getprop ro.build.version.release
+                adb shell dumpsys notification --noredact
+                adb shell dumpsys package vn.loctm.originbridge
+                adb shell pm list packages | grep -iE 'vivo|superx|island'
+            """.trimIndent()
+            android.app.AlertDialog.Builder(this)
+                .setTitle("Chẩn đoán ADB (chỉ đọc)")
+                .setMessage("Chạy từ máy tính có ADB. Shizuku đang chạy không tự cấp quyền shell cho ứng dụng này.\\n\\n" +
+                    commands + "\\n\\nLưu ý: dumpsys notification có thể chứa nội dung thông báo cá nhân; hãy xóa dữ liệu riêng tư trước khi chia sẻ.")
+                .setPositiveButton("Sao chép") { _, _ ->
+                    val clipboard = getSystemService(android.content.ClipboardManager::class.java)
+                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("ADB diagnostics", commands))
+                }
+                .setNegativeButton("Đóng", null).show()
+        }
         action("Xem nhật ký cục bộ", "Chỉ ghi thao tác, không ghi nội dung thông báo") {
             android.app.AlertDialog.Builder(this).setTitle("Nhật ký thử nghiệm")
                 .setMessage(Diagnostics.report(this)).setPositiveButton("Đóng", null).show()
