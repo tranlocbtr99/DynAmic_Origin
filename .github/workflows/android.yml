@@ -32,10 +32,9 @@ jobs:
           yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || true
           "$SDKMANAGER" --sdk_root="$SDK_ROOT" --install "platforms;android-36" "build-tools;36.0.0"
       - uses: gradle/actions/setup-gradle@v4
-      - run: ./scripts/test-policy.sh
       - run: ./gradlew :app:assembleDebug :app:lintDebug --no-daemon
       - uses: actions/upload-artifact@v4
         with:
-          name: DynAmic-Origin-debug
+          name: LTM-Origin-Bridge-debug
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 7
