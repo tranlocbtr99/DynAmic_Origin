@@ -12,7 +12,7 @@ import android.os.Bundle
  * See docs/ORIGIN_PROTOCOL.md for provenance and verification limitations.
  */
 object NativeProbe {
-    private const val CHANNEL = "ltm_bridge_diagnostic"
+    private const val CHANNEL = "ltm_bridge_diagnostic_high_v2"
     private const val ID = 61061
     private const val SCENE = "TRAIN"
 
@@ -119,7 +119,7 @@ object NativeProbe {
             return
         }
         manager.createNotificationChannel(
-            NotificationChannel(CHANNEL, "Origin Island diagnostics", NotificationManager.IMPORTANCE_LOW)
+            NotificationChannel(CHANNEL, "Origin Island diagnostics", NotificationManager.IMPORTANCE_HIGH)
         )
         Diagnostics.record(context, sceneRegistration(context))
         try {
