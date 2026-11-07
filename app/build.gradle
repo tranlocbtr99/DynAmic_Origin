@@ -14,8 +14,8 @@ android {
    dimension 'delivery'
    applicationId 'com.autonavi.minimap'
    manifestPlaceholders = [bridgeLabel: 'DynAmic Origin SuperX']
-   versionCode 6
-   versionName '1.0.0-native1'
+   versionCode 26
+   versionName '1.0.0-native2'
   }
  }
  defaultConfig { applicationId 'vn.loctm.originbridge'; minSdk 34; targetSdk 36; versionCode 5; versionName '1.0.0-alpha5'; manifestPlaceholders = [bridgeLabel: 'LTM Origin Bridge'] }
