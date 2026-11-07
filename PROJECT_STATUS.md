@@ -1,3 +1,9 @@
+# LTMori 1.1.2 — 2026-11-07
+
+- Match the working sample card by using a local icon and app-owned PendingIntent for forwarded notifications. Forwarded text and percentage remain available; foreign action buttons are omitted in this compatibility path.
+- The non-exported click activity opens the source notification while unlocked. A rejected card retries once with a plain sample-style card.
+- Show the newest diagnostic entries first and distinguish rejection of a forwarded card from idle or sample cleanup. Device verification remains pending.
+
 # LTMori 1.1.1 — 2026-11-07
 
 - Complete the idle card handoff before forwarding a real notification; hold arriving updates by source key during the handoff.
