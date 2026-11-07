@@ -14,8 +14,8 @@ android {
    dimension 'delivery'
    applicationId 'com.autonavi.minimap'
    manifestPlaceholders = [bridgeLabel: 'LTMori']
-   versionCode 28
-   versionName '1.1.1'
+   versionCode 29
+   versionName '1.1.2'
   }
  }
  defaultConfig { applicationId 'vn.loctm.originbridge'; minSdk 34; targetSdk 36; versionCode 5; versionName '1.0.0-alpha5'; manifestPlaceholders = [bridgeLabel: 'LTM Origin Bridge'] }
