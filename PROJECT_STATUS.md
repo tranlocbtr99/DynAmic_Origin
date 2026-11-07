@@ -1,3 +1,10 @@
+# Native SuperX experiment — 2026-11-07
+
+- The opt-in nativeSuperx variant uses the AMap application ID required by the tested Origin Isle approach. This variant conflicts with AMap and Origin Isle installations sharing that ID. The diagnostic variant retains its ID, and the existing DynAmic 0.8.2 APK can coexist.
+- The notification listener sends one transient SuperX card with the source app label and original content intent while unlocked. It ignores its own events, group summaries and secret notifications, and clears its card when disabled or when its source is removed. It does not cancel source notifications. This uses the existing independent protocol implementation.
+- Device verification still needs to cover scene acceptance, visibility next to the camera, tap routing, and cleanup. A posted notification or a reflective call returning without exception does not prove SystemUI rendered a card.
+- Local Gradle validation was blocked by network access to the Gradle distribution. The Android checks workflow builds both variants.
+
 # Current state — 2026-11-06
 Version 0.8.2 / code 12; package vn.loctm.dynamicorigin. Initial independent implementation in previously empty repo.
 
