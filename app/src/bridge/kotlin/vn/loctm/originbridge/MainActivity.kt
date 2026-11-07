@@ -89,6 +89,11 @@ class MainActivity : Activity() {
             ProtocolMatrix.clear(this)
             Toast.makeText(this, "Đã yêu cầu gỡ thẻ ma trận", Toast.LENGTH_SHORT).show()
         }
+        action("Kiểm tra hỗ trợ OEM", "Xem quyền thông báo, scene và API OriginOS") {
+            android.app.AlertDialog.Builder(this).setTitle("Chẩn đoán OriginOS")
+                .setMessage(NativeProbe.environmentReport(this))
+                .setPositiveButton("Đóng", null).show()
+        }
         action("Xem nhật ký cục bộ", "Chỉ ghi thao tác, không ghi nội dung thông báo") {
             android.app.AlertDialog.Builder(this).setTitle("Nhật ký thử nghiệm")
                 .setMessage(Diagnostics.report(this)).setPositiveButton("Đóng", null).show()
