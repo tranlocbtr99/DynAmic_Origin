@@ -35,6 +35,30 @@ object NativeProbe {
         "SCENE_UNAVAILABLE_" + e.javaClass.simpleName
     }
 
+    /** OEM-only read-only probes; exceptions are expected on unsupported builds. */
+    fun environmentReport(context: Context): String {
+        val nm = manager(context) ?: return "NO_NOTIFICATION_MANAGER"
+        val lines = mutableListOf(
+            "BRAND=" + android.os.Build.BRAND,
+            "MANUFACTURER=" + android.os.Build.MANUFACTURER,
+            "MODEL=" + android.os.Build.MODEL,
+            "SDK=" + android.os.Build.VERSION.SDK_INT,
+            "NOTIFICATIONS_ENABLED=" + nm.areNotificationsEnabled()
+        )
+        for (name in listOf("getSceneStatus", "isSupportCustomFun")) {
+            val result = try {
+                val method = NotificationManager::class.java.getMethod(
+                    name, String::class.java, String::class.java
+                )
+                method.invoke(nm, context.packageName, SCENE).toString()
+            } catch (e: Exception) {
+                "UNAVAILABLE_" + e.javaClass.simpleName
+            }
+            lines.add(name + "=" + result)
+        }
+        return lines.joinToString("\\n")
+    }
+
     private fun payload(context: Context, revision: Int): Bundle {
         val title = "LTM Origin Bridge"
         val content = "Kiểm chứng lần $revision"
