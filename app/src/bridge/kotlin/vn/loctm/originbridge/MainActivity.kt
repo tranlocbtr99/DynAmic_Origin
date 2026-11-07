@@ -98,7 +98,7 @@ class MainActivity : Activity() {
             val commands = """
                 adb shell getprop ro.vivo.os.version
                 adb shell getprop ro.build.version.release
-                adb shell dumpsys notification --noredact
+                adb shell dumpsys notification
                 adb shell dumpsys package vn.loctm.originbridge
                 adb shell pm list packages | grep -iE 'vivo|superx|island'
             """.trimIndent()
