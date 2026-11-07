@@ -1,3 +1,7 @@
+# LTMori 1.1.3 — 2026-11-07
+
+- Native notification forwarding uses a user-enabled foreground publisher with direct source click intents, source icons, and per-card delete intents. The privacy gate, lock-screen redaction and optional idle card are retained. Device verification is pending.
+
 # LTMori 1.1.2 — 2026-11-07
 
 - Match the working sample card by using a local icon and app-owned PendingIntent for forwarded notifications. Forwarded text and percentage remain available; foreign action buttons are omitted in this compatibility path.
