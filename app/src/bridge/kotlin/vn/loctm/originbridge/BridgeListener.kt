@@ -16,7 +16,6 @@ class BridgeListener : NotificationListenerService() {
         val id: Int,
         val revision: Int,
         val card: SuperX.Card,
-        val target: PendingIntent?,
         val expiry: Runnable?,
         val retried: Boolean = false
     )
@@ -95,7 +94,7 @@ class BridgeListener : NotificationListenerService() {
             val info = packageManager.getApplicationInfo(sbn.packageName, 0)
             packageManager.getApplicationLabel(info).toString()
         }.getOrDefault(sbn.packageName)
-        val icon = Icon.createWithResource(this, android.R.drawable.ic_dialog_info)
+        val icon = source.smallIcon ?: Icon.createWithResource(this, android.R.drawable.ic_dialog_info)
         val progressMax = extras.getInt(Notification.EXTRA_PROGRESS_MAX)
         val progress = if (progressMax > 0 && !extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE)) {
             (extras.getInt(Notification.EXTRA_PROGRESS).toLong() * 100 / progressMax).toInt().coerceIn(0, 100)
@@ -118,12 +117,11 @@ class BridgeListener : NotificationListenerService() {
         val ongoing = sbn.isOngoing || source.category == Notification.CATEGORY_CALL || progressMax > 0
         val previous = cards[sbn.key]
         val id = previous?.id ?: nextId++
-        val open = if (redacted) null else ownedClick(id, click)
         val text = if (!redacted && progress != null) "$progress% · $body" else body
-        val card = SuperX.Card(title.take(100), text.take(300), app, icon, open, ongoing)
-        if (previous?.card == card && previous.target == click) return
+        val card = SuperX.Card(title.take(100), text.take(300), app, icon, click, ongoing)
+        if (previous?.card == card) return
         val revision = (previous?.revision ?: 0) + 1
-        val result = SuperX.post(this, id, revision, card, lockscreen(this))
+        val result = CardPublisherService.publish(id, revision, card, lockscreen(this))
         if (result != "SUPERX_POSTED") {
             outcome(result)
             return
@@ -131,15 +129,8 @@ class BridgeListener : NotificationListenerService() {
         outcome("FORWARD_POSTED")
         previous?.expiry?.let(handler::removeCallbacks)
         val expiry = if (ongoing) null else Runnable { remove(sbn.key) }
-        cards[sbn.key] = Active(id, revision, card, click, expiry)
+        cards[sbn.key] = Active(id, revision, card, expiry)
         expiry?.let { handler.postDelayed(it, 8000L) }
-    }
-
-    private fun ownedClick(id: Int, target: PendingIntent?): PendingIntent {
-        val intent = android.content.Intent(this, CardOpenActivity::class.java)
-            .putExtra(CardOpenActivity.TARGET, target)
-        return PendingIntent.getActivity(this, id, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 
     private fun discardRejectedCopy(sbn: StatusBarNotification) {
@@ -160,14 +151,10 @@ class BridgeListener : NotificationListenerService() {
             (getSystemService(KeyguardManager::class.java)?.isKeyguardLocked == false || lockscreen(this))
         ) {
             val basic = active.card.copy(
-                ongoing = false,
-                click = active.card.click?.let {
-                    PendingIntent.getActivity(this, active.id,
-                        android.content.Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
-                }
+                icon = Icon.createWithResource(this, android.R.drawable.ic_dialog_info)
             )
             val result = runCatching {
-                SuperX.post(this, active.id, active.revision + 1, basic, lockscreen(this))
+                CardPublisherService.publish(active.id, active.revision + 1, basic, lockscreen(this))
             }.getOrNull()
             if (result == "SUPERX_POSTED") {
                 cards[entry.key] = active.copy(revision = active.revision + 1, card = basic, retried = true)
@@ -274,6 +261,7 @@ class BridgeListener : NotificationListenerService() {
         fun withdraw(context: Context) {
             prefs(context).edit().remove("policy_version").remove("forward").remove("idle").apply()
             endActive(context)
+            CardPublisherService.stop(context)
             context.deleteFile("diagnostics.txt")
         }
 
@@ -306,13 +294,26 @@ class BridgeListener : NotificationListenerService() {
 
         fun setEnabled(context: Context, enabled: Boolean) {
             prefs(context).edit().putBoolean("forward", enabled).apply()
-            if (!enabled) endActive(context, includeIdle = false)
-            else current?.let { listener ->
-                listener.activeNotifications?.filter {
-                    it.packageName != context.packageName && it.packageName !in systemPackages &&
-                        appEnabled(context, it.packageName)
-                }?.maxByOrNull { it.postTime }?.let(listener::onNotificationPosted)
+            if (enabled) CardPublisherService.start(context)
+            else {
+                endActive(context, includeIdle = false)
+                CardPublisherService.stop(context)
             }
+        }
+
+        fun publisherReady() {
+            val listener = current ?: return
+            listener.activeNotifications?.filter {
+                it.packageName != listener.packageName && it.packageName !in systemPackages &&
+                    appEnabled(listener, it.packageName)
+            }?.maxByOrNull { it.postTime }?.let(listener::onNotificationPosted)
+        }
+
+        fun dismissCard(id: Int): Boolean {
+            val listener = current ?: return false
+            val key = listener.cards.entries.firstOrNull { it.value.id == id }?.key ?: return false
+            listener.remove(key)
+            return true
         }
 
         private fun endActive(context: Context, includeIdle: Boolean = true) {
@@ -326,25 +327,5 @@ class BridgeListener : NotificationListenerService() {
                     (includeIdle || it.id != IDLE_ID) }
                 ?.forEach { runCatching { SuperX.end(context, it.id) } }
         }
-    }
-}
-
-/** Resolves the source click only after an explicit tap on a card while unlocked. */
-class CardOpenActivity : android.app.Activity() {
-    override fun onCreate(savedInstanceState: android.os.Bundle?) {
-        super.onCreate(savedInstanceState)
-        if (BridgeListener.enabled(this) &&
-            getSystemService(KeyguardManager::class.java)?.isKeyguardLocked == false
-        ) {
-            val target = intent.getParcelableExtra(TARGET, PendingIntent::class.java)
-            if (target == null || runCatching { target.send() }.isFailure) {
-                startActivity(android.content.Intent(this, MainActivity::class.java))
-            }
-        }
-        finish()
-    }
-
-    companion object {
-        const val TARGET = "source_target"
     }
 }
