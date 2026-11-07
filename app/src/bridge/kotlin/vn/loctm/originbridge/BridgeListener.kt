@@ -22,6 +22,8 @@ class BridgeListener : NotificationListenerService() {
     private val handler = Handler(Looper.getMainLooper())
     private val cards = mutableMapOf<String, Active>()
     private var nextId = 20000
+    private var idleVisible = false
+    private var idleRevision = 0
 
     override fun onListenerConnected() {
         if (packageName != NATIVE_PACKAGE) return
@@ -32,6 +34,7 @@ class BridgeListener : NotificationListenerService() {
         if (enabled(this)) activeNotifications?.forEach { source ->
             if (source.isOngoing) onNotificationPosted(source)
         }
+        refreshIdle()
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
@@ -45,7 +48,7 @@ class BridgeListener : NotificationListenerService() {
         if ((source.flags and Notification.FLAG_GROUP_SUMMARY) != 0 ||
             source.visibility == Notification.VISIBILITY_SECRET
         ) return
-        val locked = getSystemService(KeyguardManager::class.java)?.isDeviceLocked != false
+        val locked = getSystemService(KeyguardManager::class.java)?.isKeyguardLocked != false
         if (locked && !lockscreen(this)) return
         try {
             publish(sbn, locked)
@@ -96,6 +99,7 @@ class BridgeListener : NotificationListenerService() {
             Diagnostics.record(this, result)
             return
         }
+        hideIdle()
         previous?.expiry?.let(handler::removeCallbacks)
         val expiry = if (ongoing) null else Runnable { remove(sbn.key) }
         cards[sbn.key] = Active(id, revision, card, expiry)
@@ -107,25 +111,53 @@ class BridgeListener : NotificationListenerService() {
             sbn.notification.extras.get("SUPERX_VALUE")?.toString() != "false"
         ) return
         getSystemService(NotificationManager::class.java)?.cancel(sbn.id)
-        Diagnostics.record(this, "SUPERX_REJECTED")
+        if (sbn.id == IDLE_ID) idleVisible = false
+        if (accepted(this)) Diagnostics.record(this, "SUPERX_REJECTED")
     }
 
-    override fun onNotificationRemoved(sbn: StatusBarNotification) = remove(sbn.key)
+    override fun onNotificationRemoved(sbn: StatusBarNotification) {
+        if (sbn.packageName != packageName) remove(sbn.key)
+    }
+
+    private fun refreshIdle() {
+        if (current !== this || !idleEnabled(this) || cards.isNotEmpty()) {
+            hideIdle()
+            return
+        }
+        if (idleVisible) return
+        val intent = android.content.Intent(this, MainActivity::class.java)
+        val open = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+        val card = SuperX.Card("LTMori", "Đảo đang chờ", "LTMori",
+            Icon.createWithResource(this, android.R.drawable.ic_dialog_info), open, ongoing = true, idle = true)
+        val result = runCatching { SuperX.post(this, IDLE_ID, ++idleRevision, card, false) }
+            .getOrElse { "IDLE_ERROR_" + it.javaClass.simpleName }
+        idleVisible = result == "SUPERX_POSTED"
+        Diagnostics.record(this, if (idleVisible) "IDLE_POSTED" else result)
+    }
+
+    private fun hideIdle() {
+        if (!idleVisible) return
+        idleVisible = false
+        runCatching { SuperX.end(this, IDLE_ID) }
+    }
 
     private fun remove(key: String) {
         val active = cards.remove(key) ?: return
         active.expiry?.let(handler::removeCallbacks)
         runCatching { SuperX.end(this, active.id) }
+        refreshIdle()
     }
 
     override fun onListenerDisconnected() {
         if (current === this) current = null
+        hideIdle()
         cards.keys.toList().forEach(::remove)
         if (enabled(this)) requestRebind(android.content.ComponentName(this, BridgeListener::class.java))
     }
 
     override fun onDestroy() {
         if (current === this) current = null
+        hideIdle()
         cards.keys.toList().forEach(::remove)
         super.onDestroy()
     }
@@ -134,12 +166,34 @@ class BridgeListener : NotificationListenerService() {
         private var current: BridgeListener? = null
         const val NATIVE_PACKAGE = "com.autonavi.minimap"
         const val SAMPLE_ID = 61061
+        private const val IDLE_ID = 61060
         private val systemPackages = setOf("android", "com.android.systemui")
         private fun prefs(context: Context) =
             context.getSharedPreferences("superx", Context.MODE_PRIVATE)
 
         fun enabled(context: Context): Boolean =
-            context.packageName == NATIVE_PACKAGE && prefs(context).getBoolean("forward", false)
+            accepted(context) && prefs(context).getBoolean("forward", false)
+
+        fun accepted(context: Context): Boolean =
+            context.packageName == NATIVE_PACKAGE && prefs(context).getInt("policy_version", 0) == 1
+
+        fun accept(context: Context) {
+            prefs(context).edit().putInt("policy_version", 1).apply()
+        }
+
+        fun withdraw(context: Context) {
+            prefs(context).edit().remove("policy_version").remove("forward").remove("idle").apply()
+            endActive(context)
+            context.deleteFile("diagnostics.txt")
+        }
+
+        fun idleEnabled(context: Context): Boolean =
+            accepted(context) && prefs(context).getBoolean("idle", false)
+
+        fun setIdle(context: Context, value: Boolean) {
+            prefs(context).edit().putBoolean("idle", value).apply()
+            current?.refreshIdle()
+        }
 
         fun appEnabled(context: Context, pkg: String): Boolean =
             pkg !in prefs(context).getStringSet("excluded_apps", emptySet()).orEmpty()
@@ -157,20 +211,22 @@ class BridgeListener : NotificationListenerService() {
 
         fun setLockscreen(context: Context, enabled: Boolean) {
             prefs(context).edit().putBoolean("lockscreen", enabled).apply()
-            endActive(context)
+            endActive(context, includeIdle = false)
         }
 
         fun setEnabled(context: Context, enabled: Boolean) {
             prefs(context).edit().putBoolean("forward", enabled).apply()
-            if (!enabled) endActive(context)
+            if (!enabled) endActive(context, includeIdle = false)
         }
 
-        private fun endActive(context: Context) {
+        private fun endActive(context: Context, includeIdle: Boolean = true) {
             current?.let { listener ->
                 listener.cards.keys.toList().forEach(listener::remove)
+                if (includeIdle) listener.hideIdle()
             }
             context.getSystemService(NotificationManager::class.java)?.activeNotifications
-                ?.filter { it.tag == SuperX.TAG && it.notification.channelId == SuperX.CHANNEL }
+                ?.filter { it.tag == SuperX.TAG && it.notification.channelId == SuperX.CHANNEL &&
+                    (includeIdle || it.id != IDLE_ID) }
                 ?.forEach { runCatching { SuperX.end(context, it.id) } }
         }
     }
