@@ -299,7 +299,6 @@ internal object SuperX {
                     .setSmallIcon(android.R.drawable.ic_dialog_info)
                     .setContentTitle("")
                     .setContentText("")
-                    .setSilent(true)
                     .setExtras(Bundle().apply {
                         putInt("$N.operation", 2)
                         putString("$N.scene", SCENE)
