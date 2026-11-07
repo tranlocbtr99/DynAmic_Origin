@@ -239,6 +239,32 @@ public class MainActivity extends Activity {
                 + Prefs.get(this).getString("last_notification_app", "")
                 + " · "
                 + android.text.format.DateUtils.getRelativeTimeSpanString(received));
+    heading("LTM Origin Bridge · thử nghiệm");
+    note("Kiểm tra Origin Island gốc của OriginOS 6. Chế độ đảo hiện tại không bị thay đổi. Thử nghiệm chỉ gửi một thông báo riêng; không bảo đảm SystemUI sẽ tạo đảo.");
+    row(
+        "Thử Origin Island gốc",
+        "Gửi thông báo thử nghiệm; kiểm tra đảo hệ thống và khay thông báo",
+        false,
+        () -> {
+          if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+              != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[] {android.Manifest.permission.POST_NOTIFICATIONS}, 61);
+            Toast.makeText(this, "Cấp quyền rồi nhấn thử lại", Toast.LENGTH_LONG).show();
+            return;
+          }
+          OriginIslandProbe.showProbe(this);
+          Toast.makeText(this, "Đã gửi yêu cầu thử nghiệm, chưa xác nhận đảo xuất hiện", Toast.LENGTH_LONG).show();
+        });
+    separator();
+    row(
+        "Gỡ thẻ thử nghiệm",
+        "Xóa thông báo thử nghiệm, không ảnh hưởng đảo hiện tại",
+        false,
+        () -> {
+          OriginIslandProbe.clearProbe(this);
+          Toast.makeText(this, "Đã yêu cầu gỡ thông báo thử nghiệm", Toast.LENGTH_SHORT).show();
+        });
+    note("Hãy kiểm tra xem thẻ xuất hiện trong Origin Island gốc hay chỉ trong khay thông báo. Chưa có chế độ thường trực, hỗ trợ mọi app hoặc màn hình khóa ở nhánh thử nghiệm này.");
     heading("Căn chỉnh camera");
     IOSToggle safe = new IOSToggle(this);
     safe.setChecked(Prefs.get(this).getBoolean("safe_interaction", false));
