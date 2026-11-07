@@ -160,6 +160,7 @@ object NativeProbe {
 /** Live card protocol shared by samples and incoming notifications. */
 internal object SuperX {
     const val TAG = "VIVO_SUPERX_TAG"
+    const val END_DELAY_MS = 350L
     const val CHANNEL = "dynamic_superx_live_high"
     private const val SCENE = "NAVIGATION"
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -319,7 +320,7 @@ internal object SuperX {
                 manager.cancel(TAG, id)
             }
             pendingEnds[id] = cancel
-            handler.postDelayed(cancel, 350L)
+            handler.postDelayed(cancel, END_DELAY_MS)
         }
     }
 }
