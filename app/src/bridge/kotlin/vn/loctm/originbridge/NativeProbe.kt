@@ -35,7 +35,7 @@ object NativeProbe {
         "SCENE_UNAVAILABLE_" + e.javaClass.simpleName
     }
 
-    /** OEM-only read-only probes; exceptions are expected on unsupported builds. */
+    /** Read-only OEM probes: distinguish missing method, access restriction and scene denial. */
     fun environmentReport(context: Context): String {
         val nm = manager(context) ?: return "NO_NOTIFICATION_MANAGER"
         val lines = mutableListOf(
@@ -43,20 +43,29 @@ object NativeProbe {
             "MANUFACTURER=" + android.os.Build.MANUFACTURER,
             "MODEL=" + android.os.Build.MODEL,
             "SDK=" + android.os.Build.VERSION.SDK_INT,
-            "NOTIFICATIONS_ENABLED=" + nm.areNotificationsEnabled()
+            "NOTIFICATIONS_ENABLED=" + nm.areNotificationsEnabled(),
+            "CHANNEL_IMPORTANCE=" + (nm.getNotificationChannel(CHANNEL)?.importance?.toString() ?: "NOT_CREATED")
         )
-        for (name in listOf("getSceneStatus", "isSupportCustomFun")) {
-            val result = try {
-                val method = NotificationManager::class.java.getMethod(
-                    name, String::class.java, String::class.java
-                )
-                method.invoke(nm, context.packageName, SCENE).toString()
-            } catch (e: Exception) {
-                "UNAVAILABLE_" + e.javaClass.simpleName
-            }
-            lines.add(name + "=" + result)
+        fun query(methodName: String): String = try {
+            val method = NotificationManager::class.java.getMethod(
+                methodName, String::class.java, String::class.java
+            )
+            val result = method.invoke(nm, context.packageName, SCENE)
+            result?.toString() ?: "NULL"
+        } catch (e: java.lang.reflect.InvocationTargetException) {
+            "INVOCATION_" + (e.targetException?.javaClass?.simpleName ?: "UNKNOWN")
+        } catch (e: NoSuchMethodException) {
+            "METHOD_MISSING"
+        } catch (e: SecurityException) {
+            "ACCESS_DENIED"
+        } catch (e: Exception) {
+            "UNAVAILABLE_" + e.javaClass.simpleName
         }
-        return lines.joinToString("\\n")
+        lines.add("SCENE_STATUS_BEFORE=" + query("getSceneStatus"))
+        lines.add("SCENE_REGISTER_ACTION=" + sceneRegistration(context))
+        lines.add("SCENE_STATUS_AFTER=" + query("getSceneStatus"))
+        lines.add("CUSTOM_FUNCTION=" + query("isSupportCustomFun"))
+        return lines.joinToString("\n")
     }
 
     private fun payload(context: Context, revision: Int): Bundle {
