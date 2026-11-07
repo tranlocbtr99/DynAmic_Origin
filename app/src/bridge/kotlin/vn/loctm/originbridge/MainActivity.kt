@@ -47,28 +47,16 @@ class MainActivity : Activity() {
         }
         scroll.addView(root)
         root.addView(label(applicationInfo.loadLabel(packageManager).toString(), 30f, true))
-        root.addView(label("OriginOS 6 · Giai đoạn 1\nKiểm chứng giao thức SystemUI nguyên bản. Không overlay, không root."))
+        root.addView(label("OriginOS 6 · Đảo thông báo của hệ thống"))
         action("Cấp quyền thông báo", "Cần để gửi thẻ chẩn đoán") {
             if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
                 requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 11)
             else startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
         }
         if (packageName == BridgeListener.NATIVE_PACKAGE) {
-            action("Quyền đọc thông báo", "Cho phép DynAmic nhận thông báo từ ứng dụng khác") {
-                startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-            }
-            val enabled = BridgeListener.enabled(this)
-            action(
-                if (enabled) "Tắt chuyển thông báo" else "Bật chuyển thông báo",
-                "Gửi tên ứng dụng và liên kết mở thông báo gốc qua SuperX."
-            ) {
-                if (!enabled && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                    requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 11)
-                } else {
-                    BridgeListener.setEnabled(this, !enabled)
-                    recreate()
-                }
-            }
+            showNativeSettings()
+            setContentView(scroll)
+            return
         }
         action("Gửi thẻ thử nghiệm", "Gửi thông báo với dữ liệu OEM thử nghiệm") { attempt(false) }
         action("Cập nhật thẻ", "Giữ cùng notification ID, thay nội dung để kiểm tra trùng lặp") { attempt(true) }
@@ -143,6 +131,75 @@ class MainActivity : Activity() {
         root.addView(label("KẾT QUẢ NGHIỆM THU\nChưa kiểm chứng trên thiết bị. Việc gửi thông báo thành công không chứng minh SystemUI đã hiển thị Origin Island gốc.", 13f))
         setContentView(scroll)
     }
+    private fun showNativeSettings() {
+        action("Quyền đọc thông báo", "Cho phép DynAmic nhận thông báo từ ứng dụng khác") {
+            startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+        }
+        val enabled = BridgeListener.enabled(this)
+        action(if (enabled) "Tắt chuyển thông báo" else "Bật chuyển thông báo",
+            "Gửi thông báo mới và tiến độ qua SuperX") {
+            if (enabled || canPost()) {
+                BridgeListener.setEnabled(this, !enabled)
+                recreate()
+            }
+        }
+        action("Lọc ứng dụng", "Chọn ứng dụng được chuyển lên đảo") {
+            val launcher = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+            val apps = packageManager.queryIntentActivities(launcher, 0)
+                .distinctBy { it.activityInfo.packageName }
+                .filter { it.activityInfo.packageName != packageName }
+                .sortedBy { it.loadLabel(packageManager).toString() }
+            val checked = apps.map { BridgeListener.appEnabled(this, it.activityInfo.packageName) }.toBooleanArray()
+            android.app.AlertDialog.Builder(this).setTitle("Ứng dụng được phép")
+                .setMultiChoiceItems(apps.map { it.loadLabel(packageManager) }.toTypedArray(), checked) { _, index, value ->
+                    checked[index] = value
+                }
+                .setPositiveButton("Lưu") { _, _ ->
+                    BridgeListener.setExcludedApps(this, apps.filterIndexed { index, _ -> !checked[index] }
+                        .map { it.activityInfo.packageName }.toSet())
+                }
+                .setNegativeButton("Hủy", null).show()
+        }
+        val lockscreen = BridgeListener.lockscreen(this)
+        action(if (lockscreen) "Tắt thẻ trên màn hình khóa" else "Bật thẻ trên màn hình khóa",
+            "Khi bật, thẻ chỉ hiển thị tên ứng dụng để bảo vệ nội dung") {
+            BridgeListener.setLockscreen(this, !lockscreen)
+            recreate()
+        }
+        action("Gửi hoặc cập nhật thẻ mẫu", "Dùng chung bộ gửi với thông báo thật") {
+            if (canPost()) {
+                revision++
+                val open = android.app.PendingIntent.getActivity(this, 0,
+                    Intent(this, MainActivity::class.java), android.app.PendingIntent.FLAG_IMMUTABLE)
+                val card = SuperX.Card(
+                    "DynAmic Origin", "Thẻ thử $revision", "DynAmic Origin",
+                    android.graphics.drawable.Icon.createWithResource(this, android.R.drawable.ic_dialog_info),
+                    open
+                )
+                val result = runCatching {
+                    SuperX.post(this, BridgeListener.SAMPLE_ID, revision, card, false)
+                }.getOrElse { "POST_ERROR_" + it.javaClass.simpleName }
+                Diagnostics.record(this, result)
+                Toast.makeText(this, result, Toast.LENGTH_SHORT).show()
+            }
+        }
+        action("Kết thúc thẻ mẫu", "Gửi lệnh kết thúc SuperX") {
+            runCatching { SuperX.end(this, BridgeListener.SAMPLE_ID) }
+        }
+        action("Xem nhật ký", "Kiểm tra lỗi quyền, kênh và phản hồi từ OriginOS") {
+            android.app.AlertDialog.Builder(this).setTitle("Nhật ký SuperX")
+                .setMessage(Diagnostics.report(this)).setPositiveButton("Đóng", null).show()
+        }
+    }
+
+    private fun canPost(): Boolean {
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+            return true
+        }
+        requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 11)
+        return false
+    }
+
     private fun attempt(update: Boolean) {
         if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 11)
