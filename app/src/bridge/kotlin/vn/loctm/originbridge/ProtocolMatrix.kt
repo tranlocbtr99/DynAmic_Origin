@@ -17,11 +17,11 @@ object ProtocolMatrix {
         Case("FORCE_TRAIN", "TRAIN", 6, forceShow = true),
         Case("PERMANENT_TRAIN", "TRAIN", 6, permanent = true)
     )
-    private const val CHANNEL = "ltm_protocol_matrix"
+    private const val CHANNEL = "ltm_protocol_matrix_high_v2"
     private const val ID = 61062
     fun post(context: Context, test: Case): String {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return "NO_MANAGER"
-        manager.createNotificationChannel(NotificationChannel(CHANNEL, "OriginOS protocol matrix", NotificationManager.IMPORTANCE_LOW))
+        manager.createNotificationChannel(NotificationChannel(CHANNEL, "OriginOS protocol matrix", NotificationManager.IMPORTANCE_HIGH))
         Diagnostics.record(context, NativeProbe.sceneRegistration(context))
         val icon = Icon.createWithResource(context, android.R.drawable.ic_dialog_info)
         val title = "LTM Origin Bridge"
