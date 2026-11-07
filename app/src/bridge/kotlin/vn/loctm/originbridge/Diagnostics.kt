@@ -15,6 +15,6 @@ object Diagnostics {
         }
     }
     fun report(context: Context): String = try {
-        context.openFileInput(FILE).bufferedReader().use { it.readText() }
+        context.openFileInput(FILE).bufferedReader().use { it.readLines().takeLast(60).asReversed().joinToString("\n") }
     } catch (_: Exception) { "Chưa có sự kiện thử nghiệm." }
 }
