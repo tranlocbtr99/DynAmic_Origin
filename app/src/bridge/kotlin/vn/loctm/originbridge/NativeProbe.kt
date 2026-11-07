@@ -277,7 +277,9 @@ internal object SuperX {
         })
     }
 
-    fun post(context: Context, id: Int, revision: Int, card: Card, lockscreen: Boolean): String {
+    fun post(context: Context, id: Int, revision: Int, card: Card, lockscreen: Boolean,
+        onDelete: android.app.PendingIntent? = null
+    ): String {
         val manager = channelManager(context) ?: return "NOTIFICATIONS_DISABLED"
         val error = register(manager)
         if (error != null) return "SCENE_UNAVAILABLE_$error"
@@ -292,6 +294,8 @@ internal object SuperX {
             .setSubText(card.app)
             .setOnlyAlertOnce(true)
             .setOngoing(card.ongoing)
+            .setAutoCancel(card.ongoing)
+            .setDeleteIntent(onDelete)
             .setExtras(payload(card, revision, lockscreen))
             .build())
         return "SUPERX_POSTED"
@@ -321,6 +325,79 @@ internal object SuperX {
             }
             pendingEnds[id] = cancel
             handler.postDelayed(cancel, END_DELAY_MS)
+        }
+    }
+}
+
+/** Keeps the notification publisher foreground while forwarding is enabled. */
+class CardPublisherService : android.app.Service() {
+    override fun onBind(intent: android.content.Intent?) = null
+
+    override fun onStartCommand(intent: android.content.Intent?, flags: Int, startId: Int): Int {
+        if (!BridgeListener.enabled(this)) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        if (current !== this) {
+            try {
+                val manager = getSystemService(NotificationManager::class.java)
+                manager.createNotificationChannel(
+                    NotificationChannel(STATUS_CHANNEL, "Chuyển thông báo", NotificationManager.IMPORTANCE_MIN)
+                        .apply { setSound(null, null); setShowBadge(false) }
+                )
+                startForeground(STATUS_ID, Notification.Builder(this, STATUS_CHANNEL)
+                    .setContentTitle("LTMori")
+                    .setContentText("Đang chuyển thông báo lên đảo")
+                    .setSmallIcon(android.R.drawable.ic_dialog_info)
+                    .setCategory(Notification.CATEGORY_SERVICE)
+                    .setOngoing(true)
+                    .build(), android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+                current = this
+                Diagnostics.record(this, "PUBLISHER_READY")
+                BridgeListener.publisherReady()
+            } catch (error: RuntimeException) {
+                Diagnostics.record(this, "PUBLISHER_START_" + error.javaClass.simpleName)
+                stopSelf()
+                return START_NOT_STICKY
+            }
+        }
+        val id = intent?.getIntExtra(DISMISS_ID, -1) ?: -1
+        if (id >= 0 && !BridgeListener.dismissCard(id)) SuperX.end(this, id)
+        return START_STICKY
+    }
+
+    override fun onDestroy() {
+        if (current === this) current = null
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        super.onDestroy()
+    }
+
+    companion object {
+        private const val STATUS_CHANNEL = "ltmori_forwarding"
+        private const val STATUS_ID = 61059
+        private const val DISMISS_ID = "dismiss_card_id"
+        private var current: CardPublisherService? = null
+
+        fun start(context: Context) {
+            if (current != null) return
+            try {
+                context.startForegroundService(android.content.Intent(context, CardPublisherService::class.java))
+            } catch (error: RuntimeException) {
+                Diagnostics.record(context, "PUBLISHER_REQUEST_" + error.javaClass.simpleName)
+            }
+        }
+
+        fun stop(context: Context) {
+            context.stopService(android.content.Intent(context, CardPublisherService::class.java))
+        }
+
+        internal fun publish(id: Int, revision: Int, card: SuperX.Card, lockscreen: Boolean): String {
+            val service = current ?: return "PUBLISHER_NOT_READY"
+            val intent = android.content.Intent(service, CardPublisherService::class.java)
+                .putExtra(DISMISS_ID, id)
+            val dismiss = android.app.PendingIntent.getService(service, id, intent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
+            return SuperX.post(service, id, revision, card, lockscreen, dismiss)
         }
     }
 }
