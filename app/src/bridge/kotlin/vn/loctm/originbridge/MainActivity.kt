@@ -73,6 +73,13 @@ class MainActivity : Activity() {
         }
         root.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) })
     }
+    override fun onResume() {
+        super.onResume()
+        if (native && BridgeListener.enabled(this) &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        ) CardPublisherService.start(this)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val scroll = ScrollView(this).apply { setBackgroundColor(0xff101522.toInt()) }
