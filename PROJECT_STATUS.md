@@ -1,3 +1,11 @@
+# LTMori 1.1.0 — 2026-11-07
+
+- Native flavor keeps package com.autonavi.minimap and adopts the LTMori name.
+- Opt-in idle card posts from the notification listener only while no forwarded card is active. It yields to incoming cards and returns after the last one ends. OriginOS must honor the persistent card flags on the handset.
+- Native onboarding requires scrolling the privacy policy, confirming it was read and checking consent. Forwarding and idle are gated in the listener. Withdrawal clears cards and the diagnostic log. Private content is not requested on AOD or lockscreen. The native UI shows LocTM attribution, build version, voluntary support and policy controls.
+- Settings motion uses the upstream preview as a reference for a dark capsule, a 700 ms pulse and short press transitions. The OS owns animation of actual SuperX cards.
+- Release APKs are signed outside CI with the dedicated ltmori key. Retain the same key and package ID, and increment versionCode for every update. Keep signing credentials out of the repo. Replacing the older debug APK requires uninstalling it once.
+
 # Native SuperX rebuild — 2026-11-07
 
 - Native2 uses one shared sender for samples and forwarded notifications. Its independently implemented wire protocol registers the 15 observed scene names, posts a NAVIGATION base card on a new silent HIGH channel, uses SuperX click callbacks, and sends operation 2 before cancelling.
