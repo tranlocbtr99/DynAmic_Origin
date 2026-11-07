@@ -1,3 +1,10 @@
+# LTMori 1.1.1 — 2026-11-07
+
+- Complete the idle card handoff before forwarding a real notification; hold arriving updates by source key during the handoff.
+- Show listener access and forwarding state. Log distinct local outcomes without source identity or text, and retry OEM-rejected cards once with a basic payload.
+- Keep standalone group summaries and preserve source notifications. Reuse the LTMori signing key.
+- Verify the handoff and app notification rendering on OriginOS after installing the update.
+
 # LTMori 1.1.0 — 2026-11-07
 
 - Native flavor keeps package com.autonavi.minimap and adopts the LTMori name.
