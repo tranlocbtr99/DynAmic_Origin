@@ -10,7 +10,7 @@
     <activity android:name="vn.loctm.originbridge.MainActivity" android:exported="true">
       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
     </activity>
-    <service android:name="vn.loctm.originbridge.BridgeListener" android:exported="true" android:label="LTM Origin Bridge · Thông báo" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+    <service android:name="vn.loctm.originbridge.BridgeListener" android:exported="true" android:label="${bridgeLabel}" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
       <intent-filter><action android:name="android.service.notification.NotificationListenerService"/></intent-filter>
     </service>
   </application>
