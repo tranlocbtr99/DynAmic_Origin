@@ -252,7 +252,7 @@ class MainActivity : Activity() {
     }
 
     private fun showNativeSettings() {
-        action("Quyền đọc thông báo", "Cho phép DynAmic nhận thông báo từ ứng dụng khác") {
+        action("Quyền đọc thông báo", BridgeListener.connectionStatus(this)) {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         }
         val idle = BridgeListener.idleEnabled(this)
@@ -265,7 +265,7 @@ class MainActivity : Activity() {
         }
         val enabled = BridgeListener.enabled(this)
         action(if (enabled) "Tắt chuyển thông báo" else "Bật chuyển thông báo",
-            "Gửi thông báo mới và tiến độ qua SuperX") {
+            if (enabled) "Đang bật · Nhận thông báo mới và tiến độ" else "Đang tắt · Đảo chờ vẫn có thể hiện") {
             if (enabled || canPost()) {
                 BridgeListener.setEnabled(this, !enabled)
                 recreate()
