@@ -59,6 +59,22 @@ class MainActivity : Activity() {
             NativeProbe.clear(this)
             Toast.makeText(this, "Đã yêu cầu gỡ thẻ", Toast.LENGTH_SHORT).show()
         }
+        action("Ma trận giao thức · 5 phép thử", "Chọn từng cấu hình để kiểm tra Origin Island gốc") {
+            val names = ProtocolMatrix.cases.map { it.id }.toTypedArray()
+            android.app.AlertDialog.Builder(this).setTitle("Chọn phép thử OEM")
+                .setItems(names) { _, index ->
+                    if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                        requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 11)
+                    } else {
+                        val result = ProtocolMatrix.post(this, ProtocolMatrix.cases[index])
+                        Toast.makeText(this, result, Toast.LENGTH_LONG).show()
+                    }
+                }.setNegativeButton("Đóng", null).show()
+        }
+        action("Gỡ thẻ ma trận", "Kết thúc phép thử và hủy thông báo ma trận") {
+            ProtocolMatrix.clear(this)
+            Toast.makeText(this, "Đã yêu cầu gỡ thẻ ma trận", Toast.LENGTH_SHORT).show()
+        }
         action("Xem nhật ký cục bộ", "Chỉ ghi thao tác, không ghi nội dung thông báo") {
             android.app.AlertDialog.Builder(this).setTitle("Nhật ký thử nghiệm")
                 .setMessage(Diagnostics.report(this)).setPositiveButton("Đóng", null).show()
