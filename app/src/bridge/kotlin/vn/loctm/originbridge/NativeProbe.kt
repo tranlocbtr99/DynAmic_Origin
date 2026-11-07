@@ -19,7 +19,7 @@ object NativeProbe {
     private fun manager(context: Context): NotificationManager? =
         context.getSystemService(NotificationManager::class.java)
 
-    private fun sceneRegistration(context: Context): String = try {
+    fun sceneRegistration(context: Context): String = try {
         val method = NotificationManager::class.java.getMethod(
             "setSuperXInfosSceneList",
             MutableList::class.java, MutableList::class.java,
