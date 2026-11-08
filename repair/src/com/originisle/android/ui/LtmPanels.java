@@ -55,17 +55,17 @@ public final class LtmPanels {
             dialog = new Dialog(activity);
             dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
             root = column(activity);
-            int pad = dp(activity, 18);
+            int pad = dp(activity, 14);
             root.setPadding(pad, pad, pad, pad);
             root.setBackground(rounded(activity, PANEL, 28));
-            root.addView(text(title, 24, Color.WHITE));
+            root.addView(text(title, 22, Color.WHITE));
             root.addView(text(subtitle, 14, MUTED));
             scroll = new ScrollView(activity);
             scroll.setFillViewport(false);
             body = column(activity);
             scroll.addView(body);
             LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams(-1, 0, 1);
-            scrollParams.topMargin = dp(activity, 10);
+            scrollParams.topMargin = dp(activity, 8);
             root.addView(scroll, scrollParams);
             actions = column(activity);
             root.addView(actions, new LinearLayout.LayoutParams(-1, -2));
@@ -83,13 +83,13 @@ public final class LtmPanels {
 
         void card(String title, String description) {
             LinearLayout card = column(activity);
-            int pad = dp(activity, 13);
+            int pad = dp(activity, 10);
             card.setPadding(pad, pad, pad, pad);
             card.setBackground(rounded(activity, CARD, 17));
             card.addView(text(title, 16, Color.WHITE));
             card.addView(text(description, 14, MUTED));
             LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(-1, -2);
-            layout.bottomMargin = dp(activity, 8);
+            layout.bottomMargin = dp(activity, 6);
             body.addView(card, layout);
         }
 
@@ -97,6 +97,8 @@ public final class LtmPanels {
             Button button = new Button(activity);
             button.setText(label);
             button.setAllCaps(false);
+            button.setMinHeight(dp(activity, 48));
+            button.setMinimumHeight(dp(activity, 48));
             button.setTextColor(Color.WHITE);
             button.setBackgroundTintList(null);
             button.setBackground(rounded(activity, primary ? BLUE : CARD, 18));
