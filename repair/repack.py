@@ -17,11 +17,19 @@ def manifest_patch(data):
         offset = p + start + read32(data, p + header + 4 * index)
         length = struct.unpack_from('<H', data, offset)[0]
         names.append(data[offset + 2:offset + 2 + 2 * length].decode('utf-16le'))
-    names[names.index('1.3.2')] = '1.3.7'
+    names[names.index('1.3.2')] = '2.0.1'
     permission = 'android.permission.REQUEST_INSTALL_PACKAGES'
     provider = 'com.originisle.android.ui.LtmApkProvider'
     authority = 'com.autonavi.minimap.ltmori.updates'
-    names += ['grantUriPermissions', permission, provider, authority]
+    boot = 'android.permission.RECEIVE_BOOT_COMPLETED'
+    job = 'com.originisle.android.ui.LtmUpdateJob'
+    bind = 'android.permission.BIND_JOB_SERVICE'
+    network = 'android.permission.ACCESS_NETWORK_STATE'
+    add_network = network not in names
+    assert boot not in names
+    names += ['grantUriPermissions', permission, provider, authority, boot, job, bind]
+    if add_network:
+        names.append(network)
     idx = names.index
     no_index = 0xffffffff
     namespace = idx('http://schemas.android.com/apk/res/android')
@@ -63,12 +71,16 @@ def manifest_patch(data):
                 positions = [16 + first + i * stride for i in range(length)]
                 version, = [pos for pos in positions if names[read32(chunk, pos + 4)] == 'versionCode']
                 assert read32(chunk, version + 16) == 45
-                struct.pack_into('<I', chunk, version + 16, 50)
+                struct.pack_into('<I', chunk, version + 16, 51)
             if tag == 'application':
                 result += element('uses-permission', [('name', permission)])
+                result += element('uses-permission', [('name', boot)])
+                if add_network:
+                    result += element('uses-permission', [('name', network)])
         if kind == 259 and names[read32(chunk, 20)] == 'application':
             result += element('provider', [('name', provider), ('exported', 0), ('authorities', authority),
                                            ('grantUriPermissions', 0xffffffff)])
+            result += element('service', [('name', job), ('permission', bind), ('exported', 0)])
         result += chunk
     struct.pack_into('<I', result, 4, len(result))
     return result

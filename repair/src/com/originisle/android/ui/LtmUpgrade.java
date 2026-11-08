@@ -51,43 +51,79 @@ public final class LtmUpgrade {
         }
     }
 
+    static void enqueue(Runnable work) {
+        WORK.execute(work);
+    }
+
+    static JSONObject newRelease(Context context) throws Exception {
+        JSONObject candidate = release();
+        String tag = candidate.getString("tag_name");
+        if (compareVersions(tag, version(context)) <= 0) return null;
+        selectApk(candidate, tag);
+        return candidate;
+    }
+
+    static String notes(JSONObject release) {
+        String body = release.optString("body", "").strip();
+        return body.isEmpty() ? "Bản phát hành chưa có ghi chú." : body;
+    }
+
     public static void open(Context context) {
         Activity activity = LtmPanels.activity(context);
-        if (activity == null || activity.isFinishing()) return;
+        if (activity == null || activity.isFinishing() || activity.isDestroyed()) return;
         if (active != null && active.dialog.isShowing()) return;
-        LtmPanels.Sheet sheet = new LtmPanels.Sheet(activity, "Cập nhật LTMori", "Phiên bản hiện tại · " + version(activity));
-        active = sheet;
-        TextView status = sheet.text("Đang kiểm tra GitHub…", 16, 0xffffffff);
-        sheet.body.addView(status);
-        ProgressBar progress = new ProgressBar(activity, null, android.R.attr.progressBarStyleHorizontal);
-        progress.setIndeterminate(true);
-        sheet.body.addView(progress);
-        Runnable[] action = new Runnable[1];
-        Button primary = sheet.button("Tải bản cập nhật", true, () -> action[0].run());
-        primary.setVisibility(android.view.View.GONE);
-        sheet.button("Đóng", false, sheet.dialog::dismiss);
-        sheet.dialog.setOnDismissListener(dialog -> {
-            if (active == sheet) active = null;
-        });
-        sheet.show(43);
+        LtmPanels.Sheet loading = new LtmPanels.Sheet(activity, "Cập nhật LTMori", "Phiên bản hiện tại · " + version(activity));
+        TextView status = loading.text("Đang kiểm tra GitHub…", 16, 0xffffffff);
+        loading.body.addView(status);
+        loading.button("Đóng", false, loading.dialog::dismiss);
+        track(loading);
+        loading.show(43);
         WORK.execute(() -> {
             try {
-                JSONObject release = release();
-                String tag = release.getString("tag_name");
-                int comparison = compareVersions(tag, version(activity));
-                if (comparison <= 0) {
-                    post(sheet, () -> message(status, progress, "Bạn đang dùng phiên bản mới nhất."));
-                    return;
-                }
-                JSONObject asset = selectApk(release, tag);
-                post(sheet, () -> {
-                    message(status, progress, "Đã có bản " + tag + ". APK sẽ được xác minh trước khi cài.");
-                    action[0] = () -> download(sheet, status, progress, primary, action, asset, tag);
-                    primary.setVisibility(android.view.View.VISIBLE);
+                JSONObject candidate = newRelease(activity);
+                post(loading, () -> {
+                    if (candidate == null) {
+                        status.setText("Bạn đang dùng phiên bản mới nhất.");
+                    } else {
+                        loading.dialog.dismiss();
+                        showRelease(activity, candidate);
+                    }
                 });
             } catch (Exception error) {
-                post(sheet, () -> message(status, progress, userMessage(error)));
+                post(loading, () -> status.setText(userMessage(error)));
             }
+        });
+    }
+
+    static boolean showRelease(Activity activity, JSONObject release) {
+        if (activity.isFinishing() || activity.isDestroyed() || active != null && active.dialog.isShowing()) return false;
+        try {
+            String tag = release.getString("tag_name");
+            JSONObject asset = selectApk(release, tag);
+            LtmPanels.Sheet sheet = new LtmPanels.Sheet(activity, "Có gì mới?", "LTMori " + tag);
+            sheet.card("Ghi chú phát hành", notes(release));
+            TextView status = sheet.text("APK sẽ được xác minh trước khi cài.", 14, 0xffbdc9db);
+            sheet.body.addView(status);
+            ProgressBar progress = new ProgressBar(activity, null, android.R.attr.progressBarStyleHorizontal);
+            progress.setVisibility(android.view.View.GONE);
+            sheet.body.addView(progress);
+            Runnable[] action = new Runnable[1];
+            Button primary = sheet.button("Cập nhật", true, () -> action[0].run());
+            action[0] = () -> download(sheet, status, progress, primary, action, asset, tag);
+            sheet.button("Để sau", false, sheet.dialog::dismiss);
+            track(sheet);
+            sheet.show(73);
+            LtmUpdateJob.markSeen(activity, tag);
+            return true;
+        } catch (Exception error) {
+            return false;
+        }
+    }
+
+    private static void track(LtmPanels.Sheet sheet) {
+        active = sheet;
+        sheet.dialog.setOnDismissListener(dialog -> {
+            if (active == sheet) active = null;
         });
     }
 
