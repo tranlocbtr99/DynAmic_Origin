@@ -1,6 +1,13 @@
-.gradle/
-**/build/
-local.properties
+*.apk
+*.apk.idsig
 *.jks
 *.keystore
-keystore.properties
+*.p12
+*.password
+local.properties
+repair/tools/
+repair/decoded/
+repair/compiled/
+repair/checks/
+repair/dex/
+__pycache__/
