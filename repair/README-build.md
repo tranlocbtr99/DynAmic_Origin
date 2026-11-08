@@ -1,4 +1,4 @@
-# LTMori 1.3.6
+# LTMori 1.3.7
 
 Bản vá lấy APK LTMori 1.3.2 đã ký làm đầu vào. SHA-256 của đầu vào là f85ca4f869dab08817fc447491dc06a32fbedbebe0f73956839a0217309b90ce.
 
@@ -15,11 +15,11 @@ java -cp repair/tools/r8.jar com.android.tools.r8.D8 --min-api 34 --lib repair/t
 python3 repair/repack.py
 ```
 
-Dùng apksigner để ký repair/ltmori-unsigned.apk bằng khóa LTMori đang dùng. Khóa và mật khẩu được quản lý riêng.
+Dùng apksigner với --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true để ký repair/ltmori-unsigned.apk bằng khóa LTMori đang dùng. Khóa và mật khẩu được quản lý riêng.
 
 ## Phát hành bản tiếp theo
 
-Tạo GitHub Release công khai trong tranlocbtr99/DynAmic_Origin. Dùng tag dạng v1.3.7 và đính kèm LTMori-1.3.7-Origin-signed.apk. Tag phải khớp versionName. APK phải giữ applicationId và chữ ký, đồng thời có versionCode lớn hơn phiên bản đang cài. Nút cập nhật truy vấn release ổn định mới nhất.
+Tạo GitHub Release công khai trong tranlocbtr99/DynAmic_Origin. Dùng tag dạng v1.3.8 và đính kèm LTMori-1.3.8-Origin-signed.apk. Tag phải khớp versionName. APK phải giữ applicationId và chữ ký, đồng thời có versionCode lớn hơn phiên bản đang cài. Nút cập nhật truy vấn release ổn định mới nhất.
 
 ## English
 

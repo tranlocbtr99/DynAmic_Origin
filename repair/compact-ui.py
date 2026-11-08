@@ -34,3 +34,7 @@ change('HomeScreenKt$HomeScreen$4$1$1.smali', ' invoke(Landroidx/compose/foundat
     ('const/16 v1, 0x1c\n\n    .line 149', 'const/16 v1, 0x18\n\n    .line 149'),
     ('const/16 v11, 0x20\n\n    .line 152', 'const/16 v11, 0x1c\n\n    .line 152'),
 ])
+
+change('samples/IdleDot.smali', ' greenIcon()', [
+    ('const/high16 v4, 0x41000000    # 8.0f', 'const/high16 v4, 0x40a00000    # 5.0f'),
+])
