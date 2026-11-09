@@ -15,6 +15,8 @@ LTMori là bản tùy chỉnh độc lập dựa trên Origin Isle, dùng để 
 
 Nhánh `main` là nền phát triển 2.0.1. Repo lưu mã nguồn bản vá và công cụ đóng gói lại từ APK 1.3.2. Khả năng hiển thị Island phụ thuộc vào tích hợp SuperX trên thiết bị. [Hướng dẫn build và phát hành](repair/README-build.md).
 
+Việc tái sử dụng phần gốc của LTMori để tạo sản phẩm tương tự cần được LocTM cho phép trước bằng văn bản. [Quyền sử dụng](LICENSE.md#tiếng-việt).
+
 ## English
 
 LTMori is an independent customization based on Origin Isle. It displays notifications and live activities on Origin Island on compatible vivo and iQOO devices running OriginOS.
@@ -26,5 +28,7 @@ LTMori is an independent customization based on Origin Isle. It displays notific
 - Starting with 2.0.1, LTMori checks for releases automatically and displays release notes before downloading. Notification mode changes require confirmation.
 
 The `main` branch is the 2.0.1 development baseline. This repository contains the patch source and tooling to rebuild from the 1.3.2 APK. Island rendering depends on device support for SuperX. [Build and release guide](repair/README-build.md).
+
+Reusing original LTMori material to create a similar product requires LocTM’s prior written permission. [Reuse policy](LICENSE.md#english).
 
 [Origin Isle](https://github.com/fvhde/origin-isle) · [GitHub Releases](https://github.com/tranlocbtr99/DynAmic_Origin/releases)
