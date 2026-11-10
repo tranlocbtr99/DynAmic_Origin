@@ -2,7 +2,7 @@ from pathlib import Path
 import struct
 import zipfile
 
-BASE = Path('LTMori-1.3.6-Origin-signed.apk')
+BASE = Path('LTMori-2.0.3-Origin-signed.apk')
 OUTPUT = Path('repair/ltmori-unsigned.apk')
 
 def read32(data, offset):
@@ -17,7 +17,7 @@ def manifest_patch(data):
         offset = p + start + read32(data, p + header + 4 * index)
         length = struct.unpack_from('<H', data, offset)[0]
         names.append(data[offset + 2:offset + 2 + 2 * length].decode('utf-16le'))
-    names[names.index('1.3.6')] = '3.0.0'
+    names[names.index('2.0.3')] = '3.0.0'
     permission = 'android.permission.REQUEST_INSTALL_PACKAGES'
     provider = 'com.originisle.android.ui.LtmApkProvider'
     authority = 'com.autonavi.minimap.ltmori.updates'
@@ -73,7 +73,7 @@ def manifest_patch(data):
                 first, stride, length = struct.unpack_from('<HHH', chunk, 24)
                 positions = [16 + first + i * stride for i in range(length)]
                 version, = [pos for pos in positions if names[read32(chunk, pos + 4)] == 'versionCode']
-                assert read32(chunk, version + 16) == 49
+                assert read32(chunk, version + 16) == 53
                 struct.pack_into('<I', chunk, version + 16, 60)
             if tag == 'application':
                 if permission not in names:
