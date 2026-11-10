@@ -183,6 +183,13 @@ public final class LtmPanels {
         sheet.card("Quyền riêng tư", "Thông báo và lịch sử mở ứng dụng được xử lý trên thiết bị. Bạn có thể thu hồi quyền trong Cài đặt Android.");
         sheet.card("Tự khởi động", "Bật Tự khởi động và Khởi động liên kết nếu OriginOS có cả hai tùy chọn.");
         sheet.card("Ghi công", "Phát triển dựa trên Origin Isle. LTMori là bản tùy chỉnh độc lập.");
+        CheckBox betaToggle = new CheckBox(activity);
+        betaToggle.setText("Bật kênh cập nhật Beta (thử nghiệm)");
+        betaToggle.setTextColor(Color.WHITE);
+        betaToggle.setButtonTintList(ColorStateList.valueOf(0xff70b4ff));
+        betaToggle.setChecked(LtmUpgrade.isBeta(activity));
+        betaToggle.setOnCheckedChangeListener((view, checked) -> LtmUpgrade.setBeta(activity, checked));
+        sheet.body.addView(betaToggle);
         sheet.button("Chính sách quyền riêng tư", false, () -> {
             Sheet privacy = new Sheet(activity, "Chính sách quyền riêng tư", "LTMori");
             policy(privacy);

@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.provider.Settings;
 import android.widget.Button;
@@ -33,7 +34,9 @@ import javax.net.ssl.HttpsURLConnection;
 public final class LtmUpgrade {
     private static final String REPO = "tranlocbtr99/DynAmic_Origin";
     private static final String API = "https://api.github.com/repos/" + REPO + "/releases/latest";
+    private static final String API_ALL = "https://api.github.com/repos/" + REPO + "/releases";
     private static final String ASSETS = "https://github.com/" + REPO + "/releases/download/";
+    private static final String PREFS = "ltmori_updates";
     private static final String APK_TYPE = "application/vnd.android.package-archive";
     private static final long MAX_APK = 150L * 1024 * 1024;
     private static final ExecutorService WORK = Executors.newSingleThreadExecutor();
@@ -41,6 +44,18 @@ public final class LtmUpgrade {
 
     static File apk(Context context) {
         return new File(context.getCacheDir(), "ltmori-update.apk");
+    }
+
+    static SharedPreferences prefs(Context context) {
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+    }
+
+    static boolean isBeta(Context context) {
+        return prefs(context).getBoolean("beta_channel", false);
+    }
+
+    static void setBeta(Context context, boolean beta) {
+        prefs(context).edit().putBoolean("beta_channel", beta).apply();
     }
 
     static String version(Context context) {
@@ -56,11 +71,39 @@ public final class LtmUpgrade {
     }
 
     static JSONObject newRelease(Context context) throws Exception {
-        JSONObject candidate = release();
+        JSONObject candidate = latestRelease(context);
+        if (candidate == null) return null;
         String tag = candidate.getString("tag_name");
         if (compareVersions(tag, version(context)) <= 0) return null;
         selectApk(candidate, tag);
         return candidate;
+    }
+
+    static JSONObject latestRelease(Context context) throws Exception {
+        if (!isBeta(context)) return release();
+        HttpsURLConnection connection = connect(API_ALL, true);
+        try (InputStream in = connection.getInputStream(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[8192];
+            for (int count; (count = in.read(buffer)) != -1;) {
+                if (out.size() + count > 2 * 1024 * 1024) throw new IOException("Dữ liệu GitHub quá lớn.");
+                out.write(buffer, 0, count);
+            }
+            JSONArray releases = new JSONArray(new String(out.toByteArray(), StandardCharsets.UTF_8));
+            JSONObject latest = null;
+            for (int i = 0; i < releases.length(); i++) {
+                JSONObject r = releases.getJSONObject(i);
+                if ("true".equals(r.optString("draft"))) continue;
+                if (latest == null) {
+                    latest = r;
+                } else {
+                    int cmp = compareVersions(r.getString("tag_name"), latest.getString("tag_name"));
+                    if (cmp > 0) latest = r;
+                }
+            }
+            return latest;
+        } finally {
+            connection.disconnect();
+        }
     }
 
     static String notes(JSONObject release) {
@@ -100,7 +143,10 @@ public final class LtmUpgrade {
         try {
             String tag = release.getString("tag_name");
             JSONObject asset = selectApk(release, tag);
-            LtmPanels.Sheet sheet = new LtmPanels.Sheet(activity, "Có gì mới?", "LTMori " + tag);
+            boolean beta = "true".equals(release.optString("prerelease"));
+            LtmPanels.Sheet sheet = new LtmPanels.Sheet(activity,
+                    beta ? "Bản beta có gì mới?" : "Có gì mới?",
+                    "LTMori " + tag + (beta ? " · beta" : ""));
             sheet.card("Ghi chú phát hành", notes(release));
             TextView status = sheet.text("APK sẽ được xác minh trước khi cài.", 14, 0xffbdc9db);
             sheet.body.addView(status);
