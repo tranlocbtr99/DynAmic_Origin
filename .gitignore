@@ -8,6 +8,7 @@ local.properties
 repair/tools/
 repair/decoded/
 repair/compiled/
+repair/kotlin-stub.jar
 repair/checks/
 repair/dex/
 __pycache__/

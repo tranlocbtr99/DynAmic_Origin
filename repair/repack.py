@@ -2,7 +2,7 @@ from pathlib import Path
 import struct
 import zipfile
 
-BASE = Path('LTMori-1.3.2-Origin-signed.apk')
+BASE = Path('LTMori-1.3.6-Origin-signed.apk')
 OUTPUT = Path('repair/ltmori-unsigned.apk')
 
 def read32(data, offset):
@@ -17,7 +17,7 @@ def manifest_patch(data):
         offset = p + start + read32(data, p + header + 4 * index)
         length = struct.unpack_from('<H', data, offset)[0]
         names.append(data[offset + 2:offset + 2 + 2 * length].decode('utf-16le'))
-    names[names.index('1.3.2')] = '3.0.0'
+    names[names.index('1.3.6')] = '3.0.0'
     permission = 'android.permission.REQUEST_INSTALL_PACKAGES'
     provider = 'com.originisle.android.ui.LtmApkProvider'
     authority = 'com.autonavi.minimap.ltmori.updates'
@@ -26,8 +26,11 @@ def manifest_patch(data):
     bind = 'android.permission.BIND_JOB_SERVICE'
     network = 'android.permission.ACCESS_NETWORK_STATE'
     add_network = network not in names
-    assert boot not in names
-    names += ['grantUriPermissions', permission, provider, authority, boot, job, bind]
+    add_boot = boot not in names
+    add_job = job not in names
+    add_bind = bind not in names
+    names_to_add = [n for n in [boot, job, bind] if n not in names]
+    names += names_to_add
     if add_network:
         names.append(network)
     idx = names.index
@@ -70,17 +73,23 @@ def manifest_patch(data):
                 first, stride, length = struct.unpack_from('<HHH', chunk, 24)
                 positions = [16 + first + i * stride for i in range(length)]
                 version, = [pos for pos in positions if names[read32(chunk, pos + 4)] == 'versionCode']
-                assert read32(chunk, version + 16) == 45
+                assert read32(chunk, version + 16) == 49
                 struct.pack_into('<I', chunk, version + 16, 60)
             if tag == 'application':
-                result += element('uses-permission', [('name', permission)])
-                result += element('uses-permission', [('name', boot)])
+                if permission not in names:
+                    result += element('uses-permission', [('name', permission)])
+                if add_boot:
+                    result += element('uses-permission', [('name', boot)])
+                if add_bind:
+                    result += element('uses-permission', [('name', bind)])
                 if add_network:
                     result += element('uses-permission', [('name', network)])
         if kind == 259 and names[read32(chunk, 20)] == 'application':
-            result += element('provider', [('name', provider), ('exported', 0), ('authorities', authority),
-                                           ('grantUriPermissions', 0xffffffff)])
-            result += element('service', [('name', job), ('permission', bind), ('exported', 0)])
+            if provider not in names:
+                result += element('provider', [('name', provider), ('exported', 0), ('authorities', authority),
+                                               ('grantUriPermissions', 0xffffffff)])
+            if add_job:
+                result += element('service', [('name', job), ('permission', bind), ('exported', 0)])
         result += chunk
     struct.pack_into('<I', result, 4, len(result))
     return result
@@ -88,12 +97,10 @@ def manifest_patch(data):
 with zipfile.ZipFile(BASE) as source, zipfile.ZipFile(OUTPUT, 'w') as output:
     manifest = manifest_patch(source.read('AndroidManifest.xml'))
     replacements = {'AndroidManifest.xml': manifest,
-                    'classes2.dex': Path('repair/decoded/build/apk/classes2.dex').read_bytes()}
+                    'classes2.dex': Path('repair/decoded/build/apk/classes2.dex').read_bytes(),
+                    'classes3.dex': Path('repair/dex/classes.dex').read_bytes()}
     entries = [(item, replacements[item.filename] if item.filename in replacements else source.read(item))
                for item in source.infolist()]
-    helper = zipfile.ZipInfo('classes3.dex')
-    helper.compress_type = source.getinfo('classes2.dex').compress_type
-    entries.append((helper, Path('repair/dex/classes.dex').read_bytes()))
     for item, content in entries:
         if item.filename.startswith('META-INF/') and item.filename.endswith(('.RSA', '.SF', '.DSA', '.EC')):
             continue
