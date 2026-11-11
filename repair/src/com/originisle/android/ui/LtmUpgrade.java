@@ -240,7 +240,7 @@ public final class LtmUpgrade {
             Uri uri = Uri.parse("content://" + activity.getPackageName() + ".ltmori.updates/release.apk");
             Intent intent = new Intent(Intent.ACTION_VIEW).setDataAndType(uri, APK_TYPE);
             intent.setClipData(ClipData.newRawUri("LTMori APK", uri));
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
             activity.startActivity(intent);
         } catch (RuntimeException error) {
             status.setText("Không mở được trình cài đặt Android. Kiểm tra quyền cài ứng dụng từ LTMori.");
@@ -254,8 +254,10 @@ public final class LtmUpgrade {
         PackageInfo update = pm.getPackageArchiveInfo(file.getAbsolutePath(), flags);
         if (update == null || !current.packageName.equals(update.packageName))
             throw new IOException("APK không thuộc mã gói của LTMori đang cài.");
+        String expectedBase = tag.replaceFirst("^v", "").split("-")[0];
+        String updateBase = update.versionName != null ? update.versionName.replaceFirst("^v", "").split("-")[0] : "";
         if (update.versionName == null || update.getLongVersionCode() <= current.getLongVersionCode()
-                || compareVersions(update.versionName, tag) != 0)
+                || (!update.versionName.equals(tag.replaceFirst("^v", "")) && !updateBase.equals(expectedBase)))
             throw new IOException("Phiên bản APK không khớp bản phát hành hoặc không mới hơn.");
         if (current.signingInfo == null || update.signingInfo == null
                 || !new HashSet<>(Arrays.asList(current.signingInfo.getApkContentsSigners()))
@@ -281,6 +283,9 @@ public final class LtmUpgrade {
         String plain = tag.replaceFirst("^v", "");
         String primary = "LTMori-" + plain + "-Origin-signed.apk";
         String generic = "LTMori-" + plain + "-signed.apk";
+        String base = plain.split("-")[0];
+        String basePrimary = "LTMori-" + base + "-Origin-signed.apk";
+        String baseGeneric = "LTMori-" + base + "-signed.apk";
         JSONArray assets = release.getJSONArray("assets");
         JSONObject fallback = null;
         for (int i = 0; i < assets.length(); i++) {
@@ -290,6 +295,8 @@ public final class LtmUpgrade {
             if (!url.equals(ASSETS + tag + "/" + name)) continue;
             if (name.equals(primary)) return item;
             if (name.equals(generic)) fallback = item;
+            if (fallback == null && name.equals(basePrimary)) fallback = item;
+            if (fallback == null && name.equals(baseGeneric)) fallback = item;
         }
         if (fallback != null) return fallback;
         throw new IOException("Bản GitHub này chưa có APK LTMori đã ký phù hợp.");
@@ -331,14 +338,45 @@ public final class LtmUpgrade {
     }
 
     static int compareVersions(String left, String right) throws IOException {
-        if (!left.matches("v?[0-9]{1,8}(\\.[0-9]{1,8}){0,3}") || !right.matches("v?[0-9]{1,8}(\\.[0-9]{1,8}){0,3}"))
+        String semverPattern = "^v?[0-9]{1,8}(\\.[0-9]{1,8}){0,3}(-[0-9A-Za-z.-]+)?$";
+        if (!left.matches(semverPattern) || !right.matches(semverPattern))
             throw new IOException("Phiên bản GitHub hoặc ứng dụng không hợp lệ.");
-        String[] a = left.replaceFirst("^v", "").split("\\.");
-        String[] b = right.replaceFirst("^v", "").split("\\.");
+        String l = left.replaceFirst("^v", "");
+        String r = right.replaceFirst("^v", "");
+        String[] lParts = l.split("-", 2);
+        String[] rParts = r.split("-", 2);
+        String[] a = lParts[0].split("\\.");
+        String[] b = rParts[0].split("\\.");
         for (int i = 0; i < Math.max(a.length, b.length); i++) {
             int order = Integer.compare(i < a.length ? Integer.parseInt(a[i]) : 0,
                     i < b.length ? Integer.parseInt(b[i]) : 0);
             if (order != 0) return order;
+        }
+        boolean lPre = lParts.length > 1;
+        boolean rPre = rParts.length > 1;
+        if (!lPre && !rPre) return 0;
+        if (!lPre && rPre) return 1;
+        if (lPre && !rPre) return -1;
+        return comparePrerelease(lParts[1], rParts[1]);
+    }
+
+    private static int comparePrerelease(String left, String right) {
+        String[] a = left.split("\\.");
+        String[] b = right.split("\\.");
+        for (int i = 0; i < Math.max(a.length, b.length); i++) {
+            if (i >= a.length) return -1;
+            if (i >= b.length) return 1;
+            String segA = a[i];
+            String segB = b[i];
+            boolean aNum = segA.matches("^[0-9]+$");
+            boolean bNum = segB.matches("^[0-9]+$");
+            if (aNum && bNum) {
+                int cmp = Long.compare(Long.parseLong(segA), Long.parseLong(segB));
+                if (cmp != 0) return cmp;
+            } else {
+                int cmp = segA.compareTo(segB);
+                if (cmp != 0) return cmp;
+            }
         }
         return 0;
     }

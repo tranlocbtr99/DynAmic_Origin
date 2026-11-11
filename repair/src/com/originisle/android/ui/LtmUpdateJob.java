@@ -58,7 +58,7 @@ public final class LtmUpdateJob extends JobService {
                 if (release == null) return;
                 String tag = release.getString("tag_name");
                 MAIN.post(() -> {
-                    if (activity.isFinishing() || activity.isDestroyed() || !activity.hasWindowFocus()) return;
+                    if (activity.isFinishing() || activity.isDestroyed()) return;
                     if (tag.equals(prefs(activity).getString("seen", ""))) return;
                     LtmUpgrade.showRelease(activity, release);
                 });

@@ -17,7 +17,10 @@ def manifest_patch(data):
         offset = p + start + read32(data, p + header + 4 * index)
         length = struct.unpack_from('<H', data, offset)[0]
         names.append(data[offset + 2:offset + 2 + 2 * length].decode('utf-16le'))
-    names[names.index('2.0.3')] = '3.0.0'
+    if '2.0.3' in names:
+        names[names.index('2.0.3')] = '3.0.0-beta.2'
+    elif '3.0.0' in names:
+        names[names.index('3.0.0')] = '3.0.0-beta.2'
     permission = 'android.permission.REQUEST_INSTALL_PACKAGES'
     provider = 'com.originisle.android.ui.LtmApkProvider'
     authority = 'com.autonavi.minimap.ltmori.updates'
@@ -73,8 +76,8 @@ def manifest_patch(data):
                 first, stride, length = struct.unpack_from('<HHH', chunk, 24)
                 positions = [16 + first + i * stride for i in range(length)]
                 version, = [pos for pos in positions if names[read32(chunk, pos + 4)] == 'versionCode']
-                assert read32(chunk, version + 16) == 53
-                struct.pack_into('<I', chunk, version + 16, 60)
+                assert read32(chunk, version + 16) in (53, 60)
+                struct.pack_into('<I', chunk, version + 16, 61)
             if tag == 'application':
                 if permission not in names:
                     result += element('uses-permission', [('name', permission)])
@@ -96,9 +99,11 @@ def manifest_patch(data):
 
 with zipfile.ZipFile(BASE) as source, zipfile.ZipFile(OUTPUT, 'w') as output:
     manifest = manifest_patch(source.read('AndroidManifest.xml'))
+    classes2_override = Path('repair/decoded/build/apk/classes2.dex')
     replacements = {'AndroidManifest.xml': manifest,
-                    'classes2.dex': Path('repair/decoded/build/apk/classes2.dex').read_bytes(),
                     'classes3.dex': Path('repair/dex/classes.dex').read_bytes()}
+    if classes2_override.is_file():
+        replacements['classes2.dex'] = classes2_override.read_bytes()
     entries = [(item, replacements[item.filename] if item.filename in replacements else source.read(item))
                for item in source.infolist()]
     for item, content in entries:
