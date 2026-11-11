@@ -1,0 +1,1 @@
+package androidx.activity.compose; import androidx.compose.runtime.Composer; import kotlin.jvm.functions.Function0; public class BackHandlerKt {public static void BackHandler(boolean enabled, Function0 callback, Composer composer, int changed, int defaults) {}}

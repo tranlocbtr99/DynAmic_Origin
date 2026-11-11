@@ -1,6 +1,6 @@
 # LTMori
 
-**Designed by LocTM · 2.0.1**  
+**Designed by LocTM · 2.0.4**  
 [Tiếng Việt](#tiếng-việt) · [English](#english)
 
 ## Tiếng Việt
@@ -13,7 +13,7 @@ LTMori là bản tùy chỉnh độc lập dựa trên Origin Isle, dùng để 
 
 - Từ 2.0.1, app tự kiểm tra bản mới và hiển thị ghi chú trước khi tải. Chế độ thông báo yêu cầu xác nhận trước khi áp dụng.
 
-Nhánh `main` là nền phát triển 2.0.1. Repo lưu mã nguồn bản vá và công cụ đóng gói lại từ APK 1.3.2. Khả năng hiển thị Island phụ thuộc vào tích hợp SuperX trên thiết bị. [Hướng dẫn build và phát hành](repair/README-build.md).
+Mốc phát triển là APK phát hành 2.0.4. Repo lưu bản vá Smali, Java gốc của giao diện và công cụ dựng APK từ bản phát hành đã xác minh. [Hướng dẫn build 2.0.4](maintenance/v2.0.4/README.md) · [Bàn giao kỹ thuật](maintenance/v2.0.4/HANDOFF.md).
 
 Việc tái sử dụng phần gốc của LTMori để tạo sản phẩm tương tự cần được LocTM cho phép trước bằng văn bản. [Quyền sử dụng](LICENSE.md#tiếng-việt).
 
@@ -27,7 +27,7 @@ LTMori is an independent customization based on Origin Isle. It displays notific
 
 - Starting with 2.0.1, LTMori checks for releases automatically and displays release notes before downloading. Notification mode changes require confirmation.
 
-The `main` branch is the 2.0.1 development baseline. This repository contains the patch source and tooling to rebuild from the 1.3.2 APK. Island rendering depends on device support for SuperX. [Build and release guide](repair/README-build.md).
+Development starts from the 2.0.4 release APK. The repository includes the Smali changes, original UI Java, and tooling to rebuild from the verified release. [2.0.4 build guide](maintenance/v2.0.4/README.md) · [Technical handoff (Vietnamese)](maintenance/v2.0.4/HANDOFF.md).
 
 Reusing original LTMori material to create a similar product requires LocTM’s prior written permission. [Reuse policy](LICENSE.md#english).
 

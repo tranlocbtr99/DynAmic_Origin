@@ -1,0 +1,1 @@
+package androidx.compose.runtime; public class SnapshotStateKt { public static <T> MutableState<T> mutableStateOf(T value, SnapshotMutationPolicy<T> policy){return null;} public static <T> SnapshotMutationPolicy<T> structuralEqualityPolicy(){return null;} }

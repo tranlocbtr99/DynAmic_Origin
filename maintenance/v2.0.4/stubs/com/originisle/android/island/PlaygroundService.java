@@ -1,0 +1,1 @@
+package com.originisle.android.island; import java.util.Set; public abstract class PlaygroundService extends android.app.Service { public static final Companion Companion = null; public static class Companion { public Set<Integer> getActiveCardIds(){return null;} } }
