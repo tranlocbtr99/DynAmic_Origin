@@ -264,7 +264,7 @@ class PlaygroundService : Service() {
         val hideFromShade = getSharedPreferences(PREFS_NAME, 0).getBoolean("cast_hide_from_shade", false)
         val displays = ((baseDisplays and OriginIslandConstants.DISPLAY_LOCKSCREEN.inv()) or
             (if (lockscreenOptIn) OriginIslandConstants.DISPLAY_LOCKSCREEN else 0)).let {
-            if (hideFromShade) it and OriginIslandConstants.DISPLAY_STATUSBAR.inv() else it
+            if (hideFromShade) it and OriginIslandConstants.DISPLAY_NOTIFICATION.inv() else it
         }
         val showNotify = intent.getBooleanExtra("oi_show_notify", true) &&
             !getSharedPreferences(PREFS_NAME, 0).getBoolean("cast_hide_from_shade", false)
@@ -399,13 +399,19 @@ class PlaygroundService : Service() {
         // still cleared when their own notification is dismissed (onNotificationRemoved -> cancel).
         if (id >= 40000) {
             val prevInScene = sceneCurrentId[scene]
-            if (prevInScene != null && prevInScene != id && prevInScene >= 40000) {
-                endOrigin(prevInScene, scene)
-                activeIds.remove(prevInScene)
-                originChangeRecord.remove(prevInScene)
-                originScenes.remove(prevInScene)
-                lastPosts.remove(prevInScene)
-                plainIds.remove(prevInScene)
+            val lastIntent = lastPosts[id]
+            val templateChanged = lastIntent != null && (
+                lastIntent.getIntExtra("oi_template", 0) != template ||
+                lastIntent.getIntExtra("oi_right_template", 0) != rightTemplate
+            )
+            if ((prevInScene != null && prevInScene != id && prevInScene >= 40000) || templateChanged) {
+                val toEnd = if (templateChanged) id else prevInScene!!
+                endOrigin(toEnd, scene)
+                activeIds.remove(toEnd)
+                originChangeRecord.remove(toEnd)
+                originScenes.remove(toEnd)
+                lastPosts.remove(toEnd)
+                plainIds.remove(toEnd)
             }
             sceneCurrentId[scene] = id
         }

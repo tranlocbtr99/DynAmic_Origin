@@ -1,30 +1,25 @@
 package com.originisle.android.ui
 
 import android.Manifest
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.ComponentName
 import android.content.SharedPreferences
 import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -34,11 +29,15 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Text
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -59,6 +58,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.originisle.android.R
 import com.originisle.android.cards.ChargingCard
 import com.originisle.android.cards.EarbudsCard
 import com.originisle.android.cards.FlashlightCard
@@ -71,8 +71,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * The main screen: listener status, the sample-card tester, casting settings, and links to the Apps
- * and Activity screens. Setup/permissions and the update check live in the ⋯ menu.
+ * The main screen: listener status, real-time RAM monitor, casting settings,
+ * card customizations, and system controls.
  */
 @Composable
 fun HomeScreen(
@@ -85,7 +85,7 @@ fun HomeScreen(
     var castOn by remember { mutableStateOf(prefs.getBoolean("cast_notifications", false)) }
     var selectedTab by remember { mutableStateOf(0) }
     var donateExpanded by remember { mutableStateOf(false) }
-    var sendToIslandExpanded by remember { mutableStateOf(false) }
+    var sendToIslandExpanded by remember { mutableStateOf(true) }
     var mediaOn by remember { mutableStateOf(prefs.getBoolean("cast_media_sessions", false)) }
     var includeMessages by remember { mutableStateOf(prefs.getBoolean("cast_include_messages", false)) }
     var expandOnNotification by remember { mutableStateOf(prefs.getBoolean("cast_expand_on_notification", true)) }
@@ -104,11 +104,10 @@ fun HomeScreen(
     var appLang by remember { mutableStateOf(Lang.currentLang(context)) }
     var idleCardEditOpen by remember { mutableStateOf(false) }
     var idlePresetOpen by remember { mutableStateOf(false) }
-    var idlePreset by remember { mutableStateOf(prefs.getString("ltm_idle_preset", "earth_only").orEmpty()) }
+    var idlePreset by remember { mutableStateOf(prefs.getString("ltm_idle_preset", "dot").orEmpty()) }
     var idleTitle by remember { mutableStateOf(prefs.getString("ltm_idle_card_title", "LTMori").orEmpty()) }
     var idleText by remember { mutableStateOf(prefs.getString("ltm_idle_card_text", "Đang chờ").orEmpty()) }
     var chargingLiveUpdates by remember { mutableStateOf(prefs.getBoolean("cast_charging_live_updates", false)) }
-    var messageIslandOnly by remember { mutableStateOf(prefs.getBoolean("ltmori_message_island_only", true)) }
     var chargingOn by remember { mutableStateOf(prefs.getBoolean("cast_charging", true)) }
     var chargingKeep by remember { mutableStateOf(prefs.getBoolean("cast_charging_keep", false)) }
     var privacyDotOn by remember { mutableStateOf(prefs.getBoolean("cast_privacy_dot", true)) }
@@ -120,9 +119,6 @@ fun HomeScreen(
         if (granted) {
             EarbudsCard.onSettingsChanged(context, NotificationCastListener.instance != null)
         } else {
-            // Denied, or the dialog was skipped (Android stops showing it after a refusal): the
-            // app's own page is where it can still be turned on. Back here, the resume check
-            // below picks it up — the switch stays wanted in prefs.
             runCatching {
                 context.startActivity(
                     Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
@@ -137,7 +133,7 @@ fun HomeScreen(
     var quietEnd by remember { mutableIntStateOf(prefs.getInt("cast_quiet_end", QuietHours.DEFAULT_END)) }
     val appsOff = remember { prefs.getStringSet("cast_ignored_apps", emptySet()).orEmpty().size }
     val tick = rememberResumeTick()
-    // "Nearby devices" may have been turned on (or off) in Settings while we were away.
+
     LaunchedEffect(tick.intValue) {
         val now = prefs.getBoolean("cast_earbuds", false) && EarbudsCard.hasPermission(context)
         if (now != earbudsOn) {
@@ -145,9 +141,7 @@ fun HomeScreen(
             EarbudsCard.onSettingsChanged(context, NotificationCastListener.instance != null)
         }
     }
-    // Setup only needs attention again if something actually broke (OriginOS revoking notification
-    // access or re-restricting battery is a known failure mode) — then Home shows a one-line banner;
-    // otherwise the permissions stay behind the ⋯ menu so they're not in the way on every open.
+
     val listenerOk = remember(tick.intValue) { isListenerEnabled(context) }
     val batteryOk = remember(tick.intValue) { isBatteryUnrestricted(context) }
     var permissionsOpen by remember { mutableStateOf(false) }
@@ -155,7 +149,6 @@ fun HomeScreen(
     var updateStatus by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Poll the listener once a second so the status pill stays live.
     var connected by remember { mutableStateOf(NotificationCastListener.instance != null) }
     LaunchedEffect(Unit) {
         while (true) { connected = NotificationCastListener.instance != null; delay(1000) }
@@ -164,455 +157,688 @@ fun HomeScreen(
     if (permissionsOpen) {
         PermissionsSheet(context, prefs, onDismiss = { permissionsOpen = false }, onRedoSetup = onRedoSetup)
     }
+
     if (idlePresetOpen) {
-        val presets = listOf("dot" to "Chấm", "earth_only" to "Trái Đất", "date_earth" to "Ngày + Trái Đất",
-            "weather" to "Thời tiết", "weather_wave" to "Thời tiết + sóng", "wave" to "Sóng nhạc",
-            "ram" to "RAM", "network" to "Mạng", "gemini" to "Gemini", "custom" to "Tùy chỉnh")
+        val presets = listOf(
+            "dot" to "Chấm tròn nhỏ (Dot)",
+            "earth_only" to "Trái Đất",
+            "date_earth" to "Ngày + Trái Đất",
+            "weather" to "Thời tiết",
+            "weather_wave" to "Thời tiết + Sóng",
+            "wave" to "Sóng nhạc (Wave)",
+            "ram" to "RAM thời gian thực",
+            "network" to "Tốc độ mạng (Network)",
+            "gemini" to "Gemini Live",
+            "custom" to "Tùy chỉnh biểu tượng",
+        )
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { idlePresetOpen = false },
-            title = { Text("Kiểu thẻ chờ") },
+            title = { Text(Lang.s(context, "idle_preset"), fontWeight = FontWeight.Bold) },
             text = {
-                Column {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     presets.forEach { (key, label) ->
-                        TextButton(onClick = {
-                            idlePreset = key
-                            prefs.edit().putString("ltm_idle_preset", key).apply()
-                            LtmIslandHelper.updateIdlePreset(context)
-                            LtmIslandHelper.syncIdleTicker(context)
-                            idlePresetOpen = false
-                        }) { Text(if (key == idlePreset) "✓ $label" else label) }
+                        TextButton(
+                            onClick = {
+                                idlePreset = key
+                                prefs.edit().putString("ltm_idle_preset", key).apply()
+                                LtmIslandHelper.updateIdlePreset(context)
+                                LtmIslandHelper.syncIdleTicker(context)
+                                idlePresetOpen = false
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                if (key == idlePreset) "✓  $label" else label,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Start,
+                                fontWeight = if (key == idlePreset) FontWeight.Bold else FontWeight.Normal,
+                                color = if (key == idlePreset) IsleColors.Accent else IsleColors.Text,
+                            )
+                        }
                     }
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { idlePresetOpen = false }) { Text("Đóng") } },
+            dismissButton = {
+                TextButton(onClick = { idlePresetOpen = false }) { Text(Lang.s(context, "close")) }
+            },
         )
     }
+
     if (idleCardEditOpen) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { idleCardEditOpen = false },
-            title = { Text("Tùy chỉnh thẻ chờ") },
+            title = { Text(Lang.s(context, "idle_card_text"), fontWeight = FontWeight.Bold) },
             text = {
-                Column {
-                    OutlinedTextField(idleTitle, { idleTitle = it.take(32) }, label = { Text("Tiêu đề") }, singleLine = true)
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(idleText, { idleText = it.take(64) }, label = { Text("Nội dung") }, maxLines = 3)
-                    TextButton(onClick = { idleTitle = "LTMori"; idleText = "Đang chờ" }) { Text("Khôi phục mặc định") }
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = idleTitle,
+                        onValueChange = { idleTitle = it.take(32) },
+                        label = { Text(Lang.s(context, "title")) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = idleText,
+                        onValueChange = { idleText = it.take(64) },
+                        label = { Text(Lang.s(context, "content")) },
+                        maxLines = 3,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    TextButton(onClick = { idleTitle = "LTMori"; idleText = "Đang chờ" }) {
+                        Text(Lang.s(context, "default_title"))
+                    }
                 }
             },
             confirmButton = {
                 TextButton(onClick = {
-                    prefs.edit().putString("ltm_idle_card_title", idleTitle.trim().ifEmpty { "LTMori" })
-                        .putString("ltm_idle_card_text", idleText.trim()).apply()
+                    prefs.edit()
+                        .putString("ltm_idle_card_title", idleTitle.trim().ifEmpty { "LTMori" })
+                        .putString("ltm_idle_card_text", idleText.trim())
+                        .apply()
                     LtmIslandHelper.syncIdleTicker(context)
                     LtmIslandHelper.updateIdlePreset(context)
                     idleCardEditOpen = false
-                }) { Text("Lưu") }
+                }) { Text(Lang.s(context, "save")) }
             },
-            dismissButton = { TextButton(onClick = { idleCardEditOpen = false }) { Text("Hủy") } },
+            dismissButton = {
+                TextButton(onClick = { idleCardEditOpen = false }) { Text(Lang.s(context, "cancel")) }
+            },
         )
     }
 
     Column(Modifier.fillMaxSize()) {
-    LazyColumn(
-        modifier = Modifier.weight(1f),
-        contentPadding = ScreenPadding,
-        verticalArrangement = Arrangement.spacedBy(24.dp),
-    ) {
-        if (selectedTab == 0) item {
-            Row(Modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.Top) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        "Origin Isle",
-                        fontSize = 34.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = (-0.7).sp,
-                        lineHeight = 38.sp,
-                        color = IsleColors.Text,
-                    )
-                    StatusPill(connected, onClick = onOpenActivity)
-                }
-                Box {
-                    CircleIconButton(IsleIcons.More, "More", onClick = { menuOpen = true })
-                    DropdownMenu(
-                        expanded = menuOpen,
-                        onDismissRequest = { menuOpen = false },
-                        offset = DpOffset(0.dp, 8.dp),
-                        shape = RoundedCornerShape(18.dp),
-                        containerColor = IsleColors.Menu,
-                    ) {
-                        MenuItem("Check for updates") {
-                            menuOpen = false
-                            coroutineScope.launch {
-                                updateStatus = "Checking…"
-                                updateStatus = when (val result = UpdateChecker.check(context)) {
-                                    is UpdateChecker.Result.UpToDate ->
-                                        "You're on the latest version (v${result.current})."
-                                    is UpdateChecker.Result.UpdateAvailable -> {
-                                        UpdateChecker.openRelease(context, result.url)
-                                        "Update available: v${result.latest} — opening GitHub…"
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            contentPadding = ScreenPadding,
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            // --- TAB 0: ĐẢO (ISLAND MAIN & RAM & SAMPLE TESTER) ---
+            if (selectedTab == 0) {
+                item {
+                    Row(Modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.Top) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                "Origin Isle",
+                                fontSize = 34.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = (-0.7).sp,
+                                lineHeight = 38.sp,
+                                color = IsleColors.Text,
+                            )
+                            StatusPill(context, connected, onClick = onOpenActivity)
+                        }
+                        Box {
+                            CircleIconButton(IsleIcons.More, Lang.s(context, "more"), onClick = { menuOpen = true })
+                            DropdownMenu(
+                                expanded = menuOpen,
+                                onDismissRequest = { menuOpen = false },
+                                offset = DpOffset(0.dp, 8.dp),
+                                shape = RoundedCornerShape(18.dp),
+                                containerColor = IsleColors.Menu,
+                            ) {
+                                MenuItem(Lang.s(context, "check_updates")) {
+                                    menuOpen = false
+                                    coroutineScope.launch {
+                                        updateStatus = Lang.s(context, "checking")
+                                        updateStatus = when (val result = UpdateChecker.check(context)) {
+                                            is UpdateChecker.Result.UpToDate ->
+                                                if (appLang == "vi") "Bạn đang ở phiên bản mới nhất (v${result.current})."
+                                                else "You're on the latest version (v${result.current})."
+                                            is UpdateChecker.Result.UpdateAvailable -> {
+                                                UpdateChecker.openRelease(context, result.url)
+                                                if (appLang == "vi") "Có bản cập nhật mới: v${result.latest}"
+                                                else "Update available: v${result.latest}"
+                                            }
+                                            is UpdateChecker.Result.Error -> result.message
+                                        }
                                     }
-                                    is UpdateChecker.Result.Error -> result.message
+                                }
+                                MenuItem(Lang.s(context, "permissions")) {
+                                    menuOpen = false
+                                    permissionsOpen = true
                                 }
                             }
                         }
-                        MenuItem("Permissions") {
-                            menuOpen = false
-                            permissionsOpen = true
-                        }
                     }
-                }
-            }
-            updateStatus?.let {
-                Text(
-                    it,
-                    modifier = Modifier.padding(start = 4.dp, top = 12.dp),
-                    fontSize = 13.sp,
-                    color = IsleColors.TextSecondary,
-                )
-            }
-        }
-
-        if (selectedTab == 0) item {
-            GroupCard {
-                Column {
-                    NavRow(IsleIcons.Heart, IsleColors.TileAmber, "Ủng hộ tác giả", if (donateExpanded) "Thu gọn" else "Mở rộng") {
-                        donateExpanded = !donateExpanded
-                    }
-                    if (donateExpanded) {
-                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Techcombank · Tran Minh Loc", fontSize = 13.sp, color = IsleColors.TextSecondary)
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text("4444444790", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = IsleColors.Text)
-                                TextButton(onClick = {
-                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("STK", "4444444790"))
-                                    android.widget.Toast.makeText(context, "Đã copy số tài khoản", android.widget.Toast.LENGTH_SHORT).show()
-                                }) { Text("Copy") }
-                            }
-                            TextButton(onClick = {
-                                context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://ltmprofile.pages.dev/")))
-                            }) { Text("Liên hệ tác giả") }
-                        }
-                    }
-                }
-            }
-        }
-
-        if (!listenerOk || !batteryOk) {
-            item { SetupAttentionBanner(onClick = { permissionsOpen = true }) }
-        }
-
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                SampleTester(context)
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    PillButton(
-                        "Recast all", onClick = { recastAll(context) },
-                        modifier = Modifier.weight(1f), icon = IsleIcons.Refresh,
-                        enabled = castOn || mediaOn,
-                    )
-                    PillButton(
-                        "Stop all", onClick = { stopAll(context) },
-                        modifier = Modifier.weight(1f), icon = IsleIcons.Stop, iconSize = 16.dp,
-                        content = IsleColors.Danger,
-                    )
-                }
-            }
-        }
-
-        if (selectedTab == 0) item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionLabel("Send to island")
-                GroupCard {
-                    NavRow(IsleIcons.Send, IsleColors.TileBlue, "Send to island", if (sendToIslandExpanded) "Thu gọn" else "Mở rộng") {
-                        sendToIslandExpanded = !sendToIslandExpanded
-                    }
-                    if (sendToIslandExpanded) {
-                        ToggleRow(IsleIcons.Bell, IsleColors.TileBlue, "Notifications", castOn,
-                            subtitle = "Cast notifications to the island",
-                        ) {
-                            castOn = it; prefs.edit().putBoolean("cast_notifications", it).apply()
-                            if (it) PlaygroundService.keepAlive(context)
-                            PrivacyCard.refresh()
-                            FlashlightCard.refresh()
-                            EarbudsCard.onSettingsChanged(context, NotificationCastListener.instance != null)
-                        }
-                        GroupDivider()
-                        ToggleRow(IsleIcons.Music, IsleColors.TileOrange, "Media", mediaOn,
-                            subtitle = "Mimic OriginPlayer for media apps",
-                        ) {
-                            mediaOn = it; prefs.edit().putBoolean("cast_media_sessions", it).apply()
-                        }
-                    }
-                }
-            }
-        }
-
-        if (selectedTab == 1) item {
-            Column(
-                Modifier.alpha(if (castOn) 1f else 0.4f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                SectionLabel("Notifications")
-                GroupCard {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SegmentedControl(
-                            listOf("Live only", "Everything"),
-                            selected = if (includeMessages) 1 else 0,
-                            onSelect = {
-                                includeMessages = it == 1
-                                prefs.edit().putBoolean("cast_include_messages", includeMessages).apply()
-                            },
-                        )
+                    updateStatus?.let {
                         Text(
-                            if (includeMessages) "Every notification, plain messages included."
-                            else "Only live cards — score, navigation, payment, etc.",
-                            modifier = Modifier.padding(horizontal = 4.dp),
+                            it,
+                            modifier = Modifier.padding(start = 4.dp, top = 8.dp),
                             fontSize = 13.sp,
                             color = IsleColors.TextSecondary,
                         )
                     }
-                    if (includeMessages) {
-                        GroupDivider()
-                        SettingRow(IsleIcons.Clock, IsleColors.TileTeal, "Hide after", subtitle = "Non live cards")
-                        Row(
-                            Modifier.padding(start = 62.dp, end = 16.dp, bottom = 14.dp),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            listOf(0 to "Never", 5 to "5s", 10 to "10s", 15 to "15s", 30 to "30s").forEach { (sec, label) ->
-                                ChoiceChip(
-                                    label,
-                                    selected = autoDismissSec == sec,
-                                    onClick = {
-                                        autoDismissSec = sec
-                                        prefs.edit().putInt("cast_auto_dismiss_seconds", sec).apply()
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
-                        }
-                    }
-                    GroupDivider()
-                    ToggleRow(
-                        IsleIcons.Headphones, IsleColors.TilePurple, "Earbuds", earbudsOn,
-                        subtitle = "Battery when they connect",
-                    ) {
-                        prefs.edit().putBoolean("cast_earbuds", it).apply()
-                        if (it && !EarbudsCard.hasPermission(context)) {
-                            // "Nearby devices": asked for here, only by this switch.
-                            bluetoothPermission.launch(Manifest.permission.BLUETOOTH_CONNECT)
-                        } else {
-                            earbudsOn = it
-                            EarbudsCard.onSettingsChanged(context, NotificationCastListener.instance != null)
-                        }
-                    }
-                    GroupDivider()
-                    ToggleRow(
-                        IsleIcons.Moon, IsleColors.TilePurple, "Skip silent", ignoreSilent,
-                        subtitle = "Ignore silenced notifications",
-                    ) {
-                        ignoreSilent = it; prefs.edit().putBoolean("cast_ignore_silent", it).apply()
-                    }
-                    GroupDivider()
-                    ToggleRow(
-                        IsleIcons.Pulse, IsleColors.TileBlue, "Expand island on notification", expandOnNotification,
-                        subtitle = "Pop the island when a notification arrives (silent ones excluded)",
-                    ) {
-                        expandOnNotification = it; prefs.edit().putBoolean("cast_expand_on_notification", it).apply()
-                    }
-                    GroupDivider()
-                    ToggleRow(
-                        IsleIcons.Pulse, IsleColors.TilePurple, "Dedup same app", dedupSameApp,
-                        subtitle = "Don't re-expand for repeated notifications from one app",
-                    ) {
-                        dedupSameApp = it; prefs.edit().putBoolean("cast_dedup_same_app", it).apply()
-                    }
-                    if (dedupSameApp) {
-                        Row(
-                            Modifier.padding(start = 62.dp, end = 16.dp, bottom = 14.dp),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            listOf(5 to "5s", 10 to "10s", 30 to "30s", 60 to "60s").forEach { (sec, label) ->
-                                ChoiceChip(
-                                    label,
-                                    selected = dedupCooldown == sec,
-                                    onClick = {
-                                        dedupCooldown = sec
-                                        prefs.edit().putInt("cast_dedup_cooldown_sec", sec).apply()
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
-                        }
-                    }
-                    GroupDivider()
-                    ToggleRow(
-                        IsleIcons.Send, IsleColors.TilePurple, "Hide from notification shade", hideFromShade,
-                        subtitle = "Show island card only, no duplicate in shade",
-                    ) {
-                        hideFromShade = it; prefs.edit().putBoolean("cast_hide_from_shade", it).apply()
-                    }
-                    GroupDivider()
-                    ToggleRow(
-                        IsleIcons.Send, IsleColors.TileBlue, "Messages island-only", messageIslandOnly,
-                        subtitle = "Hide message cards from the shade",
-                    ) {
-                        messageIslandOnly = it; prefs.edit().putBoolean("ltmori_message_island_only", it).apply()
-                    }
-                    GroupDivider()
-                    Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Ngôn ngữ", modifier = Modifier.weight(1f), color = IsleColors.Text)
-                        listOf("vi" to "VI", "en" to "EN").forEach { (code, label) ->
-                            FilterChip(selected = appLang == code, onClick = {
-                                appLang = code; Lang.setLang(context, code)
-                            }, label = { Text(label) }, modifier = Modifier.weight(0.3f))
-                        }
-                    }
-                    GroupDivider()
-                    NavRow(IsleIcons.Clock, IsleColors.TileBlue, "Idle preset", idlePreset) {
-                        idlePreset = prefs.getString("ltm_idle_preset", "earth_only").orEmpty()
-                        idlePresetOpen = true
-                    }
-                    GroupDivider()
-                    NavRow(IsleIcons.Send, IsleColors.TilePurple, "Idle card text", "Edit") {
-                        idleTitle = prefs.getString("ltm_idle_card_title", "LTMori").orEmpty()
-                        idleText = prefs.getString("ltm_idle_card_text", "Đang chờ").orEmpty()
-                        idleCardEditOpen = true
-                    }
-                    GroupDivider()
-                    ToggleRow(
-                        IsleIcons.Lock, IsleColors.TileGreen, "Lock screen", lockscreenLiveCard,
-                        subtitle = "Live card on lockscreen",
-                    ) {
-                        lockscreenLiveCard = it
-                        prefs.edit().putBoolean("cast_lockscreen_live_card", it).apply()
-                    }
                 }
-            }
-        }
 
-        if (selectedTab == 2) item {
-            Column(
-                Modifier.alpha(if (castOn) 1f else 0.4f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                SectionLabel("Cards")
-                GroupCard {
-                    ToggleRow(
-                        IsleIcons.Key, IsleColors.TileBlue, "Login codes", otpOn,
-                        subtitle = "Show the code, tap to copy",
-                    ) {
-                        otpOn = it; prefs.edit().putBoolean("cast_otp", it).apply()
-                    }
-                    GroupDivider()
-                    ToggleRow(
-                        IsleIcons.Buttons, IsleColors.TileTeal, "Action buttons", actionsOn,
-                        subtitle = "The app's own buttons on the card",
-                    ) {
-                        actionsOn = it; prefs.edit().putBoolean("cast_show_actions", it).apply()
-                    }
-                    GroupDivider()
-                    ToggleRow(
-                        IsleIcons.Music, IsleColors.TileBlue, "Live lyrics", liveLyricsOn,
-                        subtitle = "Sync lyrics from LRCLIB onto the media card",
-                    ) {
-                        liveLyricsOn = it; prefs.edit().putBoolean("cast_live_lyrics_opt_in", it).apply()
-                        if (!it) LtmIslandHelper.stopLiveLyrics()
-                    }
-                    GroupDivider()
-                    ToggleRow(
-                        IsleIcons.Bolt, IsleColors.TileGreen, "Charging", chargingOn,
-                        subtitle = "Battery card when you plug in",
-                    ) {
-                        chargingOn = it; prefs.edit().putBoolean("cast_charging", it).apply()
-                        ChargingCard.onSettingsChanged(context)
-                    }
-                    if (chargingOn) {
-                        Row(
-                            Modifier.padding(start = 62.dp, end = 16.dp, bottom = 14.dp),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            listOf(false to "Briefly", true to "While charging").forEach { (keep, label) ->
-                                ChoiceChip(
-                                    label,
-                                    selected = chargingKeep == keep,
-                                    onClick = {
-                                        chargingKeep = keep
-                                        prefs.edit().putBoolean("cast_charging_keep", keep).apply()
-                                        ChargingCard.onSettingsChanged(context)
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
-                        }
-                        if (android.os.Build.VERSION.SDK_INT >= 36) {
+                if (!listenerOk || !batteryOk) {
+                    item { SetupAttentionBanner(onClick = { permissionsOpen = true }) }
+                }
+
+                // Widget RAM thời gian thực
+                item {
+                    RealtimeRamCard(context)
+                }
+
+                // Cấu hình truyền lên đảo
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SectionLabel(Lang.s(context, "send_to_island"))
+                        GroupCard {
                             ToggleRow(
-                                IsleIcons.Bolt, IsleColors.TileGreen, "Live Updates when charging", chargingLiveUpdates,
-                                subtitle = "Try Android's priority charging notification",
+                                IsleIcons.Bell, IsleColors.TileBlue,
+                                Lang.s(context, "notifications"), castOn,
+                                subtitle = Lang.s(context, "cast_notifications_subtitle"),
                             ) {
-                                chargingLiveUpdates = it
-                                prefs.edit().putBoolean("cast_charging_live_updates", it).apply()
-                                if (!it) LtmIslandHelper.dismissChargingLive(context)
+                                castOn = it
+                                prefs.edit().putBoolean("cast_notifications", it).apply()
+                                if (it) PlaygroundService.keepAlive(context)
+                                PrivacyCard.refresh()
+                                FlashlightCard.refresh()
+                                EarbudsCard.onSettingsChanged(context, NotificationCastListener.instance != null)
+                            }
+                            GroupDivider()
+                            ToggleRow(
+                                IsleIcons.Music, IsleColors.TileOrange,
+                                Lang.s(context, "media"), mediaOn,
+                                subtitle = Lang.s(context, "cast_media_subtitle"),
+                            ) {
+                                mediaOn = it
+                                prefs.edit().putBoolean("cast_media_sessions", it).apply()
                             }
                         }
                     }
-                    GroupDivider()
-                    ToggleRow(
-                        IsleIcons.Camera, IsleColors.TileAmber, "Camera & mic", privacyDotOn,
-                        subtitle = "Dot while they're in use",
-                    ) {
-                        privacyDotOn = it; prefs.edit().putBoolean("cast_privacy_dot", it).apply()
-                        PrivacyCard.refresh()
+                }
+
+                // Bộ thử nghiệm mẫu trên đảo (Chỉ hiển thị trên Tab 0)
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        SectionLabel(Lang.s(context, "sample_tester_title"))
+                        SampleTester(context)
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            PillButton(
+                                Lang.s(context, "recast_all"), onClick = { recastAll(context) },
+                                modifier = Modifier.weight(1f), icon = IsleIcons.Refresh,
+                                enabled = castOn || mediaOn,
+                            )
+                            PillButton(
+                                Lang.s(context, "stop_all"), onClick = { stopAll(context) },
+                                modifier = Modifier.weight(1f), icon = IsleIcons.Stop, iconSize = 16.dp,
+                                content = IsleColors.Danger,
+                            )
+                        }
+                    }
+                }
+
+                // Ủng hộ tác giả (đặt ở cuối Tab 0)
+                item {
+                    GroupCard {
+                        Column {
+                            NavRow(
+                                IsleIcons.Heart, IsleColors.TileAmber,
+                                Lang.s(context, "donate"),
+                                if (donateExpanded) Lang.s(context, "collapse") else Lang.s(context, "expand"),
+                            ) {
+                                donateExpanded = !donateExpanded
+                            }
+                            if (donateExpanded) {
+                                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text("Techcombank · Tran Minh Loc", fontSize = 13.sp, color = IsleColors.TextSecondary)
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Text("4444444790", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = IsleColors.Text)
+                                        TextButton(onClick = {
+                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("STK", "4444444790"))
+                                            android.widget.Toast.makeText(context, Lang.s(context, "copied"), android.widget.Toast.LENGTH_SHORT).show()
+                                        }) { Text(Lang.s(context, "copy")) }
+                                    }
+                                    TextButton(onClick = {
+                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://ltmprofile.pages.dev/")))
+                                    }) { Text(Lang.s(context, "contact_author")) }
+                                }
+                            }
+                        }
                     }
                 }
             }
-        }
 
-        if (selectedTab == 2) item {
-            Column(
-                Modifier.alpha(if (castOn) 1f else 0.4f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                SectionLabel("Idle & Gemini")
-                GroupCard {
-                    SegmentedControl(
-                        listOf("Gemini Voice", "Circle to Search"),
-                        selected = if (voiceAction == "GOOGLE_CTS") 1 else 0,
-                        onSelect = {
-                            voiceAction = if (it == 1) "GOOGLE_CTS" else "GEMINI_VOICE"
-                            bridgePrefs.edit().putString("voice_action", voiceAction).apply()
-                        },
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    ToggleRow(
-                        IsleIcons.Check, IsleColors.TileBlue, "Tap island to open Gemini", geminiTap,
-                        subtitle = "Tap the island or idle card to launch Gemini",
+            // --- TAB 1: THÔNG BÁO (NOTIFICATION STREAM SETTINGS) ---
+            if (selectedTab == 1) {
+                item {
+                    Column(
+                        Modifier.alpha(if (castOn) 1f else 0.4f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        geminiTap = it; prefs.edit().putBoolean("ltm_idle_gemini_tap", it).apply()
-                    }
-                    GroupDivider()
-                    Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { LtmIslandHelper.launchGemini(context) }, modifier = Modifier.weight(1f)) { Text("Mở Gemini") }
-                        OutlinedButton(onClick = { LtmIslandHelper.launchCircleToSearch(context) }, modifier = Modifier.weight(1f)) { Text("Circle to Search") }
+                        SectionLabel(Lang.s(context, "notifications"))
+                        GroupCard {
+                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                SegmentedControl(
+                                    listOf(Lang.s(context, "live_only"), Lang.s(context, "everything")),
+                                    selected = if (includeMessages) 1 else 0,
+                                    onSelect = {
+                                        includeMessages = it == 1
+                                        prefs.edit().putBoolean("cast_include_messages", includeMessages).apply()
+                                    },
+                                )
+                                Text(
+                                    if (includeMessages) Lang.s(context, "every_notif_desc")
+                                    else Lang.s(context, "only_live_desc"),
+                                    modifier = Modifier.padding(horizontal = 4.dp),
+                                    fontSize = 13.sp,
+                                    color = IsleColors.TextSecondary,
+                                )
+                            }
+                            if (includeMessages) {
+                                GroupDivider()
+                                SettingRow(
+                                    IsleIcons.Clock, IsleColors.TileTeal,
+                                    Lang.s(context, "hide_after"),
+                                    subtitle = Lang.s(context, "non_live_cards"),
+                                )
+                                Row(
+                                    Modifier.padding(start = 62.dp, end = 16.dp, bottom = 14.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    listOf(
+                                        0 to Lang.s(context, "never"),
+                                        5 to "5s", 10 to "10s", 15 to "15s", 30 to "30s"
+                                    ).forEach { (sec, label) ->
+                                        ChoiceChip(
+                                            label,
+                                            selected = autoDismissSec == sec,
+                                            onClick = {
+                                                autoDismissSec = sec
+                                                prefs.edit().putInt("cast_auto_dismiss_seconds", sec).apply()
+                                            },
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                    }
+                                }
+                            }
+                            GroupDivider()
+                            ToggleRow(
+                                IsleIcons.Moon, IsleColors.TilePurple,
+                                Lang.s(context, "skip_silent"), ignoreSilent,
+                                subtitle = Lang.s(context, "skip_silent_subtitle"),
+                            ) {
+                                ignoreSilent = it
+                                prefs.edit().putBoolean("cast_ignore_silent", it).apply()
+                            }
+                            GroupDivider()
+                            ToggleRow(
+                                IsleIcons.Pulse, IsleColors.TileBlue,
+                                Lang.s(context, "expand_on_notif"), expandOnNotification,
+                                subtitle = Lang.s(context, "expand_on_notif_subtitle"),
+                            ) {
+                                expandOnNotification = it
+                                prefs.edit().putBoolean("cast_expand_on_notification", it).apply()
+                            }
+                            GroupDivider()
+                            ToggleRow(
+                                IsleIcons.Pulse, IsleColors.TilePurple,
+                                Lang.s(context, "dedup_same_app"), dedupSameApp,
+                                subtitle = Lang.s(context, "dedup_same_app_subtitle"),
+                            ) {
+                                dedupSameApp = it
+                                prefs.edit().putBoolean("cast_dedup_same_app", it).apply()
+                            }
+                            if (dedupSameApp) {
+                                Row(
+                                    Modifier.padding(start = 62.dp, end = 16.dp, bottom = 14.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    listOf(5 to "5s", 10 to "10s", 30 to "30s", 60 to "60s").forEach { (sec, label) ->
+                                        ChoiceChip(
+                                            label,
+                                            selected = dedupCooldown == sec,
+                                            onClick = {
+                                                dedupCooldown = sec
+                                                prefs.edit().putInt("cast_dedup_cooldown_sec", sec).apply()
+                                            },
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                    }
+                                }
+                            }
+                            GroupDivider()
+                            ToggleRow(
+                                IsleIcons.Send, IsleColors.TilePurple,
+                                Lang.s(context, "hide_from_shade"), hideFromShade,
+                                subtitle = Lang.s(context, "hide_from_shade_subtitle"),
+                            ) {
+                                hideFromShade = it
+                                prefs.edit().putBoolean("cast_hide_from_shade", it)
+                                    .putBoolean("ltmori_message_island_only", it).apply()
+                            }
+                            GroupDivider()
+                            ToggleRow(
+                                IsleIcons.Lock, IsleColors.TileGreen,
+                                Lang.s(context, "lockscreen"), lockscreenLiveCard,
+                                subtitle = Lang.s(context, "lockscreen_subtitle"),
+                            ) {
+                                lockscreenLiveCard = it
+                                prefs.edit().putBoolean("cast_lockscreen_live_card", it).apply()
+                            }
+                        }
                     }
                 }
             }
-        }
 
-        if (selectedTab == 3) item {
-            Column(
-                Modifier.alpha(if (castOn) 1f else 0.4f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                SectionLabel("Cầu nối Gemini (Hi Jovi)")
-                GroupCard {
-                    NavRow(IsleIcons.Send, IsleColors.TileBlue, "Thiết lập Hi Jovi", "Mở") {
-                        runCatching {
-                            context.startActivity(
-                                Intent().setComponent(
-                                    ComponentName("com.autonavi.minimap", "com.aikeybridge.MainActivity")
-                                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            // --- TAB 2: TUỲ CHỈNH (CUSTOM CARDS, IDLE PRESET & GEMINI) ---
+            if (selectedTab == 2) {
+                item {
+                    Column(
+                        Modifier.alpha(if (castOn) 1f else 0.4f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        SectionLabel(Lang.s(context, "idle_preset"))
+                        GroupCard {
+                            val presetDisplay = when (idlePreset) {
+                                "dot" -> "Chấm tròn (Dot)"
+                                "earth_only" -> "Trái Đất"
+                                "date_earth" -> "Ngày + Trái Đất"
+                                "weather" -> "Thời tiết"
+                                "weather_wave" -> "Thời tiết + Sóng"
+                                "wave" -> "Sóng nhạc"
+                                "ram" -> "RAM thời gian thực"
+                                "network" -> "Tốc độ mạng"
+                                "gemini" -> "Gemini Live"
+                                "custom" -> "Tùy chỉnh"
+                                else -> idlePreset
+                            }
+                            NavRow(IsleIcons.Clock, IsleColors.TileBlue, Lang.s(context, "idle_preset"), presetDisplay) {
+                                idlePresetOpen = true
+                            }
+                            GroupDivider()
+                            NavRow(IsleIcons.Send, IsleColors.TilePurple, Lang.s(context, "idle_card_text"), Lang.s(context, "edit")) {
+                                idleTitle = prefs.getString("ltm_idle_card_title", "LTMori").orEmpty()
+                                idleText = prefs.getString("ltm_idle_card_text", "Đang chờ").orEmpty()
+                                idleCardEditOpen = true
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    Column(
+                        Modifier.alpha(if (castOn) 1f else 0.4f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        SectionLabel(Lang.s(context, "cards_section"))
+                        GroupCard {
+                            ToggleRow(
+                                IsleIcons.Key, IsleColors.TileBlue,
+                                Lang.s(context, "otp_codes"), otpOn,
+                                subtitle = Lang.s(context, "otp_codes_subtitle"),
+                            ) {
+                                otpOn = it
+                                prefs.edit().putBoolean("cast_otp", it).apply()
+                            }
+                            GroupDivider()
+                            ToggleRow(
+                                IsleIcons.Buttons, IsleColors.TileTeal,
+                                Lang.s(context, "actions"), actionsOn,
+                                subtitle = Lang.s(context, "actions_subtitle"),
+                            ) {
+                                actionsOn = it
+                                prefs.edit().putBoolean("cast_show_actions", it).apply()
+                            }
+                            GroupDivider()
+                            ToggleRow(
+                                IsleIcons.Music, IsleColors.TileBlue,
+                                Lang.s(context, "live_lyrics"), liveLyricsOn,
+                                subtitle = Lang.s(context, "live_lyrics_subtitle"),
+                            ) {
+                                liveLyricsOn = it
+                                prefs.edit().putBoolean("cast_live_lyrics_opt_in", it).apply()
+                                if (!it) LtmIslandHelper.stopLiveLyrics()
+                            }
+                            GroupDivider()
+                            ToggleRow(
+                                IsleIcons.Bolt, IsleColors.TileGreen,
+                                Lang.s(context, "charging"), chargingOn,
+                                subtitle = Lang.s(context, "charging_subtitle"),
+                            ) {
+                                chargingOn = it
+                                prefs.edit().putBoolean("cast_charging", it).apply()
+                                ChargingCard.onSettingsChanged(context)
+                            }
+                            if (chargingOn) {
+                                Row(
+                                    Modifier.padding(start = 62.dp, end = 16.dp, bottom = 14.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    listOf(false to Lang.s(context, "briefly"), true to Lang.s(context, "while_charging")).forEach { (keep, label) ->
+                                        ChoiceChip(
+                                            label,
+                                            selected = chargingKeep == keep,
+                                            onClick = {
+                                                chargingKeep = keep
+                                                prefs.edit().putBoolean("cast_charging_keep", keep).apply()
+                                                ChargingCard.onSettingsChanged(context)
+                                            },
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                    }
+                                }
+                                if (android.os.Build.VERSION.SDK_INT >= 36) {
+                                    ToggleRow(
+                                        IsleIcons.Bolt, IsleColors.TileGreen,
+                                        Lang.s(context, "live_updates_charging"), chargingLiveUpdates,
+                                        subtitle = Lang.s(context, "live_updates_charging_subtitle"),
+                                    ) {
+                                        chargingLiveUpdates = it
+                                        prefs.edit().putBoolean("cast_charging_live_updates", it).apply()
+                                        if (!it) LtmIslandHelper.dismissChargingLive(context)
+                                    }
+                                }
+                            }
+                            GroupDivider()
+                            ToggleRow(
+                                IsleIcons.Camera, IsleColors.TileAmber,
+                                Lang.s(context, "privacy_dot"), privacyDotOn,
+                                subtitle = Lang.s(context, "privacy_dot_subtitle"),
+                            ) {
+                                privacyDotOn = it
+                                prefs.edit().putBoolean("cast_privacy_dot", it).apply()
+                                PrivacyCard.refresh()
+                            }
+                            GroupDivider()
+                            ToggleRow(
+                                IsleIcons.Headphones, IsleColors.TilePurple,
+                                Lang.s(context, "earbuds"), earbudsOn,
+                                subtitle = Lang.s(context, "earbuds_subtitle"),
+                            ) {
+                                prefs.edit().putBoolean("cast_earbuds", it).apply()
+                                if (it && !EarbudsCard.hasPermission(context)) {
+                                    bluetoothPermission.launch(Manifest.permission.BLUETOOTH_CONNECT)
+                                } else {
+                                    earbudsOn = it
+                                    EarbudsCard.onSettingsChanged(context, NotificationCastListener.instance != null)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    Column(
+                        Modifier.alpha(if (castOn) 1f else 0.4f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        SectionLabel(Lang.s(context, "idle_gemini"))
+                        GroupCard {
+                            SegmentedControl(
+                                listOf("Gemini Voice", "Circle to Search"),
+                                selected = if (voiceAction == "GOOGLE_CTS") 1 else 0,
+                                onSelect = {
+                                    voiceAction = if (it == 1) "GOOGLE_CTS" else "GEMINI_VOICE"
+                                    bridgePrefs.edit().putString("voice_action", voiceAction).apply()
+                                },
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            ToggleRow(
+                                IsleIcons.Check, IsleColors.TileBlue,
+                                Lang.s(context, "gemini_tap"), geminiTap,
+                                subtitle = Lang.s(context, "gemini_tap_subtitle"),
+                            ) {
+                                geminiTap = it
+                                prefs.edit().putBoolean("ltm_idle_gemini_tap", it).apply()
+                            }
+                            GroupDivider()
+                            Row(
+                                Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Button(
+                                    onClick = { LtmIslandHelper.launchGemini(context) },
+                                    modifier = Modifier.weight(1f),
+                                ) { Text(Lang.s(context, "open_gemini")) }
+                                OutlinedButton(
+                                    onClick = { LtmIslandHelper.launchCircleToSearch(context) },
+                                    modifier = Modifier.weight(1f),
+                                ) { Text(Lang.s(context, "circle_to_search")) }
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    Column(
+                        Modifier.alpha(if (castOn) 1f else 0.4f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        SectionLabel(Lang.s(context, "quiet_hours"))
+                        GroupCard {
+                            ToggleRow(
+                                IsleIcons.Moon, IsleColors.TilePurple,
+                                Lang.s(context, "quiet_dnd"), quietDnd,
+                                subtitle = Lang.s(context, "quiet_dnd_subtitle"),
+                            ) {
+                                quietDnd = it
+                                prefs.edit().putBoolean("cast_quiet_dnd", it).apply()
+                            }
+                            GroupDivider()
+                            ToggleRow(
+                                IsleIcons.Clock, IsleColors.TileGray,
+                                Lang.s(context, "schedule"), quietSchedule,
+                                subtitle = "${QuietHours.format(quietStart)} – ${QuietHours.format(quietEnd)}",
+                            ) {
+                                quietSchedule = it
+                                prefs.edit().putBoolean("cast_quiet_schedule", it).apply()
+                            }
+                            if (quietSchedule) {
+                                Row(
+                                    Modifier.padding(start = 62.dp, end = 16.dp, bottom = 14.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    ChoiceChip(
+                                        "${QuietHours.format(quietStart)}",
+                                        selected = false,
+                                        onClick = {
+                                            pickTime(context, quietStart) {
+                                                quietStart = it
+                                                prefs.edit().putInt("cast_quiet_start", it).apply()
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    ChoiceChip(
+                                        "${QuietHours.format(quietEnd)}",
+                                        selected = false,
+                                        onClick = {
+                                            pickTime(context, quietEnd) {
+                                                quietEnd = it
+                                                prefs.edit().putInt("cast_quiet_end", it).apply()
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                            }
+                        }
+                        Text(
+                            Lang.s(context, "quiet_hours_desc"),
+                            modifier = Modifier.padding(horizontal = 4.dp),
+                            fontSize = 13.sp,
+                            lineHeight = 18.sp,
+                            color = IsleColors.TextSecondary,
+                        )
+                    }
+                }
+            }
+
+            // --- TAB 3: CÀI ĐẶT (SETTINGS & BRIDGE & APPS) ---
+            if (selectedTab == 3) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SectionLabel(Lang.s(context, "tab_settings"))
+                        GroupCard {
+                            Row(
+                                Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                ) {
+                                    Box(
+                                        modifier = Modifier.size(32.dp).clip(CircleShape).background(IsleColors.TileTeal.copy(alpha = 0.2f)),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(IsleIcons.More, contentDescription = null, tint = IsleColors.TileTeal, modifier = Modifier.size(16.dp))
+                                    }
+                                    Text(Lang.s(context, "language"), color = IsleColors.Text, fontWeight = FontWeight.Medium)
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    listOf("vi" to "VI", "en" to "EN").forEach { (code, label) ->
+                                        FilterChip(
+                                            selected = appLang == code,
+                                            onClick = {
+                                                appLang = code
+                                                Lang.setLang(context, code)
+                                            },
+                                            label = { Text(label) },
+                                        )
+                                    }
+                                }
+                            }
+                            GroupDivider()
+                            NavRow(
+                                IsleIcons.Send, IsleColors.TileBlue,
+                                Lang.s(context, "hi_jovi_bridge"),
+                                Lang.s(context, "open"),
+                            ) {
+                                runCatching {
+                                    context.startActivity(
+                                        Intent().setComponent(
+                                            ComponentName("com.autonavi.minimap", "com.aikeybridge.MainActivity")
+                                        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    )
+                                }
+                            }
+                            GroupDivider()
+                            NavRow(
+                                IsleIcons.Grid, IsleColors.TileAmber,
+                                Lang.s(context, "apps"),
+                                value = if (appsOff == 0) Lang.s(context, "apps_all_on") else "$appsOff ${Lang.s(context, "apps_off")}",
+                                onClick = onOpenApps,
+                            )
+                            GroupDivider()
+                            NavRow(
+                                IsleIcons.Pulse, IsleColors.TileGray,
+                                Lang.s(context, "activity"),
+                                onClick = onOpenActivity,
+                            )
+                            GroupDivider()
+                            NavRow(
+                                IsleIcons.More, IsleColors.TileTeal,
+                                Lang.s(context, "permissions"),
+                                onClick = { permissionsOpen = true },
                             )
                         }
                     }
@@ -620,108 +846,196 @@ fun HomeScreen(
             }
         }
 
-        if (selectedTab == 2) item {
-            Column(
-                Modifier.alpha(if (castOn) 1f else 0.4f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+        // Bottom navigation bar (iOS-style glass pill)
+        Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Row(
+                Modifier.fillMaxWidth()
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(IsleColors.Surface.copy(alpha = 0.85f))
+                    .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(28.dp))
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
-                SectionLabel("Quiet hours")
-                GroupCard {
-                    ToggleRow(
-                        IsleIcons.Moon, IsleColors.TilePurple, "Follow Do Not Disturb", quietDnd,
-                        subtitle = "Quiet while DND is on",
-                    ) {
-                        quietDnd = it; prefs.edit().putBoolean("cast_quiet_dnd", it).apply()
-                    }
-                    GroupDivider()
-                    ToggleRow(
-                        IsleIcons.Clock, IsleColors.TileGray, "Schedule", quietSchedule,
-                        subtitle = "${QuietHours.format(quietStart)} – ${QuietHours.format(quietEnd)} every day",
-                    ) {
-                        quietSchedule = it; prefs.edit().putBoolean("cast_quiet_schedule", it).apply()
-                    }
-                    if (quietSchedule) {
-                        Row(
-                            Modifier.padding(start = 62.dp, end = 16.dp, bottom = 14.dp),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            ChoiceChip(
-                                "From ${QuietHours.format(quietStart)}",
-                                selected = false,
-                                onClick = {
-                                    pickTime(context, quietStart) {
-                                        quietStart = it; prefs.edit().putInt("cast_quiet_start", it).apply()
-                                    }
-                                },
-                                modifier = Modifier.weight(1f),
-                            )
-                            ChoiceChip(
-                                "To ${QuietHours.format(quietEnd)}",
-                                selected = false,
-                                onClick = {
-                                    pickTime(context, quietEnd) {
-                                        quietEnd = it; prefs.edit().putInt("cast_quiet_end", it).apply()
-                                    }
-                                },
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                    }
-                }
-                Text(
-                    "While quiet, only calls, navigation, timers, login codes, media and charging show.",
-                    modifier = Modifier.padding(horizontal = 4.dp),
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp,
-                    color = IsleColors.TextSecondary,
+                val icons = listOf(IsleIcons.Bolt, IsleIcons.Bell, IsleIcons.Grid, IsleIcons.More)
+                val labels = listOf(
+                    Lang.s(context, "tab_island"),
+                    Lang.s(context, "tab_notifications"),
+                    Lang.s(context, "tab_customize"),
+                    Lang.s(context, "tab_settings"),
                 )
-            }
-        }
-
-        if (selectedTab == 3) item {
-            GroupCard {
-                NavRow(
-                    IsleIcons.Grid, IsleColors.TileAmber, "Apps",
-                    value = if (appsOff == 0) "All on" else "$appsOff off",
-                    onClick = onOpenApps,
-                )
-                GroupDivider()
-                NavRow(IsleIcons.Pulse, IsleColors.TileGray, "Activity", onClick = onOpenActivity)
-            }
-        }
-    }
-    // Bottom navigation bar (iOS-style glass pill)
-    Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Row(
-            Modifier.fillMaxWidth()
-                .clip(RoundedCornerShape(28.dp))
-                .background(IsleColors.Surface.copy(alpha = 0.7f))
-                .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(28.dp))
-                .padding(horizontal = 8.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-        ) {
-            val icons = listOf(IsleIcons.Bolt, IsleIcons.Bell, IsleIcons.Grid, IsleIcons.More)
-            val labels = listOf("Đảo", "Thông báo", "Tuỳ chỉnh", "Cài đặt")
-            labels.forEachIndexed { i, label ->
-                Column(
-                    Modifier.weight(1f).clip(RoundedCornerShape(20.dp))
-                        .background(if (selectedTab == i) IsleColors.Accent.copy(alpha = 0.25f) else Color.Transparent)
-                        .clickable { selectedTab = i }
-                        .padding(vertical = 6.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Icon(icons[i], contentDescription = label, tint = if (selectedTab == i) IsleColors.Accent else IsleColors.TextSecondary, modifier = Modifier.size(20.dp))
-                    Text(label, fontSize = 10.sp, color = if (selectedTab == i) IsleColors.Accent else IsleColors.TextSecondary)
+                labels.forEachIndexed { i, label ->
+                    Column(
+                        Modifier.weight(1f).clip(RoundedCornerShape(20.dp))
+                            .background(if (selectedTab == i) IsleColors.Accent.copy(alpha = 0.25f) else Color.Transparent)
+                            .clickable { selectedTab = i }
+                            .padding(vertical = 6.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Icon(
+                            icons[i],
+                            contentDescription = label,
+                            tint = if (selectedTab == i) IsleColors.Accent else IsleColors.TextSecondary,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Text(
+                            label,
+                            fontSize = 11.sp,
+                            fontWeight = if (selectedTab == i) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (selectedTab == i) IsleColors.Accent else IsleColors.TextSecondary,
+                        )
+                    }
                 }
             }
         }
-    }
     }
 }
 
-/** Green "Listening" / red "Not listening" pill under the title; opens the Activity screen. */
+/** Real-time system RAM monitor card */
 @Composable
-private fun StatusPill(connected: Boolean, onClick: () -> Unit) {
+private fun RealtimeRamCard(context: Context) {
+    val actManager = remember { context.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager }
+    var totalMemMb by remember { mutableLongStateOf(0L) }
+    var availMemMb by remember { mutableLongStateOf(0L) }
+    var usedMemMb by remember { mutableLongStateOf(0L) }
+    var percent by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        val memInfo = android.app.ActivityManager.MemoryInfo()
+        while (true) {
+            actManager?.getMemoryInfo(memInfo)
+            val total = memInfo.totalMem / (1024 * 1024)
+            val avail = memInfo.availMem / (1024 * 1024)
+            val used = (total - avail).coerceAtLeast(0L)
+            val pct = if (total > 0) ((used * 100) / total).toInt() else 0
+            totalMemMb = total
+            availMemMb = avail
+            usedMemMb = used
+            percent = pct
+            delay(1200L)
+        }
+    }
+
+    val statusText = when {
+        percent < 65 -> Lang.s(context, "ram_status_smooth")
+        percent < 85 -> Lang.s(context, "ram_status_normal")
+        else -> Lang.s(context, "ram_status_high")
+    }
+    val progressColor = when {
+        percent < 65 -> IsleColors.Good
+        percent < 85 -> IsleColors.TileAmber
+        else -> IsleColors.Danger
+    }
+
+    GroupCard {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(IsleColors.TileTeal.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(IsleIcons.Pulse, contentDescription = null, tint = IsleColors.TileTeal, modifier = Modifier.size(20.dp))
+                    }
+                    Column {
+                        Text(
+                            Lang.s(context, "ram_monitor"),
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = IsleColors.Text
+                        )
+                        Text(
+                            Lang.s(context, "ram_realtime"),
+                            fontSize = 12.sp,
+                            color = IsleColors.TextSecondary
+                        )
+                    }
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(progressColor.copy(alpha = 0.15f))
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        "$statusText · $percent%",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = progressColor
+                    )
+                }
+            }
+
+            // Progress bar
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color.White.copy(alpha = 0.1f))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(fraction = (percent / 100f).coerceIn(0f, 1f))
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(progressColor)
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(Lang.s(context, "ram_used"), fontSize = 11.sp, color = IsleColors.TextSecondary)
+                    Text(
+                        String.format(java.util.Locale.US, "%.1f GB", usedMemMb / 1024.0),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = IsleColors.Text
+                    )
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(Lang.s(context, "ram_free"), fontSize = 11.sp, color = IsleColors.TextSecondary)
+                    Text(
+                        String.format(java.util.Locale.US, "%.1f GB", availMemMb / 1024.0),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = IsleColors.Good
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(Lang.s(context, "ram_total"), fontSize = 11.sp, color = IsleColors.TextSecondary)
+                    Text(
+                        String.format(java.util.Locale.US, "%.1f GB", totalMemMb / 1024.0),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = IsleColors.TextSecondary
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Status pill indicating listening state */
+@Composable
+private fun StatusPill(context: Context, connected: Boolean, onClick: () -> Unit) {
     Row(
         Modifier
             .height(32.dp)
@@ -734,7 +1048,7 @@ private fun StatusPill(connected: Boolean, onClick: () -> Unit) {
     ) {
         Box(Modifier.size(8.dp).clip(CircleShape).background(if (connected) IsleColors.Good else IsleColors.Bad))
         Text(
-            if (connected) "Listening" else "Not listening",
+            if (connected) Lang.s(context, "listening") else Lang.s(context, "not_listening"),
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             color = if (connected) IsleColors.GoodText else IsleColors.BadText,
@@ -780,7 +1094,6 @@ private fun SampleTester(context: Context) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            // What the compact island will look like once this sample is sent.
             IslandPreviewView(sample.preview)
             Text(
                 sample.summary,
@@ -810,7 +1123,7 @@ private fun SampleTester(context: Context) {
             }
         }
         PillButton(
-            if (sentAt != 0L) "Sent" else "Send to island",
+            if (sentAt != 0L) Lang.s(context, "sent") else Lang.s(context, "send_button"),
             onClick = { sample.post(context); sentAt = System.currentTimeMillis() },
             modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
             icon = IsleIcons.Send,
@@ -835,26 +1148,22 @@ private fun stopAll(context: Context) {
     context.startService(Intent(context, PlaygroundService::class.java).setAction(PlaygroundService.ACTION_STOP))
 }
 
-/**
- * Ask the bound notification listener to replay every current notification onto the island. If the
- * listener isn't connected (access not granted, or the binding went stale after a kill), keep it
- * alive and request a rebind so the sweep works on the next tap.
- */
 private fun recastAll(context: Context) {
     PlaygroundService.keepAlive(context)
     val listener = NotificationCastListener.instance
     if (listener == null) {
         val message = when (NotificationCastListener.forceRebind(context)) {
             NotificationCastListener.RebindResult.NO_ACCESS ->
-                "Notification access isn't granted — turn it on in Settings, then tap again."
+                if (Lang.currentLang(context) == "vi") "Chưa cấp quyền truy cập thông báo — hãy bật trong Cài đặt."
+                else "Notification access isn't granted — turn it on in Settings, then tap again."
             else ->
-                "Listener not connected — reconnecting now. Give it a few seconds, then tap again."
+                if (Lang.currentLang(context) == "vi") "Dịch vụ đang kết nối lại… Vui lòng thử lại sau vài giây."
+                else "Listener not connected — reconnecting now. Give it a few seconds, then tap again."
         }
         android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
         return
     }
     val count = listener.recastAll()
-    android.widget.Toast.makeText(
-        context, "Recast swept $count notifications.", android.widget.Toast.LENGTH_SHORT,
-    ).show()
+    val msg = if (Lang.currentLang(context) == "vi") "Đã quét lại $count thông báo." else "Recast swept $count notifications."
+    android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
 }

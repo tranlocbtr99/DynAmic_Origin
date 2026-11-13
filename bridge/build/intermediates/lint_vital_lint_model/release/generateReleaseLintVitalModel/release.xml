@@ -27,6 +27,6 @@
       applicationId="com.aikeybridge"
       generatedSourceFolders="build/generated/ap_generated_sources/release/out:build/generated/aidl_source_output_dir/release/out:build/generated/source/buildConfig/release"
       generatedResourceFolders="build/generated/res/resValues/release"
-      desugaredMethodsFiles="/home/loctm/.gradle/caches/8.14/transforms/e5c48d45f656c4ac82511c43abd73bc6/transformed/D8BackportedDesugaredMethods.txt">
+      desugaredMethodsFiles="/home/loctm/.gradle/caches/8.14.3/transforms/c2b92fc0ce1788b800acdfd3d0b0a482/transformed/D8BackportedDesugaredMethods.txt">
   </artifact>
 </variant>

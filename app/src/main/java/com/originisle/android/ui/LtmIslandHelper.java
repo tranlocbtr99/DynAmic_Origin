@@ -461,9 +461,9 @@ public final class LtmIslandHelper {
             Object companion = service.getField("Companion").get(null);
             java.util.Set<?> cards = (java.util.Set<?>) companion.getClass()
                     .getMethod("getActiveCardIds").invoke(companion);
-            return cards.size() == 1 && cards.contains(0xee84);
+            return cards.isEmpty() || (cards.size() == 1 && cards.contains(0xee84));
         } catch (ReflectiveOperationException unavailable) {
-            return false;
+            return true;
         }
     }
 
@@ -1169,7 +1169,17 @@ public final class LtmIslandHelper {
             intent.removeExtra("oi_extra3");
             intent.removeExtra("oi_extra4");
             intent.removeExtra("oi_right_icon");
+            intent.removeExtra("oi_left_icon");
             intent.removeExtra("oi_large_icon");
+            intent.removeExtra("oi_show_right_icon");
+            intent.removeExtra("oi_show_left_icon");
+            intent.removeExtra("oi_right_template");
+            intent.removeExtra("oi_right_content");
+            intent.removeExtra("status_chip_text");
+            intent.removeExtra("oi_left_content");
+            intent.removeExtra("oi_wave_state");
+            intent.removeExtra("oi_wave_color_list");
+            intent.removeExtra("oi_custom_template");
             intent.putExtra("oi_show_right_icon", false);
 
             if (!isIslandEnabled(context)) {
@@ -1350,8 +1360,22 @@ public final class LtmIslandHelper {
                 intent.putExtra("status_chip_text", geminiText);
                 intent.putExtra("oi_right_template", 4);
                 intent.putExtra("oi_show_right_icon", false);
+            } else if ("dot".equals(preset)) {
+                android.graphics.Bitmap dotBmp = createDotBitmap(context);
+                if (dotBmp != null) {
+                    android.graphics.drawable.Icon icon = android.graphics.drawable.Icon.createWithBitmap(dotBmp);
+                    intent.putExtra("oi_left_icon", icon);
+                    intent.putExtra("oi_large_icon", icon);
+                    intent.putExtra("oi_show_left_icon", true);
+                }
+                String blank = "\u2800";
+                intent.putExtra("oi_left_content", "");
+                intent.putExtra("oi_right_content", blank);
+                intent.putExtra("status_chip_text", blank);
+                intent.putExtra("oi_right_template", 4);
+                intent.putExtra("oi_show_right_icon", false);
             } else {
-                // Use the same text-and-icon template as the other idle presets.
+                // Use the same text-and-icon template as the other idle presets (Earth only).
                 android.graphics.Bitmap earth = createEarthBitmap(context);
                 if (earth != null) {
                     android.graphics.drawable.Icon icon = android.graphics.drawable.Icon.createWithBitmap(earth);
@@ -1375,6 +1399,18 @@ public final class LtmIslandHelper {
     private static int dp(Context context, int value) {
         if (context == null) return value;
         return Math.round(value * context.getResources().getDisplayMetrics().density);
+    }
+
+    public static android.graphics.Bitmap createDotBitmap(Context context) {
+        int size = dp(context, 16);
+        if (size <= 0) size = 32;
+        android.graphics.Bitmap bmp = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888);
+        android.graphics.Canvas canvas = new android.graphics.Canvas(bmp);
+        android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        paint.setStyle(android.graphics.Paint.Style.FILL);
+        paint.setColor(0xff3b82f6);
+        canvas.drawCircle(size / 2f, size / 2f, size * 0.35f, paint);
+        return bmp;
     }
 
     public static android.graphics.Bitmap createGeminiBitmap(Context context) {
