@@ -6,11 +6,10 @@ plugins {
 
 android {
     namespace = "com.aikeybridge"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 30
-        targetSdk = 35
         buildConfigField("int", "VERSION_CODE", "17")
         buildConfigField("String", "VERSION_NAME", "\"1.0.14\"")
 

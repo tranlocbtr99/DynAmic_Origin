@@ -1,6 +1,6 @@
 /*
  * This file is auto-generated.  DO NOT MODIFY.
- * Using: /home/loctm/android-sdk/build-tools/35.0.0/aidl -p/home/loctm/android-sdk/platforms/android-35/framework.aidl -o/home/loctm/merged-origin/bridge/build/generated/aidl_source_output_dir/release/out -I/home/loctm/merged-origin/bridge/src/main/aidl -I/home/loctm/merged-origin/bridge/src/release/aidl -I/home/loctm/.gradle/caches/8.14.3/transforms/489d213ecb391057cf98488157b955c8/transformed/core-1.13.1/aidl -I/home/loctm/.gradle/caches/8.14.3/transforms/45e5de36ea7b98bef848db24df3a41dd/transformed/versionedparcelable-1.1.1/aidl -d/tmp/aidl14339912189281949433.d /home/loctm/merged-origin/bridge/src/main/aidl/com/aikeybridge/shell/IShellService.aidl
+ * Using: /home/loctm/android-sdk/build-tools/35.0.0/aidl -p/home/loctm/android-sdk/platforms/android-36/framework.aidl -o/home/loctm/merged-origin/bridge/build/generated/aidl_source_output_dir/release/out -I/home/loctm/merged-origin/bridge/src/main/aidl -I/home/loctm/merged-origin/bridge/src/release/aidl -I/home/loctm/.gradle/caches/8.14.3/transforms/489d213ecb391057cf98488157b955c8/transformed/core-1.13.1/aidl -I/home/loctm/.gradle/caches/8.14.3/transforms/45e5de36ea7b98bef848db24df3a41dd/transformed/versionedparcelable-1.1.1/aidl -d/tmp/aidl17232359617111450949.d /home/loctm/merged-origin/bridge/src/main/aidl/com/aikeybridge/shell/IShellService.aidl
  */
 package com.aikeybridge.shell;
 public interface IShellService extends android.os.IInterface

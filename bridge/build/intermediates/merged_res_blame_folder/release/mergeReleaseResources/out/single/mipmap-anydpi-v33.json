@@ -1,0 +1,10 @@
+[
+    {
+        "merged": "com.aikeybridge-release-41:/mipmap-anydpi-v33/ic_launcher.xml",
+        "source": "com.aikeybridge-main-42:/mipmap-anydpi-v33/ic_launcher.xml"
+    },
+    {
+        "merged": "com.aikeybridge-release-41:/mipmap-anydpi-v33/ic_launcher_round.xml",
+        "source": "com.aikeybridge-main-42:/mipmap-anydpi-v33/ic_launcher_round.xml"
+    }
+]

@@ -1,0 +1,22 @@
+[
+    {
+        "merged": "com.aikeybridge-release-41:/layout/notification_template_part_time.xml",
+        "source": "com.aikeybridge-core-1.13.1-7:/layout/notification_template_part_time.xml"
+    },
+    {
+        "merged": "com.aikeybridge-release-41:/layout/ime_base_split_test_activity.xml",
+        "source": "com.aikeybridge-core-1.13.1-7:/layout/ime_base_split_test_activity.xml"
+    },
+    {
+        "merged": "com.aikeybridge-release-41:/layout/ime_secondary_split_test_activity.xml",
+        "source": "com.aikeybridge-core-1.13.1-7:/layout/ime_secondary_split_test_activity.xml"
+    },
+    {
+        "merged": "com.aikeybridge-release-41:/layout/notification_template_part_chronometer.xml",
+        "source": "com.aikeybridge-core-1.13.1-7:/layout/notification_template_part_chronometer.xml"
+    },
+    {
+        "merged": "com.aikeybridge-release-41:/layout/custom_dialog.xml",
+        "source": "com.aikeybridge-core-1.13.1-7:/layout/custom_dialog.xml"
+    }
+]

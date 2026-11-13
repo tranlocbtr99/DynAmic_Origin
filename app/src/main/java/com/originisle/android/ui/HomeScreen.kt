@@ -71,8 +71,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * The main screen: listener status, real-time RAM monitor, casting settings,
- * card customizations, and system controls.
+ * The main screen: listener status, compact real-time RAM monitor, unified island tester & presets,
+ * casting settings, card customizations, and system controls.
  */
 @Composable
 fun HomeScreen(
@@ -84,7 +84,7 @@ fun HomeScreen(
 ) {
     var castOn by remember { mutableStateOf(prefs.getBoolean("cast_notifications", false)) }
     var selectedTab by remember { mutableStateOf(0) }
-    var donateExpanded by remember { mutableStateOf(false) }
+    var donateExpanded by remember { mutableStateOf(true) }
     var sendToIslandExpanded by remember { mutableStateOf(true) }
     var mediaOn by remember { mutableStateOf(prefs.getBoolean("cast_media_sessions", false)) }
     var includeMessages by remember { mutableStateOf(prefs.getBoolean("cast_include_messages", false)) }
@@ -103,8 +103,7 @@ fun HomeScreen(
     var voiceAction by remember { mutableStateOf(bridgePrefs.getString("voice_action", "GEMINI_VOICE").orEmpty()) }
     var appLang by remember { mutableStateOf(Lang.currentLang(context)) }
     var idleCardEditOpen by remember { mutableStateOf(false) }
-    var idlePresetOpen by remember { mutableStateOf(false) }
-    var idlePreset by remember { mutableStateOf(prefs.getString("ltm_idle_preset", "dot").orEmpty()) }
+    var privacyPolicyOpen by remember { mutableStateOf(false) }
     var idleTitle by remember { mutableStateOf(prefs.getString("ltm_idle_card_title", "LTMori").orEmpty()) }
     var idleText by remember { mutableStateOf(prefs.getString("ltm_idle_card_text", "Đang chờ").orEmpty()) }
     var chargingLiveUpdates by remember { mutableStateOf(prefs.getBoolean("cast_charging_live_updates", false)) }
@@ -158,49 +157,26 @@ fun HomeScreen(
         PermissionsSheet(context, prefs, onDismiss = { permissionsOpen = false }, onRedoSetup = onRedoSetup)
     }
 
-    if (idlePresetOpen) {
-        val presets = listOf(
-            "dot" to "Chấm tròn nhỏ (Dot)",
-            "earth_only" to "Trái Đất",
-            "date_earth" to "Ngày + Trái Đất",
-            "weather" to "Thời tiết",
-            "weather_wave" to "Thời tiết + Sóng",
-            "wave" to "Sóng nhạc (Wave)",
-            "ram" to "RAM thời gian thực",
-            "network" to "Tốc độ mạng (Network)",
-            "gemini" to "Gemini Live",
-            "custom" to "Tùy chỉnh biểu tượng",
-        )
+    if (privacyPolicyOpen) {
         androidx.compose.material3.AlertDialog(
-            onDismissRequest = { idlePresetOpen = false },
-            title = { Text(Lang.s(context, "idle_preset"), fontWeight = FontWeight.Bold) },
+            onDismissRequest = { privacyPolicyOpen = false },
+            title = { Text(Lang.s(context, "privacy_rule"), fontWeight = FontWeight.Bold) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    presets.forEach { (key, label) ->
-                        TextButton(
-                            onClick = {
-                                idlePreset = key
-                                prefs.edit().putString("ltm_idle_preset", key).apply()
-                                LtmIslandHelper.updateIdlePreset(context)
-                                LtmIslandHelper.syncIdleTicker(context)
-                                idlePresetOpen = false
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(
-                                if (key == idlePreset) "✓  $label" else label,
-                                modifier = Modifier.fillMaxWidth(),
-                                textAlign = TextAlign.Start,
-                                fontWeight = if (key == idlePreset) FontWeight.Bold else FontWeight.Normal,
-                                color = if (key == idlePreset) IsleColors.Accent else IsleColors.Text,
-                            )
-                        }
-                    }
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Ứng dụng LTMori tôn trọng tối đa quyền riêng tư của bạn:\n\n" +
+                        "• Toàn bộ quá trình quét và hiển thị thông báo diễn ra hoàn toàn trên thiết bị (Offline).\n" +
+                        "• Ứng dụng không thu thập, không lưu trữ và không gửi bất kỳ nội dung thông báo, tin nhắn hay thông tin cá nhân nào ra ngoài.\n" +
+                        "• Quyền truy cập thông báo chỉ dùng để xây dựng các thẻ hiển thị trên thanh đảo Dynamic/Atomic Island của Vivo OriginOS.\n" +
+                        "• Bản quyền phần mềm © LocTM. Dựa trên mã nguồn mở Origin Isle & AI Key Bridge.",
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp,
+                        color = IsleColors.Text,
+                    )
                 }
             },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { idlePresetOpen = false }) { Text(Lang.s(context, "close")) }
+            confirmButton = {
+                TextButton(onClick = { privacyPolicyOpen = false }) { Text(Lang.s(context, "close")) }
             },
         )
     }
@@ -251,19 +227,21 @@ fun HomeScreen(
         LazyColumn(
             modifier = Modifier.weight(1f),
             contentPadding = ScreenPadding,
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // --- TAB 0: ĐẢO (ISLAND MAIN & RAM & SAMPLE TESTER) ---
+            // =========================================================================
+            // --- TAB 0: ĐẢO (ISLAND MAIN, DONATE TOP, COMPACT RAM, TESTER, FOOTER) ---
+            // =========================================================================
             if (selectedTab == 0) {
                 item {
                     Row(Modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.Top) {
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
                                 "Origin Isle",
-                                fontSize = 34.sp,
+                                fontSize = 32.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 letterSpacing = (-0.7).sp,
-                                lineHeight = 38.sp,
+                                lineHeight = 36.sp,
                                 color = IsleColors.Text,
                             )
                             StatusPill(context, connected, onClick = onOpenActivity)
@@ -304,8 +282,8 @@ fun HomeScreen(
                     updateStatus?.let {
                         Text(
                             it,
-                            modifier = Modifier.padding(start = 4.dp, top = 8.dp),
-                            fontSize = 13.sp,
+                            modifier = Modifier.padding(start = 4.dp, top = 6.dp),
+                            fontSize = 12.sp,
                             color = IsleColors.TextSecondary,
                         )
                     }
@@ -315,14 +293,51 @@ fun HomeScreen(
                     item { SetupAttentionBanner(onClick = { permissionsOpen = true }) }
                 }
 
-                // Widget RAM thời gian thực
+                // 1. ỦNG HỘ TÁC GIẢ (ĐƯA LÊN TRÊN CÙNG THEO YÊU CẦU)
                 item {
-                    RealtimeRamCard(context)
+                    GroupCard {
+                        Column {
+                            NavRow(
+                                IsleIcons.Heart, IsleColors.TileAmber,
+                                Lang.s(context, "donate"),
+                                if (donateExpanded) Lang.s(context, "collapse") else Lang.s(context, "expand"),
+                            ) {
+                                donateExpanded = !donateExpanded
+                            }
+                            if (donateExpanded) {
+                                Column(
+                                    Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    Text("Techcombank · Tran Minh Loc", fontSize = 13.sp, color = IsleColors.TextSecondary)
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Text("4444444790", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = IsleColors.Text)
+                                        TextButton(onClick = {
+                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("STK", "4444444790"))
+                                            android.widget.Toast.makeText(context, Lang.s(context, "copied"), android.widget.Toast.LENGTH_SHORT).show()
+                                        }) { Text(Lang.s(context, "copy")) }
+                                    }
+                                    TextButton(onClick = {
+                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://ltmprofile.pages.dev/")))
+                                    }) { Text(Lang.s(context, "contact_author")) }
+                                }
+                            }
+                        }
+                    }
                 }
 
-                // Cấu hình truyền lên đảo
+                // 2. BỘ NHỚ RAM TRONG APP (LÀM NHỎ GỌN LẠI)
                 item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CompactRamCard(context)
+                }
+
+                // 3. CÔNG TẮC BẬT/TẮT TRUYỀN LÊN ĐẢO
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         SectionLabel(Lang.s(context, "send_to_island"))
                         GroupCard {
                             ToggleRow(
@@ -350,9 +365,9 @@ fun HomeScreen(
                     }
                 }
 
-                // Bộ thử nghiệm mẫu trên đảo (Chỉ hiển thị trên Tab 0)
+                // 4. THỬ NGHIỆM HIỂN THỊ TRÊN ĐẢO (DANH SÁCH GỘP TOÀN BỘ THẺ MẪU & THẺ CHỜ)
                 item {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         SectionLabel(Lang.s(context, "sample_tester_title"))
                         SampleTester(context)
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -370,34 +385,36 @@ fun HomeScreen(
                     }
                 }
 
-                // Ủng hộ tác giả (đặt ở cuối Tab 0)
+                // 5. CUỐI CÙNG: TUYÊN BỐ BẢN QUYỀN & CHÍNH SÁCH BẢO MẬT
                 item {
                     GroupCard {
-                        Column {
-                            NavRow(
-                                IsleIcons.Heart, IsleColors.TileAmber,
-                                Lang.s(context, "donate"),
-                                if (donateExpanded) Lang.s(context, "collapse") else Lang.s(context, "expand"),
+                        Column(
+                            Modifier.fillMaxWidth().padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(
+                                "LTMori · Origin Isle v3.0.1",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = IsleColors.Text,
+                            )
+                            Text(
+                                "© LocTM · Tương thích Vivo OriginOS 4, 5, 6 & 7",
+                                fontSize = 11.sp,
+                                color = IsleColors.TextSecondary,
+                            )
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                donateExpanded = !donateExpanded
-                            }
-                            if (donateExpanded) {
-                                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Text("Techcombank · Tran Minh Loc", fontSize = 13.sp, color = IsleColors.TextSecondary)
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    ) {
-                                        Text("4444444790", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = IsleColors.Text)
-                                        TextButton(onClick = {
-                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("STK", "4444444790"))
-                                            android.widget.Toast.makeText(context, Lang.s(context, "copied"), android.widget.Toast.LENGTH_SHORT).show()
-                                        }) { Text(Lang.s(context, "copy")) }
-                                    }
-                                    TextButton(onClick = {
-                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://ltmprofile.pages.dev/")))
-                                    }) { Text(Lang.s(context, "contact_author")) }
+                                TextButton(onClick = { privacyPolicyOpen = true }) {
+                                    Text(Lang.s(context, "privacy_rule"), fontSize = 12.sp)
+                                }
+                                TextButton(onClick = {
+                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://ltmprofile.pages.dev/")))
+                                }) {
+                                    Text(Lang.s(context, "contact_author"), fontSize = 12.sp)
                                 }
                             }
                         }
@@ -405,7 +422,9 @@ fun HomeScreen(
                 }
             }
 
+            // =========================================================================
             // --- TAB 1: THÔNG BÁO (NOTIFICATION STREAM SETTINGS) ---
+            // =========================================================================
             if (selectedTab == 1) {
                 item {
                     Column(
@@ -527,33 +546,24 @@ fun HomeScreen(
                 }
             }
 
-            // --- TAB 2: TUỲ CHỈNH (CUSTOM CARDS, IDLE PRESET & GEMINI) ---
+            // =========================================================================
+            // --- TAB 2: TUỲ CHỈNH (CUSTOM CARDS, GEMINI & QUIET HOURS) ---
+            // =========================================================================
             if (selectedTab == 2) {
+                // ĐÃ XÓA MỤC "KIỂU THẺ CHỜ TRÊN ĐẢO" TRÙNG LẶP THEO YÊU CẦU
+                // CHỈ GIỮ LẠI TÙY CHỈNH NỘI DUNG THẺ CHỜ & CÁC LOẠI THẺ
                 item {
                     Column(
                         Modifier.alpha(if (castOn) 1f else 0.4f),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        SectionLabel(Lang.s(context, "idle_preset"))
+                        SectionLabel(Lang.s(context, "idle_card_text"))
                         GroupCard {
-                            val presetDisplay = when (idlePreset) {
-                                "dot" -> "Chấm tròn (Dot)"
-                                "earth_only" -> "Trái Đất"
-                                "date_earth" -> "Ngày + Trái Đất"
-                                "weather" -> "Thời tiết"
-                                "weather_wave" -> "Thời tiết + Sóng"
-                                "wave" -> "Sóng nhạc"
-                                "ram" -> "RAM thời gian thực"
-                                "network" -> "Tốc độ mạng"
-                                "gemini" -> "Gemini Live"
-                                "custom" -> "Tùy chỉnh"
-                                else -> idlePreset
-                            }
-                            NavRow(IsleIcons.Clock, IsleColors.TileBlue, Lang.s(context, "idle_preset"), presetDisplay) {
-                                idlePresetOpen = true
-                            }
-                            GroupDivider()
-                            NavRow(IsleIcons.Send, IsleColors.TilePurple, Lang.s(context, "idle_card_text"), Lang.s(context, "edit")) {
+                            NavRow(
+                                IsleIcons.Send, IsleColors.TilePurple,
+                                Lang.s(context, "idle_card_text"),
+                                Lang.s(context, "edit"),
+                            ) {
                                 idleTitle = prefs.getString("ltm_idle_card_title", "LTMori").orEmpty()
                                 idleText = prefs.getString("ltm_idle_card_text", "Đang chờ").orEmpty()
                                 idleCardEditOpen = true
@@ -771,7 +781,9 @@ fun HomeScreen(
                 }
             }
 
+            // =========================================================================
             // --- TAB 3: CÀI ĐẶT (SETTINGS & BRIDGE & APPS) ---
+            // =========================================================================
             if (selectedTab == 3) {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -890,9 +902,9 @@ fun HomeScreen(
     }
 }
 
-/** Real-time system RAM monitor card */
+/** Compact real-time RAM monitor card (takes minimal vertical height) */
 @Composable
-private fun RealtimeRamCard(context: Context) {
+private fun CompactRamCard(context: Context) {
     val actManager = remember { context.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager }
     var totalMemMb by remember { mutableLongStateOf(0L) }
     var availMemMb by remember { mutableLongStateOf(0L) }
@@ -930,8 +942,8 @@ private fun RealtimeRamCard(context: Context) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -940,94 +952,54 @@ private fun RealtimeRamCard(context: Context) {
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(10.dp))
+                            .size(26.dp)
+                            .clip(RoundedCornerShape(6.dp))
                             .background(IsleColors.TileTeal.copy(alpha = 0.2f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(IsleIcons.Pulse, contentDescription = null, tint = IsleColors.TileTeal, modifier = Modifier.size(20.dp))
+                        Icon(IsleIcons.Pulse, contentDescription = null, tint = IsleColors.TileTeal, modifier = Modifier.size(15.dp))
                     }
-                    Column {
-                        Text(
-                            Lang.s(context, "ram_monitor"),
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = IsleColors.Text
-                        )
-                        Text(
-                            Lang.s(context, "ram_realtime"),
-                            fontSize = 12.sp,
-                            color = IsleColors.TextSecondary
-                        )
-                    }
+                    Text(
+                        "RAM: ${String.format(java.util.Locale.US, "%.1f", usedMemMb / 1024.0)} / ${String.format(java.util.Locale.US, "%.1f GB", totalMemMb / 1024.0)}",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = IsleColors.Text
+                    )
                 }
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(8.dp))
                         .background(progressColor.copy(alpha = 0.15f))
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Text(
                         "$statusText · $percent%",
-                        fontSize = 13.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = progressColor
                     )
                 }
             }
 
-            // Progress bar
+            // Compact progress bar
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp))
+                    .height(5.dp)
+                    .clip(RoundedCornerShape(3.dp))
                     .background(Color.White.copy(alpha = 0.1f))
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(fraction = (percent / 100f).coerceIn(0f, 1f))
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(4.dp))
+                        .height(5.dp)
+                        .clip(RoundedCornerShape(3.dp))
                         .background(progressColor)
                 )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column {
-                    Text(Lang.s(context, "ram_used"), fontSize = 11.sp, color = IsleColors.TextSecondary)
-                    Text(
-                        String.format(java.util.Locale.US, "%.1f GB", usedMemMb / 1024.0),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = IsleColors.Text
-                    )
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(Lang.s(context, "ram_free"), fontSize = 11.sp, color = IsleColors.TextSecondary)
-                    Text(
-                        String.format(java.util.Locale.US, "%.1f GB", availMemMb / 1024.0),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = IsleColors.Good
-                    )
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(Lang.s(context, "ram_total"), fontSize = 11.sp, color = IsleColors.TextSecondary)
-                    Text(
-                        String.format(java.util.Locale.US, "%.1f GB", totalMemMb / 1024.0),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = IsleColors.TextSecondary
-                    )
-                }
             }
         }
     }
@@ -1038,8 +1010,8 @@ private fun RealtimeRamCard(context: Context) {
 private fun StatusPill(context: Context, connected: Boolean, onClick: () -> Unit) {
     Row(
         Modifier
-            .height(32.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .height(30.dp)
+            .clip(RoundedCornerShape(15.dp))
             .background(if (connected) IsleColors.GoodBg else IsleColors.BadBg)
             .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 12.dp),
@@ -1049,7 +1021,7 @@ private fun StatusPill(context: Context, connected: Boolean, onClick: () -> Unit
         Box(Modifier.size(8.dp).clip(CircleShape).background(if (connected) IsleColors.Good else IsleColors.Bad))
         Text(
             if (connected) Lang.s(context, "listening") else Lang.s(context, "not_listening"),
-            fontSize = 13.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
             color = if (connected) IsleColors.GoodText else IsleColors.BadText,
         )
@@ -1059,9 +1031,9 @@ private fun StatusPill(context: Context, connected: Boolean, onClick: () -> Unit
 @Composable
 private fun MenuItem(text: String, onClick: () -> Unit) {
     DropdownMenuItem(
-        text = { Text(text, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = IsleColors.Text) },
+        text = { Text(text, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = IsleColors.Text) },
         onClick = onClick,
-        modifier = Modifier.widthIn(min = 200.dp).heightIn(min = 48.dp),
+        modifier = Modifier.widthIn(min = 180.dp).heightIn(min = 44.dp),
     )
 }
 
@@ -1069,7 +1041,7 @@ private fun MenuItem(text: String, onClick: () -> Unit) {
 @Composable
 private fun SampleTester(context: Context) {
     var selected by remember { mutableIntStateOf(0) }
-    val sample = IslandSamples.all[selected]
+    val sample = IslandSamples.all.getOrElse(selected) { IslandSamples.all.first() }
     var sentAt by remember { mutableLongStateOf(0L) }
     LaunchedEffect(sentAt) {
         if (sentAt != 0L) { delay(1600); sentAt = 0L }
@@ -1078,35 +1050,35 @@ private fun SampleTester(context: Context) {
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
+            .clip(RoundedCornerShape(24.dp))
             .background(IsleColors.Surface)
-            .padding(vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+            .padding(vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Column(
             Modifier
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 14.dp)
                 .fillMaxWidth()
-                .heightIn(min = 104.dp)
-                .clip(RoundedCornerShape(20.dp))
+                .heightIn(min = 96.dp)
+                .clip(RoundedCornerShape(18.dp))
                 .background(IsleColors.PreviewBg)
-                .padding(start = 10.dp, end = 10.dp, top = 14.dp, bottom = 12.dp),
+                .padding(start = 10.dp, end = 10.dp, top = 12.dp, bottom = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             IslandPreviewView(sample.preview)
             Text(
                 sample.summary,
-                modifier = Modifier.padding(top = 12.dp),
+                modifier = Modifier.padding(top = 10.dp),
                 fontSize = 12.sp,
-                lineHeight = 16.sp,
+                lineHeight = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = IsleColors.PreviewLabel,
                 textAlign = TextAlign.Center,
             )
         }
         LazyRow(
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             itemsIndexed(IslandSamples.all) { i, s ->
@@ -1116,20 +1088,20 @@ private fun SampleTester(context: Context) {
                     onClick = { selected = i },
                     selectedContainer = IsleColors.Text,
                     selectedContent = IsleColors.Background,
-                    shape = RoundedCornerShape(18.dp),
-                    height = 36.dp,
-                    horizontalPadding = 14.dp,
+                    shape = RoundedCornerShape(16.dp),
+                    height = 34.dp,
+                    horizontalPadding = 12.dp,
                 )
             }
         }
         PillButton(
             if (sentAt != 0L) Lang.s(context, "sent") else Lang.s(context, "send_button"),
             onClick = { sample.post(context); sentAt = System.currentTimeMillis() },
-            modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+            modifier = Modifier.padding(horizontal = 14.dp).fillMaxWidth(),
             icon = IsleIcons.Send,
             container = IsleColors.Accent,
             content = Color.White,
-            height = 48.dp,
+            height = 46.dp,
         )
     }
 }

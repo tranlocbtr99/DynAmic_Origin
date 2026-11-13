@@ -1,0 +1,22 @@
+[
+    {
+        "merged": "com.aikeybridge-release-41:/font/be_vietnam_pro_semibold.ttf",
+        "source": "com.aikeybridge-main-42:/font/be_vietnam_pro_semibold.ttf"
+    },
+    {
+        "merged": "com.aikeybridge-release-41:/font/be_vietnam_pro_bold.ttf",
+        "source": "com.aikeybridge-main-42:/font/be_vietnam_pro_bold.ttf"
+    },
+    {
+        "merged": "com.aikeybridge-release-41:/font/be_vietnam_pro_medium.ttf",
+        "source": "com.aikeybridge-main-42:/font/be_vietnam_pro_medium.ttf"
+    },
+    {
+        "merged": "com.aikeybridge-release-41:/font/be_vietnam_pro_regular.ttf",
+        "source": "com.aikeybridge-main-42:/font/be_vietnam_pro_regular.ttf"
+    },
+    {
+        "merged": "com.aikeybridge-release-41:/font/jetbrains_mono.ttf",
+        "source": "com.aikeybridge-main-42:/font/jetbrains_mono.ttf"
+    }
+]
