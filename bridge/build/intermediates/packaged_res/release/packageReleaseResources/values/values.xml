@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="accent">#CBF25C</color>
+    <color name="ink">#0A0B0D</color>
+    <color name="ink_2">#101217</color>
+    <color name="paper">#F5F2EA</color>
+    <string name="accessibility_description">Theo dõi cửa sổ trợ lý gốc của hãng (Tiểu V, XiaoAI, Breeno, YOYO, Mora…) để đóng nó và mở trợ lý AI bạn chọn, như Gemini. Dịch vụ đọc tên gói và tên lớp cửa sổ; khi trợ lý AI mở thì đọc tên và mô tả nút để tìm và chạm nút Micro. Không đọc văn bản trên màn hình, không ghi âm và không gửi dữ liệu ra ngoài. Chỉ cần cho chế độ Đầy đủ — chế độ Script nền không dùng Trợ năng.</string>
+    <string name="accessibility_label">AI Key Bridge — chuyển trợ lý</string>
+    <string name="app_name">LTMori</string>
+    <string name="cts_label">Circle to Search</string>
+    <string name="cts_long_label">Khoanh tròn để tìm kiếm (Google)</string>
+    <string name="launch_label">Gọi AI</string>
+    <string name="launch_long_label">Gọi AI · mở trợ lý đã chọn</string>
+    <style name="Theme.AIKeyBridge" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/paper</item>
+        <item name="android:statusBarColor">@color/paper</item>
+        <item name="android:navigationBarColor">@color/paper</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:fontFamily">sans</item>
+    </style>
+    <style name="Theme.AIKeyBridge.Trigger" parent="android:Theme.Translucent.NoTitleBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
+</resources>

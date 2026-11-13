@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:ns1="http://schemas.android.com/tools"
+    package="com.aikeybridge" >
+
+    <uses-sdk android:minSdkVersion="30" />
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission
+        android:name="android.permission.WRITE_SECURE_SETTINGS"
+        ns1:ignore="ProtectedPermissions" />
+    <uses-permission
+        android:name="android.permission.READ_LOGS"
+        ns1:ignore="ProtectedPermissions" />
+
+    <queries>
+        <package android:name="com.google.android.googlequicksearchbox" />
+        <package android:name="com.google.android.apps.bard" />
+        <package android:name="com.vivo.ai.copilot" />
+        <package android:name="com.vivo.agent" />
+        <package android:name="com.miui.voiceassist" />
+        <package android:name="com.heytap.speechassist" />
+        <package android:name="com.coloros.speechassist" />
+        <package android:name="com.hihonor.magicvoice" />
+        <package android:name="com.huawei.vassistant" />
+        <package android:name="cn.nubia.voiceassist" />
+        <package android:name="com.openai.chatgpt" />
+        <package android:name="moe.shizuku.privileged.api" />
+        <package android:name="com.vivo.permissionmanager" />
+        <package android:name="com.vivo.voicewakeup" />
+        <package android:name="com.iqoo.powersaving" />
+        <package android:name="com.iqoo.secure" />
+        <package android:name="com.miui.securitycenter" />
+        <package android:name="com.coloros.safecenter" />
+        <package android:name="com.oplus.safecenter" />
+        <package android:name="com.hihonor.systemmanager" />
+        <package android:name="com.huawei.systemmanager" />
+
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.ASSIST" />
+        </intent>
+    </queries>
+
+    <application>
+        <activity
+            android:name="com.aikeybridge.MainActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.AIKeyBridge" >
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+        </activity>
+        <activity
+            android:name="com.aikeybridge.LaunchActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:label="@string/launch_label"
+            android:launchMode="singleTask"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.AIKeyBridge.Trigger" />
+
+        <activity-alias
+            android:name="com.aikeybridge.LaunchAlias"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="@string/launch_label"
+            android:targetActivity="com.aikeybridge.LaunchActivity" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity
+            android:name="com.aikeybridge.TriggerActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.AIKeyBridge.Trigger" />
+        <activity
+            android:name="com.aikeybridge.service.SettingsSpotlightActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:launchMode="singleInstance"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.AIKeyBridge.Trigger" />
+
+        <provider
+            android:name="com.aikeybridge.shell.EngineBinderProvider"
+            android:authorities="${applicationId}.engine"
+            android:enabled="true"
+            android:exported="true"
+            android:multiprocess="false"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
+
+        <receiver
+            android:name="com.aikeybridge.shell.WirelessAdbPairingReceiver"
+            android:exported="true"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" >
+            <intent-filter>
+                <action android:name="com.aikeybridge.action.ANCHOR_ADB_WIFI" />
+                <action android:name="com.aikeybridge.action.LOCK_DEV_MODE" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name="com.aikeybridge.shell.WirelessAdbPairingService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse" >
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="wireless_adb_pairing" />
+        </service>
+
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:enabled="true"
+            android:exported="true"
+            android:multiprocess="false"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true" >
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+
+</manifest>

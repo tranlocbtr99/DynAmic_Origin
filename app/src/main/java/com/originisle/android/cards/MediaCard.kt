@@ -1,0 +1,212 @@
+package com.originisle.android.cards
+
+import android.app.Notification
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.drawable.Icon
+import android.media.MediaMetadata
+import android.media.session.MediaController
+import android.media.session.PlaybackState
+import android.service.notification.StatusBarNotification
+import androidx.core.app.NotificationCompat
+import com.originisle.android.R
+import com.originisle.android.island.OriginIslandConstants
+import com.originisle.android.ui.LtmIslandHelper
+import com.originisle.android.island.PlaygroundService
+import com.originisle.android.service.IconCache
+import com.originisle.android.service.MediaControlReceiver
+import kotlin.math.abs
+
+/**
+ * Casts an active media session (music, podcasts, video) as a card with play-pause — plus prev/next
+ * when the session actually supports skipping — wired back to the source app through
+ * [MediaControlReceiver].
+ */
+object MediaCard {
+
+    fun post(context: Context, sbn: StatusBarNotification, controller: MediaController) {
+        val id = IconCache.castIdFor(sbn)
+        val n = sbn.notification
+        IconCache.activeControllers[id] = controller
+
+        val md = controller.metadata
+        val track = md?.getString(MediaMetadata.METADATA_KEY_TITLE)?.trim().orEmpty()
+            .ifBlank { extrasTitle(sbn) }
+            .ifBlank { n.extras.getCharSequence(NotificationCompat.EXTRA_TITLE)?.toString()?.trim().orEmpty() }
+            .ifBlank { appLabel(context, sbn.packageName) }
+
+        val artist = (md?.getString(MediaMetadata.METADATA_KEY_ARTIST)
+            ?: md?.getString(MediaMetadata.METADATA_KEY_ALBUM_ARTIST)
+            ?: n.extras.getCharSequence(NotificationCompat.EXTRA_TEXT)?.toString())?.trim().orEmpty()
+            .ifBlank { "Now playing" }
+        // Some apps/browsers never report a PlaybackState at all (playbackState == null), which made
+        // the wave never show for them even while actually playing. Treat missing state as "trust the
+        // notification's own ongoing flag" instead of defaulting to false. Buffering/connecting also
+        // count as playing — otherwise the wave flickers to the paused icon on every buffer stall.
+        val playbackStateValue = controller.playbackState?.state
+        val playing = when (playbackStateValue) {
+            PlaybackState.STATE_PLAYING, PlaybackState.STATE_BUFFERING,
+            PlaybackState.STATE_FAST_FORWARDING, PlaybackState.STATE_REWINDING,
+            PlaybackState.STATE_SKIPPING_TO_NEXT, PlaybackState.STATE_SKIPPING_TO_PREVIOUS,
+            PlaybackState.STATE_CONNECTING,
+            -> true
+            null -> sbn.isOngoing
+            else -> false
+        }
+
+        n.smallIcon?.let { IconCache.activeSmallIcons[id] = it }
+        val fallbackArt: Bitmap? = run {
+            val largeIcon = n.largeIcon as? android.graphics.drawable.Icon
+            if (largeIcon != null) iconToBitmap(context, largeIcon) else n.extras.getParcelable<android.graphics.Bitmap>(Notification.EXTRA_PICTURE)
+        }
+        val albumArt: Bitmap? = (md?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
+            ?: md?.getBitmap(MediaMetadata.METADATA_KEY_ART)
+            ?: fallbackArt)?.let(::shrinkForIcon)
+        albumArt?.let { IconCache.activeLargeBitmaps[id] = it }
+        val waveColors = waveColorsFrom(albumArt)
+
+        val showChrono = n.extras.getBoolean(NotificationCompat.EXTRA_SHOW_CHRONOMETER, false)
+        val chip = if (showChrono && n.`when` > 0) {
+            formatElapsed(abs(System.currentTimeMillis() - n.`when`) / 1000)
+        } else if (playing) {
+            "Playing"
+        } else {
+            // Paused pill is icon-only — no "Paused" text, no source-app icon standing in for it.
+            // A single space, not "": OriginIslandBuilder's capsule content is always populated
+            // unconditionally, and a genuinely empty value risks the same silent-rejection behaviour
+            // documented for empty notification title/text (already worked around elsewhere in
+            // OriginIslandBuilder's template-4 path the same way).
+            " "
+        }
+
+        fun mediaAction(action: String) = PendingIntent.getBroadcast(
+            context, (id.toString() + action).hashCode(),
+            Intent(action).setPackage(context.packageName)
+                .putExtra("cast_id", id)
+                .putExtra(MediaControlReceiver.EXTRA_TOKEN, controller.sessionToken),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+        fun findSourceAction(titleKeywords: List<String>): PendingIntent? =
+            n.actions?.firstOrNull { a ->
+                val title = a.title?.toString()?.lowercase().orEmpty()
+                titleKeywords.any { title.contains(it) }
+            }?.actionIntent
+
+        val prevSourceAction = findSourceAction(listOf("previous", "skip back", "rewind"))
+        val nextSourceAction = findSourceAction(listOf("next", "skip forward", "fast forward"))
+        val sessionActions = controller.playbackState?.actions ?: 0L
+        val hasPrev = prevSourceAction != null || (sessionActions and PlaybackState.ACTION_SKIP_TO_PREVIOUS) != 0L
+        val hasNext = nextSourceAction != null || (sessionActions and PlaybackState.ACTION_SKIP_TO_NEXT) != 0L
+
+        val actions = arrayListOf<Notification.Action>()
+        if (hasPrev) {
+            actions.add(
+                makeAction(context, R.drawable.ic_media_prev, prevSourceAction ?: mediaAction(MediaControlReceiver.ACTION_PREV)),
+            )
+        }
+        actions.add(
+            makeAction(
+                context,
+                if (playing) R.drawable.ic_media_pause else R.drawable.ic_media_play,
+                mediaAction(MediaControlReceiver.ACTION_PLAY_PAUSE),
+            ),
+        )
+        if (hasNext) {
+            actions.add(
+                makeAction(context, R.drawable.ic_media_next, nextSourceAction ?: mediaAction(MediaControlReceiver.ACTION_NEXT)),
+            )
+        }
+
+        val intent = Intent(context, PlaygroundService::class.java).apply {
+            action = PlaygroundService.ACTION_START
+            putExtra("id", id)
+            putExtra("is_ongoing", true)
+
+            putExtra("oi_scene", "NAVIGATION")
+            putExtra("title", track)
+            putExtra("text", artist)
+            putExtra("source_pkg", sbn.packageName)
+            putExtra("oi_left_content", if (albumArt != null) "" else track)
+
+            putExtra("status_chip_text", chip)
+
+            albumArt?.let { putExtra("oi_left_icon", Icon.createWithBitmap(it)) }
+            putExtra("icon_res", R.drawable.ic_media_play)
+            putExtra("oi_template", OriginIslandConstants.TEMPLATE_BUTTONS)
+            putExtra("oi_bg_color", "#FF262626")
+            putExtra("oi_fg_color", "#FFFFFFFF")
+            // Lockscreen visibility is decided globally by the "Live card on lockscreen" setting in
+            // PlaygroundService, not per-card — no oi_displays override needed here anymore.
+            if (playing) {
+                putExtra("oi_right_template", OriginIslandConstants.TEMPLATE_RIGHT_ISLAND_WAVE)
+                // Test: waveState=2 rendered a static (non-animated) wave shape. Trying 1 now that real
+                // colours are actually wired in — never tested that combination before.
+                putExtra("oi_wave_state", 1)
+                if (waveColors.isNotEmpty()) {
+                    putStringArrayListExtra("oi_wave_color_list", ArrayList(waveColors))
+                }
+            } else {
+                putExtra("oi_right_template", OriginIslandConstants.TEMPLATE_RIGHT_ISLAND_TEXT_ICON)
+                // Explicit pause-bars icon instead of falling back to the source app's small icon
+                // (which for some apps IS a speaker glyph — confusing next to "no text").
+                putExtra("oi_right_icon", Icon.createWithResource(context, R.drawable.ic_media_pause))
+                putExtra("oi_show_right_icon", true)
+            }
+
+            putParcelableArrayListExtra("actions", actions)
+            putExtra(
+                "source_content_intent",
+                n.contentIntent ?: fallbackClickIntent(context, sbn.packageName),
+            )
+        }
+        com.originisle.android.ui.LtmIslandHelper.startLiveLyrics(context, controller, track, artist, intent)
+        context.startService(intent)
+    }
+
+    private fun extrasTitle(sbn: StatusBarNotification): String =
+        sbn.notification.extras.getCharSequence(NotificationCompat.EXTRA_TITLE)?.toString()?.trim().orEmpty()
+
+    private fun appLabel(context: Context, pkg: String): String = runCatching {
+        context.packageManager.getApplicationLabel(context.packageManager.getApplicationInfo(pkg, 0)).toString()
+    }.getOrDefault(pkg)
+
+    private fun makeAction(context: Context, iconRes: Int, pi: PendingIntent): Notification.Action =
+        Notification.Action.Builder(Icon.createWithResource(context, iconRes), "", pi).build()
+
+    /**
+     * Sample a few points across the album art to get a small palette for the wave visualiser
+     * (island.superx.rightInfo.waveColor), instead of the single flat colour OriginIslandBuilder
+     * falls back to when no list is supplied. No Palette dependency — just direct pixel sampling.
+     */
+    private fun iconToBitmap(context: Context, icon: Icon?): Bitmap? = runCatching {
+        val d = icon?.loadDrawable(context) ?: return null
+        val w = d.intrinsicWidth.coerceAtLeast(1)
+        val h = d.intrinsicHeight.coerceAtLeast(1)
+        val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+        val c = android.graphics.Canvas(bmp)
+        d.setBounds(0, 0, c.width, c.height)
+        d.draw(c)
+        bmp
+    }.getOrNull()
+
+    private fun waveColorsFrom(bitmap: Bitmap?): List<String> {
+        // Bitmap.getPixel() throws IllegalStateException on a hardware-backed bitmap
+        // (Bitmap.Config.HARDWARE), which shrinkForIcon() can hand back unchanged for anything
+        // already under its size cap. That exception must never escape and take the whole post()
+        // down with it — this is a cosmetic add-on, not something worth losing the card update over.
+        if (bitmap == null || bitmap.width == 0 || bitmap.height == 0) return emptyList()
+        if (bitmap.config == Bitmap.Config.HARDWARE) return emptyList()
+        return runCatching {
+            val w = bitmap.width
+            val h = bitmap.height
+            listOf(0.25f to 0.5f, 0.5f to 0.3f, 0.75f to 0.5f).map { (fx, fy) ->
+                val x = (fx * (w - 1)).toInt().coerceIn(0, w - 1)
+                val y = (fy * (h - 1)).toInt().coerceIn(0, h - 1)
+                String.format("#%06X", 0xFFFFFF and bitmap.getPixel(x, y))
+            }
+        }.getOrDefault(emptyList())
+    }
+}

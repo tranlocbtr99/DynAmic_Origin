@@ -1,0 +1,19 @@
+<lint-module
+    format="1"
+    dir="/home/loctm/merged-origin/bridge"
+    name=":bridge"
+    type="LIBRARY"
+    maven="OriginIsle:bridge:unspecified"
+    agpVersion="8.9.2"
+    buildFolder="build"
+    bootClassPath="/home/loctm/android-sdk/platforms/android-35/android.jar:/home/loctm/android-sdk/build-tools/35.0.0/core-lambda-stubs.jar"
+    javaSourceLevel="17"
+    compileTarget="android-35"
+    neverShrinking="true">
+  <lintOptions
+      abortOnError="true"
+      absolutePaths="true"
+      checkReleaseBuilds="true"
+      explainIssues="true"/>
+  <variant name="release"/>
+</lint-module>
