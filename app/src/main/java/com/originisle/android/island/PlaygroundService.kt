@@ -176,8 +176,8 @@ class PlaygroundService : Service() {
         // icon that skip was avoiding is handled instead by CHANNEL_ID being IMPORTANCE_NONE.
         createNotificationChannel(CHANNEL_ID)
         val n = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Origin Isle")
-            .setContentText("Casting to OriginIsland")
+            .setContentTitle("LTMori")
+            .setContentText("Dịch vụ thông báo đảo LTMori")
             // A fully transparent small icon: OriginOS force-shows foreground-service icons in the
             // status bar even at IMPORTANCE_MIN, so we make the icon invisible. The entry still shows
             // (with text) in the expanded notification panel; only the status-bar glyph disappears.
@@ -449,7 +449,7 @@ class PlaygroundService : Service() {
      */
     private fun onRejected(id: Int) {
         val last = lastPosts[id] ?: return
-        val app = last.getStringExtra("source_app").orEmpty().ifBlank { "Origin Isle" }
+        val app = last.getStringExtra("source_app").orEmpty().ifBlank { "LTMori" }
         val title = last.getStringExtra("title").orEmpty()
         val simpler = last.getIntExtra("oi_template", 0) in FANCY_TEMPLATES ||
             last.hasExtra("actions") || last.hasExtra("oi_button_titles")

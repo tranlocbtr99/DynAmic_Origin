@@ -117,7 +117,14 @@ object GenericCard {
             action = PlaygroundService.ACTION_START
             putExtra("id", id)
             putExtra("is_ongoing", isLive)
-            putExtra("oi_scene", "NAVIGATION")
+            if (isCall) {
+                putExtra("oi_scene", "INCALLING")
+                putExtra("is_call", true)
+                putExtra("oi_force_show", true)
+                putExtra("oi_light_color", "#FF34C759")
+            } else {
+                putExtra("oi_scene", "NAVIGATION")
+            }
             putExtra("title", title)
             // vivo silently REJECTS a SuperX post with empty content text — falling back to a plain
             // notification instead (some notifications, e.g. Maps at the very start of navigation,

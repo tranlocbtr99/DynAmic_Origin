@@ -79,9 +79,9 @@ object IslandSamples {
             setIdlePreset(ctx, "wave")
         },
         OriginSample(
-            name = "Gemini Live",
-            summary = "Biểu tượng trợ lý AI Gemini sắc nét",
-            preview = IslandPreview(R.drawable.ic_alert, "✨", IslandPreview.Right.Text("Gemini Live")),
+            name = "Trợ lý AI",
+            summary = "Kích hoạt nhanh Gemini Voice hoặc Circle to Search",
+            preview = IslandPreview(R.drawable.ic_alert, "✨", IslandPreview.Right.Text("Trợ lý AI")),
         ) { ctx ->
             setIdlePreset(ctx, "gemini")
         },

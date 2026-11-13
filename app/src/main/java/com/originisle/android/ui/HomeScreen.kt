@@ -12,6 +12,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,6 +57,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -66,6 +69,7 @@ import com.originisle.android.cards.PrivacyCard
 import com.originisle.android.island.PlaygroundService
 import com.originisle.android.service.NotificationCastListener
 import com.originisle.android.service.QuietHours
+import com.originisle.android.service.LtmVivoOptimizer
 import com.originisle.android.ui.samples.IslandSamples
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -104,6 +108,9 @@ fun HomeScreen(
     var appLang by remember { mutableStateOf(Lang.currentLang(context)) }
     var idleCardEditOpen by remember { mutableStateOf(false) }
     var privacyPolicyOpen by remember { mutableStateOf(false) }
+    var aboutOpen by remember { mutableStateOf(false) }
+    var optimizerOpen by remember { mutableStateOf(false) }
+    var callIslandOnly by remember { mutableStateOf(prefs.getBoolean("cast_call_island_only", false)) }
     var idleTitle by remember { mutableStateOf(prefs.getString("ltm_idle_card_title", "LTMori").orEmpty()) }
     var idleText by remember { mutableStateOf(prefs.getString("ltm_idle_card_text", "Đang chờ").orEmpty()) }
     var chargingLiveUpdates by remember { mutableStateOf(prefs.getBoolean("cast_charging_live_updates", false)) }
@@ -168,7 +175,8 @@ fun HomeScreen(
                         "• Toàn bộ quá trình quét và hiển thị thông báo diễn ra hoàn toàn trên thiết bị (Offline).\n" +
                         "• Ứng dụng không thu thập, không lưu trữ và không gửi bất kỳ nội dung thông báo, tin nhắn hay thông tin cá nhân nào ra ngoài.\n" +
                         "• Quyền truy cập thông báo chỉ dùng để xây dựng các thẻ hiển thị trên thanh đảo Dynamic/Atomic Island của Vivo OriginOS.\n" +
-                        "• Bản quyền phần mềm © LocTM. Dựa trên mã nguồn mở Origin Isle & AI Key Bridge.",
+                        "• LTMori v3.0.1 phát triển bởi LocTM.\n" +
+                        "• Chân thành biết ơn và kế thừa nền tảng từ tác giả Origin Isle & cộng đồng nguồn mở.",
                         fontSize = 13.sp,
                         lineHeight = 18.sp,
                         color = IsleColors.Text,
@@ -179,6 +187,89 @@ fun HomeScreen(
                 TextButton(onClick = { privacyPolicyOpen = false }) { Text(Lang.s(context, "close")) }
             },
         )
+    }
+
+    if (aboutOpen) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { aboutOpen = false },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(IsleIcons.Heart, contentDescription = null, tint = IsleColors.TilePurple, modifier = Modifier.size(24.dp))
+                    Text(Lang.s(context, "about_app"), fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                }
+            },
+            text = {
+                Column(
+                    Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        "LTMori v3.0.1",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = IsleColors.Accent,
+                    )
+                    Text(
+                        "Ứng dụng tối ưu hoá trải nghiệm Đảo Động (Dynamic Island / SuperX) và trợ lý thông minh độc quyền cho các dòng điện thoại Vivo / iQOO chạy OriginOS.",
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp,
+                        color = IsleColors.TextSecondary,
+                    )
+                    Text(
+                        "Các tính năng nổi bật:",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        color = IsleColors.Text,
+                    )
+                    Text(
+                        "1. Chuyển tiếp Đảo thông minh (SuperX):\n" +
+                        "Bắt và truyền phát thông báo từ hệ thống và bên thứ ba (tin nhắn, cuộc gọi, OTP, media âm nhạc, trạng thái sạc...) lên đảo mượt mà.\n\n" +
+                        "2. Cuộc gọi đến thu nhỏ trên Đảo:\n" +
+                        "Hiển thị cuộc gọi nhỏ gọn trên đảo kèm nút Trả lời / Từ chối, không bung chiếm toàn màn hình khi đang dùng máy.\n\n" +
+                        "3. Giám sát RAM thời gian thực:\n" +
+                        "Đo lường bộ nhớ RAM thực tế của máy theo thời gian thực và cập nhật liên tục trên giao diện cũng như trên đảo.\n\n" +
+                        "4. Thẻ chờ đa dạng (Idle Cards):\n" +
+                        "Nhiều kiểu hiển thị khi không có thông báo: Chấm tròn (Dot), Địa cầu (Earth), RAM thời gian thực, Tốc độ mạng, Dự báo thời tiết, Sóng nhạc, Trợ lý ảo.\n\n" +
+                        "5. Cầu nối Trợ lý AI (Hi Jovi & Phím AI):\n" +
+                        "Bắt tín hiệu phím AI hoặc giọng nói \"Hi Jovi\" để kích hoạt nhanh Gemini Voice hoặc Circle to Search một chạm.\n\n" +
+                        "6. Công cụ tối ưu hóa Vivo & iQOO:\n" +
+                        "Cấp quyền Doze Whitelist & AppOps qua Shizuku/ADB để giữ đảo chạy ngầm vĩnh viễn (thoát hẳn đa nhiệm vẫn chạy) và fix trễ thông báo triệt để cho dòng máy nội địa.\n\n" +
+                        "7. Tương thích toàn diện OriginOS:\n" +
+                        "Tương thích ổn định từ OriginOS 4, OriginOS 5 đến OriginOS 6 (Android 16) và sẵn sàng cho OriginOS 7.",
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp,
+                        color = IsleColors.Text,
+                    )
+                    Box(
+                        Modifier.fillMaxWidth().height(1.dp).background(IsleColors.SurfaceHigh)
+                    )
+                    Text(
+                        "Lời tri ân & Kế thừa:",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 13.sp,
+                        color = IsleColors.Good,
+                    )
+                    Text(
+                        "Chúng tôi chân thành biết ơn và kế thừa nền tảng từ tác giả Origin Isle & cộng đồng nguồn mở.\n" +
+                        "Bản quyền phát triển © LocTM.\n" +
+                        "Website: https://ltmprofile.pages.dev/",
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        color = IsleColors.TextSecondary,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { aboutOpen = false }) { Text(Lang.s(context, "close")) }
+            },
+        )
+    }
+
+    if (optimizerOpen) {
+        VivoOptimizerDialog(context = context, onDismiss = { optimizerOpen = false })
     }
 
     if (idleCardEditOpen) {
@@ -237,7 +328,7 @@ fun HomeScreen(
                     Row(Modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.Top) {
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
-                                "Origin Isle",
+                                "LTMori",
                                 fontSize = 32.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 letterSpacing = (-0.7).sp,
@@ -257,20 +348,16 @@ fun HomeScreen(
                             ) {
                                 MenuItem(Lang.s(context, "check_updates")) {
                                     menuOpen = false
-                                    coroutineScope.launch {
-                                        updateStatus = Lang.s(context, "checking")
-                                        updateStatus = when (val result = UpdateChecker.check(context)) {
-                                            is UpdateChecker.Result.UpToDate ->
-                                                if (appLang == "vi") "Bạn đang ở phiên bản mới nhất (v${result.current})."
-                                                else "You're on the latest version (v${result.current})."
-                                            is UpdateChecker.Result.UpdateAvailable -> {
-                                                UpdateChecker.openRelease(context, result.url)
-                                                if (appLang == "vi") "Có bản cập nhật mới: v${result.latest}"
-                                                else "Update available: v${result.latest}"
-                                            }
-                                            is UpdateChecker.Result.Error -> result.message
-                                        }
-                                    }
+                                    updateStatus = if (appLang == "vi") "Bạn đang ở phiên bản LTMori mới nhất (v3.0.1)."
+                                                   else "You're on the latest version of LTMori (v3.0.1)."
+                                }
+                                MenuItem(Lang.s(context, "vivo_optimizer")) {
+                                    menuOpen = false
+                                    optimizerOpen = true
+                                }
+                                MenuItem(Lang.s(context, "about_app")) {
+                                    menuOpen = false
+                                    aboutOpen = true
                                 }
                                 MenuItem(Lang.s(context, "permissions")) {
                                     menuOpen = false
@@ -394,7 +481,7 @@ fun HomeScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Text(
-                                "LTMori · Origin Isle v3.0.1",
+                                "LTMori v3.0.1",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = IsleColors.Text,
@@ -541,6 +628,15 @@ fun HomeScreen(
                                 lockscreenLiveCard = it
                                 prefs.edit().putBoolean("cast_lockscreen_live_card", it).apply()
                             }
+                            GroupDivider()
+                            ToggleRow(
+                                IsleIcons.Phone, IsleColors.TileGreen,
+                                Lang.s(context, "call_island_only"), callIslandOnly,
+                                subtitle = Lang.s(context, "call_island_only_subtitle"),
+                            ) {
+                                callIslandOnly = it
+                                prefs.edit().putBoolean("cast_call_island_only", it).apply()
+                            }
                         }
                     }
                 }
@@ -679,17 +775,8 @@ fun HomeScreen(
                         Modifier.alpha(if (castOn) 1f else 0.4f),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        SectionLabel(Lang.s(context, "idle_gemini"))
+                        SectionLabel(Lang.s(context, "ai_assistant_title"))
                         GroupCard {
-                            SegmentedControl(
-                                listOf("Gemini Voice", "Circle to Search"),
-                                selected = if (voiceAction == "GOOGLE_CTS") 1 else 0,
-                                onSelect = {
-                                    voiceAction = if (it == 1) "GOOGLE_CTS" else "GEMINI_VOICE"
-                                    bridgePrefs.edit().putString("voice_action", voiceAction).apply()
-                                },
-                            )
-                            Spacer(Modifier.height(8.dp))
                             ToggleRow(
                                 IsleIcons.Check, IsleColors.TileBlue,
                                 Lang.s(context, "gemini_tap"), geminiTap,
@@ -699,18 +786,56 @@ fun HomeScreen(
                                 prefs.edit().putBoolean("ltm_idle_gemini_tap", it).apply()
                             }
                             GroupDivider()
-                            Row(
-                                Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Button(
-                                    onClick = { LtmIslandHelper.launchGemini(context) },
-                                    modifier = Modifier.weight(1f),
-                                ) { Text(Lang.s(context, "open_gemini")) }
-                                OutlinedButton(
-                                    onClick = { LtmIslandHelper.launchCircleToSearch(context) },
-                                    modifier = Modifier.weight(1f),
-                                ) { Text(Lang.s(context, "circle_to_search")) }
+
+                            Text(
+                                Lang.s(context, "select_assistant_mode"),
+                                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 4.dp),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = IsleColors.TextSecondary,
+                            )
+
+                            // Option 1: Gemini Voice
+                            AssistantSelectRow(
+                                title = "Gemini Voice",
+                                subtitle = Lang.s(context, "gemini_voice_desc"),
+                                selected = voiceAction != "GOOGLE_CTS",
+                                onClick = {
+                                    voiceAction = "GEMINI_VOICE"
+                                    bridgePrefs.edit().putString("voice_action", "GEMINI_VOICE").apply()
+                                },
+                            )
+
+                            GroupDivider()
+
+                            // Option 2: Circle to Search
+                            AssistantSelectRow(
+                                title = "Circle to Search",
+                                subtitle = Lang.s(context, "cts_desc"),
+                                selected = voiceAction == "GOOGLE_CTS",
+                                onClick = {
+                                    voiceAction = "GOOGLE_CTS"
+                                    bridgePrefs.edit().putString("voice_action", "GOOGLE_CTS").apply()
+                                },
+                            )
+
+                            GroupDivider()
+
+                            // Balanced full-width test button
+                            Box(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                                PillButton(
+                                    if (voiceAction == "GOOGLE_CTS") Lang.s(context, "test_cts")
+                                    else Lang.s(context, "test_gemini"),
+                                    onClick = {
+                                        if (voiceAction == "GOOGLE_CTS") {
+                                            LtmIslandHelper.launchCircleToSearch(context)
+                                        } else {
+                                            LtmIslandHelper.launchGemini(context)
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    icon = IsleIcons.Sparkles,
+                                )
                             }
                         }
                     }
@@ -851,6 +976,20 @@ fun HomeScreen(
                                 IsleIcons.More, IsleColors.TileTeal,
                                 Lang.s(context, "permissions"),
                                 onClick = { permissionsOpen = true },
+                            )
+                            GroupDivider()
+                            NavRow(
+                                IsleIcons.Bolt, IsleColors.TileAmber,
+                                Lang.s(context, "vivo_optimizer"),
+                                Lang.s(context, "open"),
+                                onClick = { optimizerOpen = true },
+                            )
+                            GroupDivider()
+                            NavRow(
+                                IsleIcons.Heart, IsleColors.TilePurple,
+                                Lang.s(context, "about_app"),
+                                Lang.s(context, "open"),
+                                onClick = { aboutOpen = true },
                             )
                         }
                     }
@@ -1138,4 +1277,249 @@ private fun recastAll(context: Context) {
     val count = listener.recastAll()
     val msg = if (Lang.currentLang(context) == "vi") "Đã quét lại $count thông báo." else "Recast swept $count notifications."
     android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+}
+
+@Composable
+private fun AssistantSelectRow(
+    title: String,
+    subtitle: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .background(if (selected) IsleColors.Accent.copy(alpha = 0.08f) else Color.Transparent)
+            .padding(horizontal = 16.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                fontSize = 15.sp,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                color = if (selected) IsleColors.Text else IsleColors.TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                subtitle,
+                fontSize = 12.sp,
+                color = IsleColors.TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Box(
+            modifier = Modifier
+                .size(20.dp)
+                .clip(CircleShape)
+                .background(if (selected) IsleColors.Accent else IsleColors.SurfaceHigher),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (selected) {
+                Icon(
+                    IsleIcons.Check,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(13.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun VivoOptimizerDialog(
+    context: Context,
+    onDismiss: () -> Unit,
+) {
+    val coroutineScope = rememberCoroutineScope()
+    var isWorking by remember { mutableStateOf(false) }
+    var statusMessage by remember { mutableStateOf<String?>(null) }
+    val shizukuReady = remember { LtmVivoOptimizer.isShizukuAvailable(context) }
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(IsleIcons.Bolt, contentDescription = null, tint = IsleColors.TileAmber, modifier = Modifier.size(24.dp))
+                Text(Lang.s(context, "vivo_optimizer"), fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            }
+        },
+        text = {
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // Status banner
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (shizukuReady) IsleColors.Good.copy(alpha = 0.15f) else IsleColors.TileAmber.copy(alpha = 0.15f))
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(if (shizukuReady) IsleColors.Good else IsleColors.TileAmber)
+                    )
+                    Text(
+                        if (shizukuReady) "Shizuku / Wireless ADB: Sẵn sàng chạy 1-chạm"
+                        else "Chưa kết nối Shizuku: Hãy dùng nút Sao chép lệnh ADB bên dưới",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = if (shizukuReady) IsleColors.Good else IsleColors.TileAmber,
+                    )
+                }
+
+                if (statusMessage != null) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(IsleColors.SurfaceHigher)
+                            .padding(10.dp)
+                    ) {
+                        Text(
+                            statusMessage!!,
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            color = IsleColors.Text,
+                        )
+                    }
+                }
+
+                // Mục 1: Giữ đảo luôn chạy ngầm
+                GroupCard {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            "1. Giữ đảo luôn chạy ngầm (Chống tắt khi xoá đa nhiệm)",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = IsleColors.Text,
+                        )
+                        Text(
+                            "Cấp quyền Doze Whitelist & AppOps cho LTMori, cho phép người dùng vuốt xóa app khỏi danh sách ứng dụng gần đây mà đảo vẫn hoạt động và chuyển tiếp thông báo vĩnh viễn.",
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            color = IsleColors.TextSecondary,
+                        )
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Button(
+                                enabled = !isWorking && shizukuReady,
+                                onClick = {
+                                    coroutineScope.launch {
+                                        isWorking = true
+                                        statusMessage = "Đang cấp quyền chạy ngầm qua Shizuku…"
+                                        val res = LtmVivoOptimizer.executeKeepAlive(context)
+                                        statusMessage = res.message
+                                        isWorking = false
+                                    }
+                                },
+                                modifier = Modifier.weight(1.3f).height(38.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = IsleColors.Accent),
+                            ) {
+                                Text("Chạy 1-chạm", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("ADB_KeepAlive", LtmVivoOptimizer.getKeepAliveAdbScript()))
+                                    android.widget.Toast.makeText(context, "Đã sao chép lệnh ADB giữ đảo chạy ngầm", android.widget.Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.weight(1.1f).height(38.dp),
+                                shape = RoundedCornerShape(10.dp),
+                            ) {
+                                Text("Sao chép ADB", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+
+                // Mục 2: Fix trễ thông báo Vivo / iQOO nội địa
+                GroupCard {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            "2. Fix trễ thông báo máy nội địa iQOO / Vivo",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = IsleColors.Text,
+                        )
+                        Text(
+                            "Vô hiệu hóa cơ chế đóng băng Doze của ROM nội địa đối với Google Play Services, GSF, Zalo, Messenger, Telegram... và giữ kết nối mạng ngầm liên tục khi khoá màn hình.",
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            color = IsleColors.TextSecondary,
+                        )
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Button(
+                                enabled = !isWorking && shizukuReady,
+                                onClick = {
+                                    coroutineScope.launch {
+                                        isWorking = true
+                                        statusMessage = "Đang tối ưu chống trễ thông báo qua Shizuku…"
+                                        val res = LtmVivoOptimizer.executeFixNotificationDelay(context)
+                                        statusMessage = res.message
+                                        isWorking = false
+                                    }
+                                },
+                                modifier = Modifier.weight(1.3f).height(38.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = IsleColors.Good),
+                            ) {
+                                Text("Fix trễ 1-chạm", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("ADB_FixDelay", LtmVivoOptimizer.getFixNotificationDelayAdbScript()))
+                                    android.widget.Toast.makeText(context, "Đã sao chép lệnh ADB fix trễ thông báo", android.widget.Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.weight(1.1f).height(38.dp),
+                                shape = RoundedCornerShape(10.dp),
+                            ) {
+                                Text("Sao chép ADB", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+
+                // Mục 3: Cài đặt thủ công
+                Text(
+                    "3 bước cài đặt thủ công trong OriginOS:",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = IsleColors.Text,
+                )
+                Text(
+                    "• Bước 1: Vào Cài đặt → Pin → Mức tiêu thụ pin dưới nền cao → Bật cho LTMori, Zalo, Messenger...\n" +
+                    "• Bước 2: Vào Cài đặt → Ứng dụng → Tự khởi chạy → Bật Tự khởi chạy & Khởi chạy liên kết.\n" +
+                    "• Bước 3: Cài đặt → Quản lý thông báo → Bật Biểu ngữ thông báo & Màn hình khóa.",
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp,
+                    color = IsleColors.TextSecondary,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(Lang.s(context, "close")) }
+        },
+    )
 }

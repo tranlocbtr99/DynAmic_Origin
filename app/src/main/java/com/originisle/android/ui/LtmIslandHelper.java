@@ -1347,6 +1347,8 @@ public final class LtmIslandHelper {
                 intent.putExtra("oi_right_template", 4);
                 intent.putExtra("oi_show_right_icon", false);
             } else if ("gemini".equals(preset)) {
+                android.content.SharedPreferences bridgePrefs = context.getSharedPreferences("ai_key_bridge_settings", Context.MODE_PRIVATE);
+                boolean isCts = "GOOGLE_CTS".equals(bridgePrefs.getString("voice_action", "GEMINI_VOICE"));
                 android.graphics.Bitmap geminiBmp = createGeminiBitmap(context);
                 if (geminiBmp != null) {
                     android.graphics.drawable.Icon icon = android.graphics.drawable.Icon.createWithBitmap(geminiBmp);
@@ -1354,7 +1356,7 @@ public final class LtmIslandHelper {
                     intent.putExtra("oi_large_icon", icon);
                     intent.putExtra("oi_show_left_icon", true);
                 }
-                String geminiText = "Gemini Live";
+                String geminiText = isCts ? "Circle to Search" : "Gemini Live";
                 intent.putExtra("oi_left_content", "");
                 intent.putExtra("oi_right_content", geminiText);
                 intent.putExtra("status_chip_text", geminiText);
@@ -1521,7 +1523,35 @@ public final class LtmIslandHelper {
         } catch (Throwable t) {
             Log.w(TAG, "launchCircleToSearch error: " + t.getMessage());
         }
+
+        // 2. Try LaunchActivity from AI Key Bridge
+        try {
+            Intent ctsIntent = new Intent(context, com.aikeybridge.LaunchActivity.class);
+            ctsIntent.setAction("com.aikeybridge.action.CTS");
+            ctsIntent.putExtra("action_mode", "GOOGLE_CTS");
+            ctsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(ctsIntent);
+            return true;
+        } catch (Throwable t2) {
+            Log.w(TAG, "LaunchActivity CTS error: " + t2.getMessage());
+        }
+
         return launchGemini(context);
+    }
+
+    public static boolean launchAssistant(Context context) {
+        if (context == null) return false;
+        try {
+            android.content.SharedPreferences bridgePrefs = context.getSharedPreferences("ai_key_bridge_settings", Context.MODE_PRIVATE);
+            String mode = bridgePrefs.getString("voice_action", "GEMINI_VOICE");
+            if ("GOOGLE_CTS".equals(mode)) {
+                return launchCircleToSearch(context);
+            } else {
+                return launchGemini(context);
+            }
+        } catch (Throwable t) {
+            return launchGemini(context);
+        }
     }
 
     public static boolean handleRecentActivityLaunch(android.app.Activity activity) {
@@ -1531,7 +1561,7 @@ public final class LtmIslandHelper {
             boolean geminiTap = prefs.getBoolean("ltm_idle_gemini_tap", false);
             String preset = prefs.getString("ltm_idle_preset", "earth_only");
             if (geminiTap || "gemini".equals(preset)) {
-                launchGemini(activity);
+                launchAssistant(activity);
                 activity.finish();
                 activity.overridePendingTransition(0, 0);
                 return true;

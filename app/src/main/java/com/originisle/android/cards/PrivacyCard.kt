@@ -152,10 +152,14 @@ object PrivacyCard {
     }
 
     private fun show(context: Context, what: Shown) {
+        val isVi = com.originisle.android.ui.Lang.currentLang(context) == "vi"
         val (title, text, glyph) = when (what) {
-            Shown.CAMERA -> Triple("Camera in use", "An app is using your camera", R.drawable.ic_camera)
-            Shown.MIC -> Triple("Microphone in use", "An app is using your microphone", R.drawable.ic_mic)
-            else -> Triple("Camera and microphone in use", "An app is using your camera and microphone", R.drawable.ic_camera)
+            Shown.CAMERA -> if (isVi) Triple("Đang dùng máy ảnh", "Ứng dụng đang truy cập camera", R.drawable.ic_camera)
+                            else Triple("Camera in use", "An app is using your camera", R.drawable.ic_camera)
+            Shown.MIC -> if (isVi) Triple("Đang dùng micro", "Ứng dụng đang truy cập micro", R.drawable.ic_mic)
+                         else Triple("Microphone in use", "An app is using your microphone", R.drawable.ic_mic)
+            else -> if (isVi) Triple("Đang dùng máy ảnh & micro", "Ứng dụng đang truy cập camera và micro", R.drawable.ic_camera)
+                    else Triple("Camera and microphone in use", "An app is using your camera and microphone", R.drawable.ic_camera)
         }
         // Like the iPhone: green when the camera is on (it usually brings the mic along), orange for mic only.
         val color = if (what == Shown.MIC) ORANGE else GREEN

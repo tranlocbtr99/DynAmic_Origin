@@ -66,7 +66,7 @@ object Lang {
         "collapse" to mapOf("vi" to "Thu gọn", "en" to "Collapse"),
         "expand" to mapOf("vi" to "Mở rộng", "en" to "Expand"),
         "cast_notifications_subtitle" to mapOf("vi" to "Chuyển tiếp thông báo từ các ứng dụng lên đảo", "en" to "Cast notifications to the island"),
-        "cast_media_subtitle" to mapOf("vi" to "Mô phỏng OriginPlayer cho ứng dụng nghe nhạc", "en" to "Mimic OriginPlayer for media apps"),
+        "cast_media_subtitle" to mapOf("vi" to "Trình phát nhạc trên đảo cho ứng dụng nghe nhạc", "en" to "Island media player for music apps"),
         "every_notif_desc" to mapOf("vi" to "Mọi thông báo, bao gồm tin nhắn thường.", "en" to "Every notification, plain messages included."),
         "only_live_desc" to mapOf("vi" to "Chỉ thẻ trực tiếp — bóng đá, điều hướng, thanh toán...", "en" to "Only live cards — score, navigation, payment, etc."),
         "hide_after" to mapOf("vi" to "Tự động ẩn sau", "en" to "Hide after"),
@@ -135,5 +135,26 @@ object Lang {
         "ram_status_normal" to mapOf("vi" to "Bình thường", "en" to "Normal"),
         "ram_status_high" to mapOf("vi" to "Tải cao", "en" to "High"),
         "sample_tester_title" to mapOf("vi" to "Thử nghiệm hiển thị trên đảo", "en" to "Island Sample Tester"),
+        "about_app" to mapOf("vi" to "Giới thiệu LTMori", "en" to "About LTMori"),
+        "about_app_desc" to mapOf("vi" to "Tính năng, kế thừa nền tảng & bản quyền", "en" to "Features, foundation & copyright"),
+        "ai_assistant_title" to mapOf("vi" to "Trợ lý AI & Chạm đảo", "en" to "AI Assistant & Island Tap"),
+        "select_assistant_mode" to mapOf("vi" to "HÀNH VI KHI KÍCH HOẠT TRỢ LÝ", "en" to "ASSISTANT ACTIVATION ACTION"),
+        "gemini_voice_title" to mapOf("vi" to "Gemini Voice", "en" to "Gemini Voice"),
+        "gemini_voice_desc" to mapOf("vi" to "Mở lớp phủ Gemini và tự động kích hoạt micro", "en" to "Launch Gemini overlay and enable mic"),
+        "cts_title" to mapOf("vi" to "Circle to Search", "en" to "Circle to Search"),
+        "cts_desc" to mapOf("vi" to "Khoanh tròn tìm kiếm hoặc dịch nội dung màn hình", "en" to "Circle to Search or translate screen content"),
+        "test_assistant" to mapOf("vi" to "Thử kích hoạt ngay", "en" to "Test activate now"),
+        "test_gemini" to mapOf("vi" to "Thử mở Gemini Voice", "en" to "Test Gemini Voice"),
+        "test_cts" to mapOf("vi" to "Thử mở Circle to Search", "en" to "Test Circle to Search"),
+        "call_island_only" to mapOf("vi" to "Cuộc gọi đến trên đảo", "en" to "Calls on island"),
+        "call_island_only_subtitle" to mapOf(
+            "vi" to "Hiện cuộc gọi trên đảo, không bung toàn màn hình khi đang dùng máy",
+            "en" to "Show call on island, prevent full-screen interruption while using phone"
+        ),
+        "vivo_optimizer" to mapOf("vi" to "Tối ưu hóa Vivo & iQOO", "en" to "Vivo & iQOO Optimizer"),
+        "vivo_optimizer_desc" to mapOf(
+            "vi" to "Giữ đảo vĩnh viễn & Fix trễ thông báo máy nội địa",
+            "en" to "Permanent keep-alive & Fix notification delay"
+        ),
     )
 }

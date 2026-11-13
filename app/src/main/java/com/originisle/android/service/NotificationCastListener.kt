@@ -543,6 +543,9 @@ class NotificationCastListener : NotificationListenerService() {
             log(sbn, "skipped — duplicate delivery, unchanged", false); return
         }
         log(sbn, "cast — $kind", true)
+        if (isCall) {
+            LtmCallManager.onNotificationPosted(applicationContext, sbn, true)
+        }
         if (kind == "message") {
             // A message card that can't be built must never take the listener down with it (a
             // crash here repeats on every reconnect): fall back to the plain generic card.
@@ -762,6 +765,7 @@ class NotificationCastListener : NotificationListenerService() {
         lastOutcome.remove(sbn.key)
         lastScorePostTime.remove(sbn.key)
         lastCastPostTime.remove(sbn.key)
+        LtmCallManager.onNotificationRemoved(applicationContext, sbn)
 
         // Score cards are keyed by team names (matchCastId), not by this notification's own identity
         // (see handleScore) — cancelling by IconCache.castIdFor(sbn) here would target the wrong id and

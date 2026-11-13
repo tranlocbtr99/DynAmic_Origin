@@ -73,15 +73,15 @@ fun OnboardingScreen(context: Context, prefs: SharedPreferences, onDone: () -> U
         item {
             Column(Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    "Welcome to Origin Isle",
-                    fontSize = 34.sp,
+                    "Chào mừng đến với LTMori",
+                    fontSize = 32.sp,
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = (-0.7).sp,
                     lineHeight = 38.sp,
                     color = IsleColors.Text,
                 )
                 Text(
-                    "A few permissions are needed before notifications can be cast to the island.",
+                    "Cần cấp một số quyền cần thiết để LTMori có thể chuyển tiếp thông báo lên đảo.",
                     fontSize = 15.sp,
                     lineHeight = 21.sp,
                     color = IsleColors.TextTertiary,
@@ -93,8 +93,8 @@ fun OnboardingScreen(context: Context, prefs: SharedPreferences, onDone: () -> U
                 OnboardingRow(
                     icon = IsleIcons.Bell,
                     tile = IsleColors.TileBlue,
-                    title = "Notification access",
-                    description = "Required — lets Origin Isle read notifications so it can re-cast them.",
+                    title = "Truy cập thông báo",
+                    description = "Bắt buộc — cho phép LTMori đọc thông báo để chuyển tiếp lên đảo.",
                     granted = notifGranted,
                     mandatory = true,
                 ) { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
@@ -102,8 +102,8 @@ fun OnboardingScreen(context: Context, prefs: SharedPreferences, onDone: () -> U
                 OnboardingRow(
                     icon = IsleIcons.Bell,
                     tile = IsleColors.TilePurple,
-                    title = "Allow notifications",
-                    description = "Lets Origin Isle show its own status notification.",
+                    title = "Cho phép gửi thông báo",
+                    description = "Cho phép LTMori hiển thị thông báo trạng thái đảo linh hoạt.",
                     granted = postGranted,
                     mandatory = false,
                 ) {

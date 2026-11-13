@@ -80,11 +80,15 @@ object ChargingCard {
 
     private fun show(context: Context, level: Int, full: Boolean, glow: Boolean) {
         showing = true
+        val isVi = com.originisle.android.ui.Lang.currentLang(context) == "vi"
         val remaining = if (full) -1L
         else context.getSystemService(BatteryManager::class.java)?.computeChargeTimeRemaining() ?: -1L
-        val title = if (full) "Fully charged" else "Charging"
-        // The ring beside the text already says "N%".
-        val text = if (remaining > 0) "${formatRemaining(remaining)} until full" else LtmIslandHelper.formatCharging(context, level)
+        val title = if (full) (if (isVi) "Đã sạc đầy" else "Fully charged")
+                    else (if (isVi) "Đang sạc pin" else "Charging")
+        val text = if (remaining > 0) {
+            if (isVi) "Còn ${formatRemainingVi(remaining)} là đầy"
+            else "${formatRemaining(remaining)} until full"
+        } else LtmIslandHelper.formatCharging(context, level)
         val bolt = Icon.createWithResource(context, R.drawable.ic_charging)
         val click = PendingIntent.getActivity(
             context, ID, Intent(Intent.ACTION_POWER_USAGE_SUMMARY).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
@@ -161,6 +165,17 @@ object ChargingCard {
             h == 0 -> "$m min"
             m == 0 -> "$h h"
             else -> "$h h $m min"
+        }
+    }
+
+    private fun formatRemainingVi(ms: Long): String {
+        val totalMin = ((ms + 59_999) / 60_000).toInt()
+        val h = totalMin / 60
+        val m = totalMin % 60
+        return when {
+            h == 0 -> "$m phút"
+            m == 0 -> "$h giờ"
+            else -> "$h giờ $m phút"
         }
     }
 }

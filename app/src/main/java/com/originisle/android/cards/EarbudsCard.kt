@@ -172,7 +172,12 @@ object EarbudsCard {
 
     private fun show(context: Context, device: BluetoothDevice, level: Int, low: Boolean) {
         if (!enabled(context)) return
-        val name = runCatching { device.alias ?: device.name }.getOrNull()?.takeIf { it.isNotBlank() } ?: "Headphones"
+        val isVi = com.originisle.android.ui.Lang.currentLang(context) == "vi"
+        val defaultName = if (isVi) "Tai nghe" else "Headphones"
+        val connText = if (isVi) "Đã kết nối" else "Connected"
+        val lowText = if (isVi) "Pin yếu" else "Battery low"
+
+        val name = runCatching { device.alias ?: device.name }.getOrNull()?.takeIf { it.isNotBlank() } ?: defaultName
         val known = level in 0..100
         val isLow = known && level <= LOW_LEVEL
         val glyph = if (isOverEar(device, name)) R.drawable.ic_headphones else R.drawable.ic_earbuds
@@ -191,7 +196,7 @@ object EarbudsCard {
             // Laid out like OriginOS's own AirPods card (com.android.bluetooth VivoBatteryHelper):
             // "Connected" over the device name, a battery ring with "N%" beside them; on the pill
             // the headphones alone left of the camera and the ring right of it.
-            putExtra("title", if (low) "Battery low" else "Connected")
+            putExtra("title", if (low) lowText else connText)
             putExtra("text", name)
             putExtra("oi_left_content", "")
             putExtra("oi_left_icon", icon)
@@ -206,8 +211,8 @@ object EarbudsCard {
             } else {
                 putExtra("oi_right_template", OriginIslandConstants.TEMPLATE_RIGHT_ISLAND_TEXT_ICON) // 4
                 putExtra("oi_show_right_icon", false)
-                putExtra("oi_right_content", "Connected")
-                putExtra("status_chip_text", "Connected")
+                putExtra("oi_right_content", connText)
+                putExtra("status_chip_text", connText)
             }
             if (low) putExtra("oi_light_color", RED)
             putExtra("click_resp", click)

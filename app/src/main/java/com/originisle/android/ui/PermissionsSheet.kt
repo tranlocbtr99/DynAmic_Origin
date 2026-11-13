@@ -109,22 +109,22 @@ fun PermissionsSheet(
                 ) { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
                 GroupDivider()
                 PermissionRow(
-                    IsleIcons.Bell, IsleColors.TilePurple, "Origin Isle notifications",
-                    ok = postGranted, status = if (postGranted) "Allowed" else "Not allowed",
+                    IsleIcons.Bell, IsleColors.TilePurple, "Thông báo LTMori",
+                    ok = postGranted, status = if (postGranted) "Đã cấp phép" else "Chưa cấp phép",
                 ) {
                     if (Build.VERSION.SDK_INT >= 33) notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
                 GroupDivider()
                 PermissionRow(
-                    IsleIcons.Battery, IsleColors.TileGreen, "Battery",
-                    ok = batteryOk, status = if (batteryOk) "Unrestricted" else "Restricted — OriginOS may kill it",
+                    IsleIcons.Battery, IsleColors.TileGreen, "Pin & Chạy ngầm",
+                    ok = batteryOk, status = if (batteryOk) "Không hạn chế" else "Đang bị hạn chế — OriginOS có thể tắt tiến trình",
                 ) { requestIgnoreBattery(context) }
                 GroupDivider()
                 PermissionRow(
-                    IsleIcons.Heart, IsleColors.TileTeal, "Keep-alive",
+                    IsleIcons.Heart, IsleColors.TileTeal, "Dịch vụ giữ nền (Keep-alive)",
                     ok = keepAliveOk,
-                    status = if (keepAliveOk) "On — reconnects casting after a kill" else "Off — slower to recover after a kill",
-                    note = "Enable \"Origin Isle keep-alive\" under Accessibility. No status-bar icon; it reads nothing.",
+                    status = if (keepAliveOk) "Đang bật — tự kết nối lại sau khi bị đóng" else "Đang tắt — khôi phục chậm hơn",
+                    note = "Bật \"LTMori keep-alive\" trong mục Trợ năng. Không có icon thanh trạng thái, không đọc dữ liệu cá nhân.",
                 ) { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
                 GroupDivider()
                 PermissionRow(
