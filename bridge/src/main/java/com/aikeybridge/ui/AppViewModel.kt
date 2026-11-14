@@ -664,6 +664,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val shizukuStartCommand: String
         get() = "adb shell \"${EngineDaemonMain.bootstrapCommand(app)}\""
 
+    /**
+     * Lệnh cấp quyền hệ thống trực tiếp qua cáp USB máy tính (không cần Gỡ lỗi Wi-Fi).
+     */
+    val directAdbPermissionCommand: String
+        get() = "adb shell pm grant ${app.packageName} android.permission.WRITE_SECURE_SETTINGS && adb shell pm grant ${app.packageName} android.permission.READ_LOGS"
+
     fun setAutoMic(value: Boolean) {
         settingsRepository.setAutoMic(value)
         syncRunningScriptIfNeeded()

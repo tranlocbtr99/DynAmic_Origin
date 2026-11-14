@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aikeybridge.data.ActionMode
 import com.aikeybridge.ui.AppViewModel
+import com.aikeybridge.ui.Intents
 import rikka.shizuku.Shizuku
 
 // Consistent Dark Theme Palette matching LTMori
@@ -94,9 +95,15 @@ private fun SetupScreen(model: AppViewModel, onBack: () -> Unit) {
     val message by model.message.collectAsStateWithLifecycle()
     val settings by model.settings.collectAsStateWithLifecycle()
     val wirelessAdb by model.wirelessAdb.collectAsStateWithLifecycle()
+    val permissions by model.permissions.collectAsStateWithLifecycle()
     val context = androidx.compose.ui.platform.LocalContext.current
     var showLogs by remember { mutableStateOf(false) }
     var logText by remember { mutableStateOf<String?>(null) }
+    var showGuideDialog by remember { mutableStateOf(false) }
+
+    if (showGuideDialog) {
+        MethodGuideDialog(onDismiss = { showGuideDialog = false })
+    }
 
     Box(
         Modifier
@@ -111,7 +118,7 @@ private fun SetupScreen(model: AppViewModel, onBack: () -> Unit) {
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            // Header with Back button
+            // Header with Back button & Guide button
             Row(
                 Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -136,7 +143,7 @@ private fun SetupScreen(model: AppViewModel, onBack: () -> Unit) {
                     Text(
                         "Thiết lập Hi Jovi & Phím AI",
                         color = BridgeColors.Text,
-                        fontSize = 20.sp,
+                        fontSize = 19.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -147,6 +154,21 @@ private fun SetupScreen(model: AppViewModel, onBack: () -> Unit) {
                         fontSize = 12.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(BridgeColors.SurfaceHigher)
+                        .clickable { showGuideDialog = true },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.lc_sparkles),
+                        contentDescription = "Hướng dẫn",
+                        tint = BridgeColors.Accent,
+                        modifier = Modifier.size(18.dp),
                     )
                 }
             }
@@ -279,7 +301,98 @@ private fun SetupScreen(model: AppViewModel, onBack: () -> Unit) {
                 }
             }
 
-            // 3. Ghép nối Gỡ lỗi không dây (Wireless Pairing)
+            // 3. Phương thức 1: Trợ năng thông minh (Không cần ADB / Wi-Fi)
+            BridgeCard {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Box(
+                                Modifier
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .background(BridgeColors.Good.copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.lc_accessibility),
+                                    contentDescription = null,
+                                    tint = BridgeColors.Good,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
+                            Text(
+                                "1. Trợ năng (Không cần ADB)",
+                                color = BridgeColors.Text,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                        val isA11yOn = permissions.accessibility
+                        val a11yBadgeText = if (isA11yOn) "Đã bật" else "Chưa bật"
+                        val a11yBadgeColor = if (isA11yOn) BridgeColors.Good else BridgeColors.Warning
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(a11yBadgeColor.copy(alpha = 0.15f))
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                        ) {
+                            Box(
+                                Modifier
+                                    .size(7.dp)
+                                    .clip(CircleShape)
+                                    .background(a11yBadgeColor)
+                            )
+                            Text(
+                                a11yBadgeText,
+                                color = a11yBadgeColor,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                            )
+                        }
+                    }
+
+                    Text(
+                        "Giải pháp độc lập 100% trên máy không cần máy tính hay gỡ lỗi. Tự bắt cửa sổ BlueLM Copilot qua Window Manager và chuyển hướng sang Gemini.",
+                        color = BridgeColors.TextSecondary,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp,
+                    )
+
+                    Button(
+                        onClick = { Intents.openAccessibility(context) },
+                        modifier = Modifier.fillMaxWidth().height(40.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (permissions.accessibility) BridgeColors.SurfaceHigher else BridgeColors.Accent,
+                            contentColor = Color.White,
+                        ),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.lc_accessibility),
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            if (permissions.accessibility) "Quản lý Cài đặt Trợ năng" else "Bật quyền Trợ năng ngay",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
+                }
+            }
+
+            // 4. Phương thức 2: Gỡ lỗi không dây nội bộ (Tự động tắt sau khi kết nối)
             BridgeCard {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(
@@ -301,7 +414,7 @@ private fun SetupScreen(model: AppViewModel, onBack: () -> Unit) {
                             )
                         }
                         Text(
-                            "Gỡ lỗi không dây",
+                            "2. Gỡ lỗi không dây (Tự tắt)",
                             color = BridgeColors.Text,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -309,9 +422,10 @@ private fun SetupScreen(model: AppViewModel, onBack: () -> Unit) {
                     }
 
                     Text(
-                        "Nhập mã ghép nối 6 chữ số qua thông báo hệ thống khi kết nối.",
+                        "Nhập mã ghép nối 6 chữ số qua thông báo hệ thống. Sau khi kết nối, hệ thống sẽ tự động tắt Gỡ lỗi để ẩn icon trạng thái & an toàn với app ngân hàng.",
                         color = BridgeColors.TextSecondary,
                         fontSize = 13.sp,
+                        lineHeight = 18.sp,
                     )
 
                     Row(
@@ -401,6 +515,99 @@ private fun SetupScreen(model: AppViewModel, onBack: () -> Unit) {
                         )
                         Spacer(Modifier.width(6.dp))
                         Text("Tắt / Ẩn thông báo Gỡ lỗi không dây ngay", fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
+            }
+
+            // 5. Phương thức 3: Cài đặt ADB trực tiếp qua PC (Cáp USB 1 lần)
+            BridgeCard {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Box(
+                            Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(BridgeColors.Warning.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.lc_terminal),
+                                contentDescription = null,
+                                tint = BridgeColors.Warning,
+                                modifier = Modifier.size(15.dp),
+                            )
+                        }
+                        Text(
+                            "3. Cài ADB trực tiếp qua PC (Cáp USB)",
+                            color = BridgeColors.Text,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+
+                    Text(
+                        "Dành cho ai muốn chạy lệnh shell UID 2000 nhưng không muốn mở Wi-Fi Debugging. Cắm cáp USB vào máy tính, mở CMD/Terminal và chạy lệnh bên dưới, sau đó rút cáp tắt Gỡ lỗi USB.",
+                        color = BridgeColors.TextSecondary,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp,
+                    )
+
+                    // Monospace Code Box
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(BridgeColors.SurfaceHigher)
+                            .padding(10.dp)
+                    ) {
+                        Text(
+                            model.directAdbPermissionCommand,
+                            color = BridgeColors.Text,
+                            fontSize = 11.sp,
+                            fontFamily = FontFamily.Monospace,
+                            lineHeight = 16.sp,
+                        )
+                    }
+
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Button(
+                            onClick = {
+                                val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("ADB_Direct", model.directAdbPermissionCommand))
+                                android.widget.Toast.makeText(context, "Đã sao chép lệnh ADB cấp quyền", android.widget.Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.weight(1.2f).height(40.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = BridgeColors.Accent),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.lc_copy),
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(15.dp),
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text("Sao chép lệnh", fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("ADB_Engine", model.shizukuStartCommand))
+                                android.widget.Toast.makeText(context, "Đã sao chép lệnh Engine đầy đủ", android.widget.Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.weight(1.3f).height(40.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, BridgeColors.Border),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = BridgeColors.Text),
+                        ) {
+                            Text("Sao chép Engine", fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                        }
                     }
                 }
             }
@@ -546,5 +753,92 @@ private fun BridgeCard(
         color = BridgeColors.Surface,
         border = BorderStroke(1.dp, BridgeColors.Border),
         content = content,
+    )
+}
+
+@Composable
+private fun MethodGuideDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.lc_sparkles),
+                    contentDescription = null,
+                    tint = BridgeColors.Accent,
+                    modifier = Modifier.size(22.dp),
+                )
+                Text("Cơ chế & Phương thức kết nối", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            }
+        },
+        text = {
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    "Tại sao không thể tự chạy ADB local mà không có Wi-Fi hoặc cáp?",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = BridgeColors.Text,
+                )
+                Text(
+                    "Theo kiến trúc bảo mật Sandbox của Android, mọi ứng dụng người dùng cài đặt đều chạy ở UID ứng dụng thường (không có quyền chạy lệnh shell hệ thống).\n" +
+                    "Để chạy lệnh shell UID 2000, bắt buộc phải giao tiếp với tiến trình adbd của hệ điều hành. Tiến trình adbd chỉ mở cổng mạng TCP nội bộ khi bật 'Gỡ lỗi không dây' hoặc giao tiếp qua 'Cáp USB máy tính'. Do đó không một ứng dụng nào có thể tự lấy quyền ADB mà không thông qua 1 trong 2 kênh này.",
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp,
+                    color = BridgeColors.TextSecondary,
+                )
+
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(BridgeColors.Divider)
+                )
+
+                Text(
+                    "So sánh 3 phương thức kích hoạt:",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = BridgeColors.Text,
+                )
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "• Phương thức 1 — Trợ năng thông minh (Khuyên dùng):\n" +
+                        "Hoàn toàn 100% không cần ADB hay máy tính. Chỉ cần bật Trợ năng cho LTMori trong Cài đặt một lần duy nhất, vĩnh viễn không mất sau khi khởi động lại máy và an toàn với mọi app ngân hàng/VNeID.",
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        color = BridgeColors.TextSecondary,
+                    )
+                    Text(
+                        "• Phương thức 2 — Gỡ lỗi không dây tự tắt:\n" +
+                        "Dành cho ai muốn dùng Engine UID 2000 ngay trên điện thoại. Sau khi kết nối, hệ thống tự động tắt cờ Gỡ lỗi để ẩn icon thanh trạng thái và tránh bị app ngân hàng phát hiện.",
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        color = BridgeColors.TextSecondary,
+                    )
+                    Text(
+                        "• Phương thức 3 — Cài ADB trực tiếp qua PC (Cáp USB):\n" +
+                        "Cắm cáp vào máy tính chạy 1 lệnh duy nhất rồi rút cáp tắt Gỡ lỗi USB. Không cần mở Wi-Fi Debugging.",
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        color = BridgeColors.TextSecondary,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Đã hiểu", color = BridgeColors.Accent, fontWeight = FontWeight.Bold)
+            }
+        },
+        containerColor = BridgeColors.Surface,
+        titleContentColor = BridgeColors.Text,
+        textContentColor = BridgeColors.TextSecondary,
     )
 }
