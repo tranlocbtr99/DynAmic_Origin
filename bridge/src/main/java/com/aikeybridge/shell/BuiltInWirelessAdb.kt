@@ -63,6 +63,7 @@ data class WirelessAdbUiState(
     val connectPort: Int = -1,
     val connecting: Boolean = false,
     val statusText: String = "",
+    val autoHideEnabled: Boolean = true,
 )
 
 /**
@@ -82,6 +83,7 @@ object BuiltInWirelessAdb {
     private const val CERT_FILE = "akb_adb_cert.der"
     private const val PREFS_NAME = "akb_wireless_adb"
     private const val KEY_PAIRED = "paired_once"
+    const val KEY_AUTO_HIDE = "auto_hide_wireless_adb"
 
     internal const val CHANNEL_ID = "akb_wireless_adb_pairing"
     internal const val NOTIF_ID = 20001
@@ -111,7 +113,65 @@ object BuiltInWirelessAdb {
     fun init(context: Context) {
         val appContext = context.applicationContext
         val paired = isPaired(appContext)
-        _state.update { it.copy(pairedBefore = paired) }
+        val autoHide = isAutoHideEnabled(appContext)
+        _state.update { it.copy(pairedBefore = paired, autoHideEnabled = autoHide) }
+    }
+
+    fun isAutoHideEnabled(context: Context): Boolean =
+        context.applicationContext
+            .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getBoolean(KEY_AUTO_HIDE, true)
+
+    fun setAutoHideEnabled(context: Context, enabled: Boolean) {
+        context.applicationContext
+            .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_AUTO_HIDE, enabled)
+            .apply()
+        _state.update { it.copy(autoHideEnabled = enabled) }
+    }
+
+    /**
+     * Tự động hoặc chủ động ẩn / tắt Gỡ lỗi không dây sau khi Engine nội bộ (UID 2000) đã kết nối.
+     * Cơ chế:
+     * 1. Thiết lập `adb_wifi_enabled = 0`, gỡ bỏ hoàn toàn thông báo "Gỡ lỗi không dây được bật" trên thanh trạng thái.
+     * 2. Ngăn các ứng dụng ngân hàng / VNeID quét thấy cờ Gỡ lỗi không dây đang bật.
+     * 3. Tiến trình Engine UID 2000 trong RAM vẫn tiếp tục chạy độc lập do đã thoát cgroup (`setsid`).
+     */
+    suspend fun hideWirelessDebugging(context: Context): Boolean = withContext(Dispatchers.IO) {
+        val appContext = context.applicationContext
+        var success = false
+
+        // 1. Thử ghi trực tiếp vào Settings.Global (đã được cấp WRITE_SECURE_SETTINGS)
+        val directRes = runCatching {
+            Settings.Global.putInt(appContext.contentResolver, "adb_wifi_enabled", 0)
+        }.isSuccess
+        if (directRes) {
+            success = true
+        }
+
+        // 2. Thử lệnh qua EngineBinderProvider nếu Engine nội bộ đang chạy
+        if (EngineBinderProvider.isAlive(appContext)) {
+            val res = runCatching {
+                EngineBinderProvider.execCommand(appContext, "settings put global adb_wifi_enabled 0")
+            }.getOrNull()
+            if (res != null && res.exitCode == 0) {
+                success = true
+            }
+        }
+
+        // 3. Thử qua Shizuku nếu đang kết nối
+        if (!success && ShizukuShell.isEngineOrShizukuReady(appContext)) {
+            val res = ShizukuShell(appContext).exec("settings put global adb_wifi_enabled 0")
+            if (res.exitCode == 0) {
+                success = true
+            }
+        }
+
+        if (success) {
+            Diagnostics.success("adb", "Đã tắt Gỡ lỗi không dây (adb_wifi_enabled=0) để ẩn thông báo thanh trạng thái.")
+        }
+        success
     }
 
     fun isPaired(context: Context): Boolean =
@@ -350,20 +410,23 @@ object BuiltInWirelessAdb {
             val booted = connectAndBootstrapDaemon(appContext)
             stopMdns()
             stopPairingForegroundService(appContext)
+            if (booted && isAutoHideEnabled(appContext)) {
+                hideWirelessDebugging(appContext)
+            }
             _state.update {
                 it.copy(
                     pairingActive = false,
                     connecting = false,
-                    statusText = if (booted) "Engine nội bộ đã chạy!" else "Đã ghép nối · chạm Kết nối Engine.",
+                    statusText = if (booted) "Engine nội bộ đã chạy (đã ẩn Gỡ lỗi)!" else "Đã ghép nối · chạm Kết nối Engine.",
                 )
             }
             showResultNotification(
                 appContext,
-                title = if (booted) "Đã bật Engine nội bộ thành công!" else "Đã ghép nối thành công!",
+                title = if (booted) "Đã bật Engine LTMori thành công!" else "Đã ghép nối thành công!",
                 body = if (booted) {
-                    "Chạm vào đây để quay lại AI Key Bridge và bật Script nền (tự tắt Gỡ lỗi)."
+                    "Đã kết nối và tự động ẩn thông báo Gỡ lỗi không dây."
                 } else {
-                    "Chạm để quay lại AI Key Bridge."
+                    "Chạm để quay lại LTMori."
                 },
             )
             // Đưa người dùng quay lại thẳng màn hình AI Key Bridge nếu hệ thống cho phép
@@ -417,6 +480,10 @@ object BuiltInWirelessAdb {
                 if (EngineBinderProvider.isAlive(appContext)) {
                     EngineBinderProvider.notifyStateChanged()
                     Diagnostics.success("engine", "Engine nội bộ (UID 2000) đã kết nối qua Gỡ lỗi không dây.")
+                    if (isAutoHideEnabled(appContext)) {
+                        execDirectOnAdb(mgr, "settings put global adb_wifi_enabled 0")
+                        hideWirelessDebugging(appContext)
+                    }
                     return@withContext true
                 }
                 if (step == 10 || step == 22) {

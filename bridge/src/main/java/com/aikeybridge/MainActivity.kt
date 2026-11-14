@@ -93,6 +93,7 @@ private fun SetupScreen(model: AppViewModel, onBack: () -> Unit) {
     val status by model.script.collectAsStateWithLifecycle()
     val message by model.message.collectAsStateWithLifecycle()
     val settings by model.settings.collectAsStateWithLifecycle()
+    val wirelessAdb by model.wirelessAdb.collectAsStateWithLifecycle()
     val context = androidx.compose.ui.platform.LocalContext.current
     var showLogs by remember { mutableStateOf(false) }
     var logText by remember { mutableStateOf<String?>(null) }
@@ -340,6 +341,66 @@ private fun SetupScreen(model: AppViewModel, onBack: () -> Unit) {
                         ) {
                             Text("Hủy", color = BridgeColors.TextSecondary, fontSize = 13.sp)
                         }
+                    }
+
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(BridgeColors.Divider)
+                    )
+
+                    // Tự động tắt / ẩn Gỡ lỗi không dây sau khi kết nối
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { model.setAutoHideWirelessAdb(!wirelessAdb.autoHideEnabled) }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                "Tự động tắt/ẩn sau khi kết nối",
+                                color = BridgeColors.Text,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                            )
+                            Text(
+                                "Tắt adb_wifi_enabled=0 để xóa thông báo thanh trạng thái & an toàn trước app ngân hàng",
+                                color = BridgeColors.TextSecondary,
+                                fontSize = 11.sp,
+                                lineHeight = 15.sp,
+                            )
+                        }
+                        Switch(
+                            checked = wirelessAdb.autoHideEnabled,
+                            onCheckedChange = { model.setAutoHideWirelessAdb(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = BridgeColors.Accent,
+                                uncheckedThumbColor = BridgeColors.TextSecondary,
+                                uncheckedTrackColor = BridgeColors.SurfaceHigher,
+                            ),
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = model::hideWirelessAdb,
+                        modifier = Modifier.fillMaxWidth().height(38.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, BridgeColors.Border),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = BridgeColors.Text),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.lc_shield_check),
+                            contentDescription = null,
+                            tint = BridgeColors.Good,
+                            modifier = Modifier.size(15.dp),
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text("Tắt / Ẩn thông báo Gỡ lỗi không dây ngay", fontSize = 12.sp, fontWeight = FontWeight.Medium)
                     }
                 }
             }

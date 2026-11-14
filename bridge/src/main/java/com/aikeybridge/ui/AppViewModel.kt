@@ -409,9 +409,29 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             }
             refreshPermissions()
             if (ok) {
-                _message.value = "Đã kết nối Engine nội bộ qua Gỡ lỗi không dây!"
+                _message.value = if (BuiltInWirelessAdb.isAutoHideEnabled(app)) {
+                    "Đã kết nối Engine nội bộ & tự động ẩn Gỡ lỗi không dây!"
+                } else {
+                    "Đã kết nối Engine nội bộ qua Gỡ lỗi không dây!"
+                }
             } else {
                 startWirelessPairing()
+            }
+        }
+    }
+
+    fun setAutoHideWirelessAdb(enabled: Boolean) {
+        BuiltInWirelessAdb.setAutoHideEnabled(app, enabled)
+    }
+
+    fun hideWirelessAdb() {
+        viewModelScope.launch {
+            val ok = BuiltInWirelessAdb.hideWirelessDebugging(app)
+            refreshPermissions()
+            _message.value = if (ok) {
+                "Đã tắt Gỡ lỗi không dây (ẩn thông báo thanh trạng thái). Engine vẫn chạy nền!"
+            } else {
+                "Chưa thể tắt Gỡ lỗi không dây. Vui lòng kiểm tra quyền hoặc kết nối Engine."
             }
         }
     }

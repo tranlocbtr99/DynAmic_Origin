@@ -1501,7 +1501,58 @@ private fun VivoOptimizerDialog(
                     }
                 }
 
-                // Mục 3: Cài đặt thủ công
+                // Mục 3: Ẩn thông báo Gỡ lỗi không dây
+                GroupCard {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            "3. Ẩn thông báo Gỡ lỗi không dây (An toàn với ngân hàng/VNeID)",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = IsleColors.Text,
+                        )
+                        Text(
+                            "Tắt cờ Gỡ lỗi không dây (adb_wifi_enabled = 0) giúp xóa icon/thông báo trên thanh trạng thái và tránh bị các ứng dụng ngân hàng phát hiện cảnh báo.",
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            color = IsleColors.TextSecondary,
+                        )
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Button(
+                                enabled = !isWorking && shizukuReady,
+                                onClick = {
+                                    coroutineScope.launch {
+                                        isWorking = true
+                                        statusMessage = "Đang tắt Gỡ lỗi không dây để ẩn thông báo…"
+                                        val res = LtmVivoOptimizer.executeHideWirelessDebugging(context)
+                                        statusMessage = res.message
+                                        isWorking = false
+                                    }
+                                },
+                                modifier = Modifier.weight(1.3f).height(38.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = IsleColors.TilePurple),
+                            ) {
+                                Text("Ẩn ngay 1-chạm", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("ADB_HideWifi", LtmVivoOptimizer.getHideWirelessDebuggingAdbScript()))
+                                    android.widget.Toast.makeText(context, "Đã sao chép lệnh ADB ẩn Gỡ lỗi", android.widget.Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.weight(1.1f).height(38.dp),
+                                shape = RoundedCornerShape(10.dp),
+                            ) {
+                                Text("Sao chép ADB", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+
+                // Mục 4: Cài đặt thủ công
                 Text(
                     "3 bước cài đặt thủ công trong OriginOS:",
                     fontSize = 13.sp,

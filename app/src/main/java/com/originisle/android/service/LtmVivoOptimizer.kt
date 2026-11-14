@@ -116,6 +116,26 @@ object LtmVivoOptimizer {
         )
     }
 
+    suspend fun executeHideWirelessDebugging(context: Context): OptimizationResult = withContext(Dispatchers.IO) {
+        val ok = com.aikeybridge.shell.BuiltInWirelessAdb.hideWirelessDebugging(context)
+        if (ok) {
+            OptimizationResult(
+                true,
+                "Đã tắt Gỡ lỗi không dây (adb_wifi_enabled = 0). Thông báo trên thanh trạng thái đã biến mất và hoàn toàn an toàn với app ngân hàng / VNeID!",
+                1,
+            )
+        } else {
+            OptimizationResult(
+                false,
+                "Chưa tắt được Gỡ lỗi không dây. Vui lòng đảm bảo quyền Shizuku hoặc Engine nội bộ đang hoạt động.",
+                0,
+            )
+        }
+    }
+
+    fun getHideWirelessDebuggingAdbScript(): String =
+        "settings put global adb_wifi_enabled 0"
+
     fun getKeepAliveAdbScript(): String =
         KEEP_ALIVE_COMMANDS.joinToString("\n")
 
