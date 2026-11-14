@@ -116,6 +116,7 @@ fun HomeScreen(
     var privacyPolicyOpen by remember { mutableStateOf(false) }
     var aboutOpen by remember { mutableStateOf(false) }
     var optimizerOpen by remember { mutableStateOf(false) }
+    var callBlockDialogOpen by remember { mutableStateOf(false) }
     var callIslandOnly by remember { mutableStateOf(prefs.getBoolean("cast_call_island_only", false)) }
     var idleTitle by remember { mutableStateOf(prefs.getString("ltm_idle_card_title", "LTMori").orEmpty()) }
     var idleText by remember { mutableStateOf(prefs.getString("ltm_idle_card_text", "Đang chờ").orEmpty()) }
@@ -276,6 +277,10 @@ fun HomeScreen(
 
     if (optimizerOpen) {
         VivoOptimizerDialog(context = context, onDismiss = { optimizerOpen = false })
+    }
+
+    if (callBlockDialogOpen) {
+        BlockCallFullScreenDialog(context = context, onDismiss = { callBlockDialogOpen = false })
     }
 
     if (idleCardEditOpen) {
@@ -642,6 +647,24 @@ fun HomeScreen(
                             ) {
                                 callIslandOnly = it
                                 prefs.edit().putBoolean("cast_call_island_only", it).apply()
+                            }
+                            if (callIslandOnly) {
+                                Row(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = 62.dp, end = 16.dp, bottom = 12.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    OutlinedButton(
+                                        onClick = { callBlockDialogOpen = true },
+                                        shape = RoundedCornerShape(8.dp),
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                        modifier = Modifier.height(34.dp)
+                                    ) {
+                                        Text("Chặn bung toàn màn hình (Shizuku/ADB)…", fontSize = 12.sp)
+                                    }
+                                }
                             }
                         }
                     }
@@ -1347,6 +1370,7 @@ private fun VivoOptimizerDialog(
     var statusMessage by remember { mutableStateOf<String?>(null) }
     val shizukuReady = remember { LtmVivoOptimizer.isShizukuAvailable(context) }
     var showAppPicker by remember { mutableStateOf(false) }
+    var showCallBlockDialog by remember { mutableStateOf(false) }
     var selectedPackages by remember {
         mutableStateOf(
             setOf(
@@ -1592,11 +1616,36 @@ private fun VivoOptimizerDialog(
                     }
                 }
 
-                // Mục 4: Ẩn thông báo Gỡ lỗi không dây
+                // Mục 4: Chặn cuộc gọi bung toàn màn hình (Hiện trên Đảo)
                 GroupCard {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            "4. Ẩn thông báo Gỡ lỗi không dây (An toàn với ngân hàng/VNeID)",
+                            "4. Chặn cuộc gọi bung toàn màn hình (Chỉ hiện trên Đảo)",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = IsleColors.Text,
+                        )
+                        Text(
+                            "Sử dụng quyền AppOps USE_FULL_SCREEN_INTENT để chặn Zalo, Messenger, Điện thoại bung cửa sổ toàn màn hình, đưa cuộc gọi đến hiển thị tinh tế trên Đảo Động.",
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            color = IsleColors.TextSecondary,
+                        )
+                        OutlinedButton(
+                            onClick = { showCallBlockDialog = true },
+                            modifier = Modifier.fillMaxWidth().height(38.dp),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("Cấu hình chặn cuộc gọi (Shizuku / ADB)…", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+
+                // Mục 5: Ẩn thông báo Gỡ lỗi không dây
+                GroupCard {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            "5. Ẩn thông báo Gỡ lỗi không dây (An toàn với ngân hàng/VNeID)",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             color = IsleColors.Text,
@@ -1643,7 +1692,7 @@ private fun VivoOptimizerDialog(
                     }
                 }
 
-                // Mục 5: Cài đặt thủ công
+                // Mục 6: Cài đặt thủ công
                 Text(
                     "3 bước cài đặt thủ công trong OriginOS:",
                     fontSize = 13.sp,
@@ -1671,6 +1720,13 @@ private fun VivoOptimizerDialog(
             selectedPackages = selectedPackages,
             onDismiss = { showAppPicker = false },
             onConfirm = { selectedPackages = it }
+        )
+    }
+
+    if (showCallBlockDialog) {
+        BlockCallFullScreenDialog(
+            context = context,
+            onDismiss = { showCallBlockDialog = false }
         )
     }
 }
@@ -1828,4 +1884,181 @@ private fun SelectAppsToOptimizeDialog(
             }
         }
     )
+}
+
+@Composable
+private fun BlockCallFullScreenDialog(
+    context: Context,
+    onDismiss: () -> Unit,
+) {
+    val coroutineScope = rememberCoroutineScope()
+    var isWorking by remember { mutableStateOf(false) }
+    var statusMessage by remember { mutableStateOf<String?>(null) }
+    val shizukuReady = remember { LtmVivoOptimizer.isShizukuAvailable(context) }
+    var selectedPkgs by remember {
+        mutableStateOf(LtmVivoOptimizer.DEFAULT_CALL_PACKAGES.toSet())
+    }
+    var showAppPicker by remember { mutableStateOf(false) }
+
+    val appNameMap = remember {
+        mapOf(
+            "com.zing.zalo" to "Zalo",
+            "com.facebook.orca" to "Messenger",
+            "org.telegram.messenger" to "Telegram",
+            "com.whatsapp" to "WhatsApp",
+            "com.android.incallui" to "Điện thoại (OriginOS InCallUI)",
+            "com.google.android.dialer" to "Điện thoại Google (Phone)"
+        )
+    }
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(IsleIcons.Phone, contentDescription = null, tint = IsleColors.TileGreen, modifier = Modifier.size(24.dp))
+                Text("Chặn cuộc gọi bung toàn màn hình", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            }
+        },
+        text = {
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    "Sử dụng quyền AppOps USE_FULL_SCREEN_INTENT để chặn các ứng dụng gọi (Zalo, Messenger, Điện thoại...) tự động bung toàn màn hình khi có cuộc gọi đến. Cuộc gọi sẽ được đưa thẳng lên Đảo Động với 2 nút Nghe / Hủy mà không làm gián đoạn màn hình đang dùng.",
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    color = IsleColors.TextSecondary,
+                )
+
+                if (statusMessage != null) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(IsleColors.SurfaceHigher)
+                            .padding(10.dp)
+                    ) {
+                        Text(
+                            statusMessage!!,
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            color = IsleColors.Text,
+                        )
+                    }
+                }
+
+                Text("Danh sách ứng dụng áp dụng:", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = IsleColors.Text)
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(IsleColors.SurfaceHigh)
+                        .padding(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    selectedPkgs.forEach { pkg ->
+                        val label = appNameMap[pkg] ?: pkg
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    selectedPkgs = selectedPkgs - pkg
+                                }
+                                .padding(vertical = 4.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Checkbox(
+                                checked = true,
+                                onCheckedChange = { checked ->
+                                    if (!checked) selectedPkgs = selectedPkgs - pkg
+                                }
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(label, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = IsleColors.Text)
+                                Text(pkg, fontSize = 10.sp, color = IsleColors.TextSecondary)
+                            }
+                        }
+                    }
+
+                    OutlinedButton(
+                        onClick = { showAppPicker = true },
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth().height(36.dp)
+                    ) {
+                        Text("+ Thêm ứng dụng khác…", fontSize = 12.sp)
+                    }
+                }
+
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Button(
+                        enabled = !isWorking && shizukuReady && selectedPkgs.isNotEmpty(),
+                        onClick = {
+                            coroutineScope.launch {
+                                isWorking = true
+                                statusMessage = "Đang áp dụng chặn toàn màn hình qua Shizuku…"
+                                val res = LtmVivoOptimizer.executeBlockFullScreenIntent(context, selectedPkgs.toList(), block = true)
+                                statusMessage = res.message
+                                isWorking = false
+                            }
+                        },
+                        modifier = Modifier.weight(1.3f).height(38.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = IsleColors.TileGreen),
+                    ) {
+                        Text("Chặn 1-chạm", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                    OutlinedButton(
+                        enabled = selectedPkgs.isNotEmpty(),
+                        onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("ADB_BlockCall", LtmVivoOptimizer.getBlockFullScreenIntentAdbScript(selectedPkgs.toList(), block = true)))
+                            android.widget.Toast.makeText(context, "Đã sao chép lệnh ADB chặn toàn màn hình", android.widget.Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.weight(1.1f).height(38.dp),
+                        shape = RoundedCornerShape(10.dp),
+                    ) {
+                        Text("Sao chép ADB", fontSize = 12.sp)
+                    }
+                }
+
+                TextButton(
+                    enabled = !isWorking && shizukuReady && selectedPkgs.isNotEmpty(),
+                    onClick = {
+                        coroutineScope.launch {
+                            isWorking = true
+                            statusMessage = "Đang khôi phục quyền toàn màn hình qua Shizuku…"
+                            val res = LtmVivoOptimizer.executeBlockFullScreenIntent(context, selectedPkgs.toList(), block = false)
+                            statusMessage = res.message
+                            isWorking = false
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Khôi phục cho phép bung toàn màn hình (Allow)", fontSize = 12.sp, color = IsleColors.TextSecondary)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(Lang.s(context, "close")) }
+        }
+    )
+
+    if (showAppPicker) {
+        SelectAppsToOptimizeDialog(
+            context = context,
+            selectedPackages = selectedPkgs,
+            onDismiss = { showAppPicker = false },
+            onConfirm = { selectedPkgs = it }
+        )
+    }
 }

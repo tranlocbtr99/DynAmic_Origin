@@ -116,11 +116,15 @@ object GenericCard {
         val intent = Intent(context, PlaygroundService::class.java).apply {
             action = PlaygroundService.ACTION_START
             putExtra("id", id)
-            putExtra("is_ongoing", isLive)
+            putExtra("is_ongoing", isLive || isCall)
             if (isCall) {
-                putExtra("oi_scene", "INCALLING")
+                val isVoip = sbn.packageName != "com.android.incallui" &&
+                    sbn.packageName != "com.google.android.dialer" &&
+                    !sbn.packageName.contains("telecom")
+                putExtra("oi_scene", if (isVoip) "VOIPCALL" else "INCALLING")
                 putExtra("is_call", true)
                 putExtra("oi_force_show", true)
+                putExtra("oi_force_show_card", true)
                 putExtra("oi_light_color", "#FF34C759")
             } else {
                 putExtra("oi_scene", "NAVIGATION")
@@ -205,17 +209,24 @@ object GenericCard {
                         ?.let { putExtra("oi_progress_indicator", it) }
                     segmentColor(extras)?.let { putExtra("oi_progress_color", it) }
                 }
-                // One button already shows as the capsule on the base card; two or more get a row.
+                // Calls with actions get the buttons template; normal notifications with 2+ buttons get a row.
+                isCall && buttons.isNotEmpty() -> putExtra("oi_template", OriginIslandConstants.TEMPLATE_BUTTONS) // 8
                 buttons.size >= 2 -> putExtra("oi_template", OriginIslandConstants.TEMPLATE_BUTTONS) // 8
             }
         }
         context.startService(intent)
     }
 
-    /** [usableActions], or none while the "Action buttons" switch is off. */
-    internal fun shownActions(context: Context, n: Notification): List<Notification.Action> =
-        if (context.getSharedPreferences(PREFS_NAME, 0).getBoolean("cast_show_actions", true)) usableActions(n)
-        else emptyList()
+    /** [usableActions], always enabled for calls, or none while the "Action buttons" switch is off. */
+    internal fun shownActions(context: Context, n: Notification): List<Notification.Action> {
+        val isCall = n.category == NotificationCompat.CATEGORY_CALL ||
+            n.extras.getString(NotificationCompat.EXTRA_TEMPLATE) == "android.app.Notification\$CallStyle"
+        return if (isCall || context.getSharedPreferences(PREFS_NAME, 0).getBoolean("cast_show_actions", true)) {
+            usableActions(n)
+        } else {
+            emptyList()
+        }
+    }
 
     /**
      * The source's buttons that work from a single tap: ones that need typed input (Reply) would

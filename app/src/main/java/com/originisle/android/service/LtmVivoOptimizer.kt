@@ -197,6 +197,52 @@ object LtmVivoOptimizer {
     fun getHideWirelessDebuggingAdbScript(): String =
         "settings put global adb_wifi_enabled 0"
 
+    val DEFAULT_CALL_PACKAGES = listOf(
+        "com.zing.zalo",
+        "com.facebook.orca",
+        "org.telegram.messenger",
+        "com.whatsapp",
+        "com.android.incallui",
+        "com.google.android.dialer"
+    )
+
+    suspend fun executeBlockFullScreenIntent(
+        context: Context,
+        packages: List<String>,
+        block: Boolean = true
+    ): OptimizationResult = withContext(Dispatchers.IO) {
+        if (!isShizukuAvailable(context)) {
+            return@withContext OptimizationResult(
+                false,
+                "Chưa kết nối Shizuku hoặc Gỡ lỗi không dây. Hãy kết nối hoặc sao chép lệnh ADB để chạy qua máy tính.",
+                0,
+            )
+        }
+        val shell = ShizukuShell(context)
+        val mode = if (block) "deny" else "allow"
+        var count = 0
+        for (pkg in packages) {
+            val res = shell.exec("cmd appops set $pkg USE_FULL_SCREEN_INTENT $mode")
+            if (res.exitCode == 0) count++
+        }
+        val actionText = if (block) "chặn cuộc gọi bung toàn màn hình (chỉ hiện trên Đảo)" else "cho phép cuộc gọi bung toàn màn hình"
+        OptimizationResult(
+            true,
+            "Đã $actionText cho ${packages.size} ứng dụng thành công!",
+            count
+        )
+    }
+
+    fun getBlockFullScreenIntentAdbScript(packages: List<String>, block: Boolean = true): String {
+        val mode = if (block) "deny" else "allow"
+        val cmds = mutableListOf<String>()
+        cmds.add("# ${if (block) "Chặn cuộc gọi bung toàn màn hình (chỉ hiện trên Đảo)" else "Khôi phục cuộc gọi bung toàn màn hình"}")
+        for (pkg in packages) {
+            cmds.add("cmd appops set $pkg USE_FULL_SCREEN_INTENT $mode")
+        }
+        return cmds.joinToString("\n")
+    }
+
     fun getKeepAliveAdbScript(): String =
         KEEP_ALIVE_COMMANDS.joinToString("\n")
 
