@@ -266,14 +266,15 @@ class PlaygroundService : Service() {
             (if (lockscreenOptIn) OriginIslandConstants.DISPLAY_LOCKSCREEN else 0)).let {
             if (hideFromShade) it and OriginIslandConstants.DISPLAY_NOTIFICATION.inv() else it
         }
-        val showNotify = intent.getBooleanExtra("oi_show_notify", true) &&
-            !getSharedPreferences(PREFS_NAME, 0).getBoolean("cast_hide_from_shade", false)
-        val islandNotify = intent.getBooleanExtra("oi_island_notify", false)
+        val isIdleCard = (id == 0xee84) || intent.getBooleanExtra("oi_is_idle_ticker", false)
+        val showNotify = if (isIdleCard) false else (intent.getBooleanExtra("oi_show_notify", true) &&
+            !getSharedPreferences(PREFS_NAME, 0).getBoolean("cast_hide_from_shade", false))
+        val islandNotify = if (isIdleCard) false else intent.getBooleanExtra("oi_island_notify", false)
         val islandShowTime = intent.getIntExtra("oi_island_show_time", 0)
-        var forceShow = intent.getBooleanExtra("oi_force_show", false) ||
-            getSharedPreferences(PREFS_NAME, 0).getBoolean("cast_expand_on_notification", true)
-        var forceShowCard = intent.getBooleanExtra("oi_force_show_card", false) ||
-            getSharedPreferences(PREFS_NAME, 0).getBoolean("cast_expand_on_notification", true)
+        var forceShow = if (isIdleCard) false else (intent.getBooleanExtra("oi_force_show", false) ||
+            getSharedPreferences(PREFS_NAME, 0).getBoolean("cast_expand_on_notification", true))
+        var forceShowCard = if (isIdleCard) false else (intent.getBooleanExtra("oi_force_show_card", false) ||
+            getSharedPreferences(PREFS_NAME, 0).getBoolean("cast_expand_on_notification", true))
         val sourcePkg = intent.getStringExtra("source_pkg")
         val dedupEnabled = getSharedPreferences(PREFS_NAME, 0).getBoolean("cast_dedup_same_app", true)
         val cooldownSec = getSharedPreferences(PREFS_NAME, 0).getInt("cast_dedup_cooldown_sec", 10)
@@ -307,6 +308,7 @@ class PlaygroundService : Service() {
         val largeIcon: Icon? = intent.getParcelableExtra("oi_large_icon", Icon::class.java)
             ?: IconCache.activeLargeIcons[id]
             ?: IconCache.activeLargeBitmaps[id]?.let { Icon.createWithBitmap(it) }
+        val subImage: Icon? = intent.getParcelableExtra("oi_sub_image", Icon::class.java)
         val progressNodeIcons = intent.getParcelableArrayListExtra("oi_progress_nodes", Icon::class.java).orEmpty()
         val progressIndicatorIcon = intent.getParcelableExtra("oi_progress_indicator", Icon::class.java)
         val progressColor = OriginIslandBuilder.parseColor(intent.getStringExtra("oi_progress_color"), 0)
@@ -355,6 +357,7 @@ class PlaygroundService : Service() {
             clickResp = clickResp,
             largeIcon = largeIcon,
             subText = subtext,
+            subImage = subImage,
             navMsg = navMsg,
             navAssistText = navAssist,
             actions = actions,
@@ -508,6 +511,10 @@ class PlaygroundService : Service() {
             .setDeleteIntent(deletePi)
             .setSmallIcon(iconRes)
             .setExtras(bundle)
+        if (id == 0xee84) {
+            builder.setSilent(true)
+            builder.setPriority(NotificationCompat.PRIORITY_MIN)
+        }
         if (contentIntent != null) {
             builder.setContentIntent(contentIntent)
         }

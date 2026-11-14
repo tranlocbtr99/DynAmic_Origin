@@ -682,7 +682,10 @@ public final class LtmIslandHelper {
             intent.putExtra("id", 0xee84);
             intent.putExtra("is_ongoing", true);
             intent.putExtra("oi_scene", "NAVIGATION");
-            intent.putExtra("oi_force_show", true);
+            intent.putExtra("oi_force_show", false);
+            intent.putExtra("oi_force_show_card", false);
+            intent.putExtra("oi_show_notify", false);
+            intent.putExtra("oi_is_idle_ticker", true);
             intent.putExtra("icon_res", sContext.getApplicationInfo().icon);
             Intent click = new Intent(sContext, Class.forName("com.originisle.android.MainActivity"));
             click.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -1201,6 +1204,8 @@ public final class LtmIslandHelper {
             if (isMetricPreset(preset)) {
                 boolean ram = "ram".equals(preset);
                 String value = ram ? ramLabel(context) : networkLabel();
+                intent.putExtra("title", ram ? "Bộ nhớ RAM" : "Tốc độ mạng");
+                intent.putExtra("text", ram ? ("Đang sử dụng " + value) : value);
                 android.graphics.Bitmap bitmap = textToSquareBitmap(context, ram ? "RAM" : "⇅", ram ? 9 : 15, 0xff9ed8ff);
                 if (bitmap != null) {
                     android.graphics.drawable.Icon icon = android.graphics.drawable.Icon.createWithBitmap(bitmap);
@@ -1223,6 +1228,8 @@ public final class LtmIslandHelper {
                 java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("HH:mm", Locale.getDefault());
 
                 String right = dayStr + " " + dayOfMonth + "/" + month + " · " + sdf.format(cal.getTime());
+                intent.putExtra("title", "Ngày & Giờ");
+                intent.putExtra("text", right);
 
                 android.graphics.Bitmap earthBmp = createEarthBitmap(context);
                 if (earthBmp != null) {
@@ -1265,6 +1272,8 @@ public final class LtmIslandHelper {
                 } else {
                     right = sCachedWeatherTemp + " · Gió " + sCachedWeatherWind;
                 }
+                intent.putExtra("title", "Thời tiết");
+                intent.putExtra("text", right);
 
                 intent.putExtra("oi_left_content", "");
                 intent.putExtra("oi_right_content", right);
@@ -1288,6 +1297,8 @@ public final class LtmIslandHelper {
                     intent.putExtra("oi_large_icon", icon);
                     intent.putExtra("oi_show_left_icon", true);
                 }
+                intent.putExtra("title", "Thời tiết");
+                intent.putExtra("text", sCachedWeatherTemp + " · " + sCachedWeatherCondition);
 
                 intent.putExtra("oi_left_content", "");
                 intent.putExtra("oi_right_template", 1); // TEMPLATE_RIGHT_ISLAND_WAVE

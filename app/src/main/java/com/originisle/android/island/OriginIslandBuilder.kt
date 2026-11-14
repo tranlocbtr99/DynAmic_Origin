@@ -119,6 +119,7 @@ object OriginIslandBuilder {
         operation: Int = 0,
         largeIcon: Icon? = null,
         subText: String? = null,
+        subImage: Icon? = null,
         navMsg: String? = null,
         navAssistText: String? = null,
         actions: List<OriginAction> = emptyList(),
@@ -230,6 +231,10 @@ object OriginIslandBuilder {
                         setSpan(ForegroundColorSpan(color), 0, label.length, 33)
                     },
                 )
+            }
+            subImage != null -> {
+                base.putInt(C.BUNDLE_KEY_BASE_SUB_INFO, C.BASE_SUB_INFO_IMAGE)
+                base.putParcelable(C.BUNDLE_KEY_BASE_SUB_IMAGE, subImage)
             }
             template == 4 -> {
                 base.putInt(C.BUNDLE_KEY_BASE_SUB_INFO, 1)

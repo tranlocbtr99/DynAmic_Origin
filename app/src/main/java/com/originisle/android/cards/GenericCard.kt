@@ -93,6 +93,11 @@ object GenericCard {
         // otherwise the pill falls back to the notification's generic monochrome phone glyph.
         val pillIcon = if (isCall) callIcon(context, sbn) else null
 
+        val appIcon = runCatching {
+            val info = context.packageManager.getApplicationInfo(sbn.packageName, 0)
+            Icon.createWithResource(sbn.packageName, info.icon)
+        }.getOrNull()
+
         // Per-app styling: map known apps (Google Pay/Wallet/Maps …) to a nicer card + chip.
         val style = styleFor(sbn.packageName, title, "$text $bigText $subText")
         val isMaps = sbn.packageName == "com.google.android.apps.maps"
@@ -150,6 +155,11 @@ object GenericCard {
                 putExtra("oi_left_icon", it)
                 putExtra("oi_large_icon", it)
             }
+            if (appIcon != null) {
+                putExtra("oi_right_icon", appIcon)
+                putExtra("oi_show_right_icon", true)
+                putExtra("oi_sub_image", appIcon)
+            }
             when {
                 style != null -> {
                     putExtra("oi_template", style.template)
@@ -173,18 +183,19 @@ object GenericCard {
                     putExtra("oi_left_content", "")
                     if (!isCall) callIcon(context, sbn)?.let { putExtra("oi_left_icon", it) }
                     putExtra("oi_template", OriginIslandConstants.TEMPLATE_BASE) // 4
-                    if (finalChip.isNotBlank()) {
+                    if (finalChip.isNotBlank() && finalChip != appLabel) {
                         putExtra("oi_right_template", OriginIslandConstants.TEMPLATE_RIGHT_ISLAND_CAPSULE_TEXT) // 6
                     } else {
                         putExtra("oi_right_template", OriginIslandConstants.TEMPLATE_RIGHT_ISLAND_TEXT_ICON) // 4
-                        putExtra("oi_show_right_icon", false)
+                        putExtra("oi_show_right_icon", appIcon != null)
                         val body = text.ifBlank { bigText }.ifBlank { subText }
                         // Calls: the caller's avatar sits on the left, so the right of the camera
                         // holds just their name — not "Name: Incoming call" cut to a few letters.
                         val combined = when {
                             isCall -> title
                             title.isNotBlank() && title != appLabel && body.isNotBlank() -> "$title: $body"
-                            else -> body
+                            body.isNotBlank() && body != appLabel -> body
+                            else -> ""
                         }
                         putExtra("oi_right_content", combined.take(RIGHT_TEXT_MAX_CHARS).let {
                             if (combined.length > RIGHT_TEXT_MAX_CHARS) "$it…" else it

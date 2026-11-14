@@ -86,10 +86,14 @@ object MessageCard {
                 putExtra("oi_left_icon", it)
                 putExtra("oi_large_icon", it)
             }
-            // Right: the message as plain text, no icon (vivo's text-only variant) — every pixel of
-            // the right half goes to the message.
             putExtra("oi_right_template", OriginIslandConstants.TEMPLATE_RIGHT_ISLAND_TEXT_ICON) // 4
-            putExtra("oi_show_right_icon", false)
+            if (appIcon != null) {
+                putExtra("oi_right_icon", appIcon)
+                putExtra("oi_show_right_icon", true)
+                putExtra("oi_sub_image", appIcon)
+            } else {
+                putExtra("oi_show_right_icon", false)
+            }
             putExtra("oi_right_content", msg.text.clip(LINE_MAX_CHARS))
             putExtra("status_chip_text", msg.text.clip(LINE_MAX_CHARS))
             putExtra("icon_res", R.mipmap.ic_launcher_round)
