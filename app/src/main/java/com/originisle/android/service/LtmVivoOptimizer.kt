@@ -21,6 +21,31 @@ object LtmVivoOptimizer {
         val executedCommands: Int,
     )
 
+    data class AppItem(
+        val packageName: String,
+        val label: String,
+        val isSystem: Boolean,
+    )
+
+    fun getInstalledAppList(context: Context): List<AppItem> {
+        val pm = context.packageManager
+        val launchable = listOf(android.content.Intent.CATEGORY_LAUNCHER, android.content.Intent.CATEGORY_INFO).flatMapTo(HashSet()) { cat ->
+            pm.queryIntentActivities(android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(cat), 0).map { it.activityInfo.packageName }
+        }
+        return pm.getInstalledApplications(0)
+            .mapNotNull { info ->
+                val pkg = info.packageName
+                if (pkg == context.packageName) return@mapNotNull null
+                val isLaunchable = pkg in launchable
+                val isSystem = (info.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
+                if (!isLaunchable && isSystem) return@mapNotNull null
+                val label = pm.getApplicationLabel(info).toString()
+                if (label == pkg && isSystem) return@mapNotNull null
+                AppItem(packageName = pkg, label = label, isSystem = isSystem)
+            }
+            .sortedBy { it.label.lowercase() }
+    }
+
     private val KEEP_ALIVE_COMMANDS = listOf(
         "dumpsys deviceidle whitelist +$TARGET_PKG",
         "cmd appops set $TARGET_PKG RUN_IN_BACKGROUND allow",
@@ -114,6 +139,42 @@ object LtmVivoOptimizer {
             "Đã tối ưu chống trễ thông báo thành công cho Google Play Services, Zalo, Messenger, Telegram... Hệ thống sẽ không đưa ứng dụng vào trạng thái ngủ đông sâu khi tắt màn hình!",
             count,
         )
+    }
+
+    suspend fun executeOptimizeApps(context: Context, packages: List<String>): OptimizationResult = withContext(Dispatchers.IO) {
+        if (!isShizukuAvailable(context)) {
+            return@withContext OptimizationResult(
+                false,
+                "Chưa kết nối Shizuku hoặc Gỡ lỗi không dây. Hãy kết nối hoặc sao chép lệnh ADB để chạy qua máy tính.",
+                0,
+            )
+        }
+        val shell = ShizukuShell(context)
+        var count = 0
+        for (pkg in packages) {
+            shell.exec("dumpsys deviceidle whitelist +$pkg")
+            shell.exec("cmd appops set $pkg RUN_IN_BACKGROUND allow")
+            shell.exec("cmd appops set $pkg RUN_ANY_IN_BACKGROUND allow")
+            shell.exec("cmd appops set $pkg AUTO_START allow")
+            count++
+        }
+        OptimizationResult(
+            true,
+            "Đã tối ưu pin & cấp quyền chạy ngầm thành công cho $count ứng dụng đã chọn!",
+            count,
+        )
+    }
+
+    fun getOptimizeAppsAdbScript(packages: List<String>): String {
+        val cmds = mutableListOf<String>()
+        cmds.add("# Tối ưu pin và cấp quyền chạy ngầm cho các ứng dụng đã chọn")
+        for (pkg in packages) {
+            cmds.add("dumpsys deviceidle whitelist +$pkg")
+            cmds.add("cmd appops set $pkg RUN_IN_BACKGROUND allow")
+            cmds.add("cmd appops set $pkg RUN_ANY_IN_BACKGROUND allow")
+            cmds.add("cmd appops set $pkg AUTO_START allow")
+        }
+        return cmds.joinToString("\n")
     }
 
     suspend fun executeHideWirelessDebugging(context: Context): OptimizationResult = withContext(Dispatchers.IO) {

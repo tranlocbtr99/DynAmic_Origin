@@ -421,7 +421,7 @@ class PlaygroundService : Service() {
         activeCardIds = activeIds.toSet()
         com.originisle.android.ui.LtmIslandHelper.limitMessageSurfaces(this, intent, bundle)
         com.originisle.android.ui.LtmIslandHelper.sanitizeIdleBundle(bundle)
-        postSuperX(id, iconRes, title, text, sourceApp, isOngoing, scene, bundle)
+        postSuperX(id, iconRes, title, text, sourceApp, isOngoing, scene, bundle, clickResp)
 
         // Auto-dismiss: only for non-live cards (isOngoing is the same live/persistent flag the
         // card posters set — media, sports and any ongoing/call/progress GenericCard all mark
@@ -487,6 +487,7 @@ class PlaygroundService : Service() {
         isOngoing: Boolean,
         scene: String,
         bundle: android.os.Bundle,
+        contentIntent: PendingIntent? = null,
     ) {
         OriginIslandBuilder.grantScenes(this)
         createNotificationChannel(ORIGIN_CHANNEL_ID)
@@ -503,10 +504,13 @@ class PlaygroundService : Service() {
             .setContentText(text)
             .setOnlyAlertOnce(true)
             .setOngoing(isOngoing)
-            .setAutoCancel(isOngoing)
+            .setAutoCancel(!isOngoing)
             .setDeleteIntent(deletePi)
             .setSmallIcon(iconRes)
             .setExtras(bundle)
+        if (contentIntent != null) {
+            builder.setContentIntent(contentIntent)
+        }
         if (sourceApp.isNotEmpty()) builder.setSubText(sourceApp)
         notificationManager.notify(OriginIslandConstants.SUPERX_TAG, id, builder.build())
     }

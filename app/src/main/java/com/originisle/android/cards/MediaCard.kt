@@ -125,7 +125,7 @@ object MediaCard {
             putExtra("id", id)
             putExtra("is_ongoing", true)
 
-            putExtra("oi_scene", "NAVIGATION")
+            putExtra("oi_scene", "MOVIE")
             putExtra("title", track)
             putExtra("text", artist)
             putExtra("source_pkg", sbn.packageName)
@@ -136,8 +136,8 @@ object MediaCard {
             albumArt?.let { putExtra("oi_left_icon", Icon.createWithBitmap(it)) }
             putExtra("icon_res", R.drawable.ic_media_play)
             putExtra("oi_template", OriginIslandConstants.TEMPLATE_BUTTONS)
-            putExtra("oi_bg_color", "#FF262626")
-            putExtra("oi_fg_color", "#FFFFFFFF")
+            putExtra("oi_bg_color", "#FFFFFFFF")
+            putExtra("oi_fg_color", "#FF1C1C1E")
             // Lockscreen visibility is decided globally by the "Live card on lockscreen" setting in
             // PlaygroundService, not per-card — no oi_displays override needed here anymore.
             if (playing) {
@@ -173,8 +173,10 @@ object MediaCard {
         context.packageManager.getApplicationLabel(context.packageManager.getApplicationInfo(pkg, 0)).toString()
     }.getOrDefault(pkg)
 
-    private fun makeAction(context: Context, iconRes: Int, pi: PendingIntent): Notification.Action =
-        Notification.Action.Builder(Icon.createWithResource(context, iconRes), "", pi).build()
+    private fun makeAction(context: Context, iconRes: Int, pi: PendingIntent): Notification.Action {
+        val icon = Icon.createWithResource(context, iconRes).setTint(android.graphics.Color.parseColor("#FF1C1C1E"))
+        return Notification.Action.Builder(icon, "", pi).build()
+    }
 
     /**
      * Sample a few points across the album art to get a small palette for the wave visualiser

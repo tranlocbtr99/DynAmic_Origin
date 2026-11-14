@@ -22,16 +22,20 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
@@ -71,8 +75,10 @@ import com.originisle.android.service.NotificationCastListener
 import com.originisle.android.service.QuietHours
 import com.originisle.android.service.LtmVivoOptimizer
 import com.originisle.android.ui.samples.IslandSamples
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * The main screen: listener status, compact real-time RAM monitor, unified island tester & presets,
@@ -1340,6 +1346,19 @@ private fun VivoOptimizerDialog(
     var isWorking by remember { mutableStateOf(false) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
     val shizukuReady = remember { LtmVivoOptimizer.isShizukuAvailable(context) }
+    var showAppPicker by remember { mutableStateOf(false) }
+    var selectedPackages by remember {
+        mutableStateOf(
+            setOf(
+                "com.zing.zalo",
+                "com.facebook.orca",
+                "org.telegram.messenger",
+                "com.google.android.gm",
+                "com.whatsapp",
+                "com.facebook.katana"
+            )
+        )
+    }
 
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
@@ -1501,11 +1520,83 @@ private fun VivoOptimizerDialog(
                     }
                 }
 
-                // Mục 3: Ẩn thông báo Gỡ lỗi không dây
+                // Mục 3: Tối ưu pin & chạy ngầm cho ứng dụng tự chọn
                 GroupCard {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            "3. Ẩn thông báo Gỡ lỗi không dây (An toàn với ngân hàng/VNeID)",
+                            "3. Tối ưu pin & chạy ngầm cho ứng dụng tự chọn",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = IsleColors.Text,
+                        )
+                        Text(
+                            "Cấp quyền AppOps (RUN_IN_BACKGROUND, RUN_ANY_IN_BACKGROUND, AUTO_START) và đưa vào danh sách trắng Doze Whitelist để không bao giờ bị OriginOS đóng băng hay trễ tin nhắn.",
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            color = IsleColors.TextSecondary,
+                        )
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Đã chọn: ${selectedPackages.size} ứng dụng",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = IsleColors.Text
+                            )
+                            OutlinedButton(
+                                onClick = { showAppPicker = true },
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                modifier = Modifier.height(34.dp)
+                            ) {
+                                Text("Chọn ứng dụng…", fontSize = 12.sp)
+                            }
+                        }
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Button(
+                                enabled = !isWorking && shizukuReady && selectedPackages.isNotEmpty(),
+                                onClick = {
+                                    coroutineScope.launch {
+                                        isWorking = true
+                                        statusMessage = "Đang tối ưu ${selectedPackages.size} ứng dụng qua Shizuku…"
+                                        val res = LtmVivoOptimizer.executeOptimizeApps(context, selectedPackages.toList())
+                                        statusMessage = res.message
+                                        isWorking = false
+                                    }
+                                },
+                                modifier = Modifier.weight(1.3f).height(38.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = IsleColors.TileTeal),
+                            ) {
+                                Text("Tối ưu 1-chạm", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                            OutlinedButton(
+                                enabled = selectedPackages.isNotEmpty(),
+                                onClick = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("ADB_OptimizeApps", LtmVivoOptimizer.getOptimizeAppsAdbScript(selectedPackages.toList())))
+                                    android.widget.Toast.makeText(context, "Đã sao chép lệnh ADB tối ưu ${selectedPackages.size} ứng dụng", android.widget.Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.weight(1.1f).height(38.dp),
+                                shape = RoundedCornerShape(10.dp),
+                            ) {
+                                Text("Sao chép ADB", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+
+                // Mục 4: Ẩn thông báo Gỡ lỗi không dây
+                GroupCard {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            "4. Ẩn thông báo Gỡ lỗi không dây (An toàn với ngân hàng/VNeID)",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             color = IsleColors.Text,
@@ -1552,7 +1643,7 @@ private fun VivoOptimizerDialog(
                     }
                 }
 
-                // Mục 4: Cài đặt thủ công
+                // Mục 5: Cài đặt thủ công
                 Text(
                     "3 bước cài đặt thủ công trong OriginOS:",
                     fontSize = 13.sp,
@@ -1572,5 +1663,169 @@ private fun VivoOptimizerDialog(
         confirmButton = {
             TextButton(onClick = onDismiss) { Text(Lang.s(context, "close")) }
         },
+    )
+
+    if (showAppPicker) {
+        SelectAppsToOptimizeDialog(
+            context = context,
+            selectedPackages = selectedPackages,
+            onDismiss = { showAppPicker = false },
+            onConfirm = { selectedPackages = it }
+        )
+    }
+}
+
+@Composable
+private fun SelectAppsToOptimizeDialog(
+    context: Context,
+    selectedPackages: Set<String>,
+    onDismiss: () -> Unit,
+    onConfirm: (Set<String>) -> Unit,
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    var tempSelected by remember { mutableStateOf(selectedPackages) }
+    var allApps by remember { mutableStateOf<List<LtmVivoOptimizer.AppItem>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            val list = LtmVivoOptimizer.getInstalledAppList(context)
+            withContext(Dispatchers.Main) {
+                allApps = list
+                isLoading = false
+            }
+        }
+    }
+
+    val filteredApps = remember(searchQuery, allApps) {
+        if (searchQuery.isBlank()) allApps
+        else allApps.filter {
+            it.label.contains(searchQuery, ignoreCase = true) ||
+            it.packageName.contains(searchQuery, ignoreCase = true)
+        }
+    }
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("Chọn ứng dụng cần tối ưu pin", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth().height(420.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Tìm ứng dụng hoặc package…", fontSize = 13.sp) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(10.dp)
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Đã chọn: ${tempSelected.size}/${allApps.size}", fontSize = 12.sp, color = IsleColors.TextSecondary)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        TextButton(
+                            onClick = {
+                                tempSelected = filteredApps.map { it.packageName }.toSet() + tempSelected
+                            },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text("Chọn hết", fontSize = 11.sp)
+                        }
+                        TextButton(
+                            onClick = {
+                                val currentFilteredPkg = filteredApps.map { it.packageName }.toSet()
+                                tempSelected = tempSelected - currentFilteredPkg
+                            },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text("Bỏ chọn", fontSize = 11.sp)
+                        }
+                    }
+                }
+
+                if (isLoading) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(modifier = Modifier.size(28.dp), color = IsleColors.Accent)
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize().weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        items(filteredApps, key = { it.packageName }) { app ->
+                            val isChecked = tempSelected.contains(app.packageName)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        tempSelected = if (isChecked) {
+                                            tempSelected - app.packageName
+                                        } else {
+                                            tempSelected + app.packageName
+                                        }
+                                    }
+                                    .padding(vertical = 6.dp, horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Checkbox(
+                                    checked = isChecked,
+                                    onCheckedChange = { checked ->
+                                        tempSelected = if (checked) {
+                                            tempSelected + app.packageName
+                                        } else {
+                                            tempSelected - app.packageName
+                                        }
+                                    }
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = app.label,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = IsleColors.Text,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = app.packageName,
+                                        fontSize = 10.sp,
+                                        color = IsleColors.TextSecondary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onConfirm(tempSelected)
+                    onDismiss()
+                },
+                shape = RoundedCornerShape(8.dp),
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = IsleColors.Accent)
+            ) {
+                Text("Xong (${tempSelected.size})", fontSize = 12.sp)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Hủy", fontSize = 12.sp)
+            }
+        }
     )
 }
