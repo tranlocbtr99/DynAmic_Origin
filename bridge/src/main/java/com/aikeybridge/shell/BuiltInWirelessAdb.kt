@@ -145,6 +145,7 @@ object BuiltInWirelessAdb {
         // 1. Thử ghi trực tiếp vào Settings.Global (đã được cấp WRITE_SECURE_SETTINGS)
         val directRes = runCatching {
             Settings.Global.putInt(appContext.contentResolver, "adb_wifi_enabled", 0)
+            Settings.Global.putInt(appContext.contentResolver, "development_settings_enabled", 0)
         }.isSuccess
         if (directRes) {
             success = true
@@ -153,7 +154,10 @@ object BuiltInWirelessAdb {
         // 2. Thử lệnh qua EngineBinderProvider nếu Engine nội bộ đang chạy
         if (EngineBinderProvider.isAlive(appContext)) {
             val res = runCatching {
-                EngineBinderProvider.execCommand(appContext, "settings put global adb_wifi_enabled 0")
+                EngineBinderProvider.execCommand(
+                    appContext,
+                    "settings put global adb_wifi_enabled 0; settings put global development_settings_enabled 0"
+                )
             }.getOrNull()
             if (res != null && res.exitCode == 0) {
                 success = true
@@ -162,14 +166,19 @@ object BuiltInWirelessAdb {
 
         // 3. Thử qua Shizuku nếu đang kết nối
         if (!success && ShizukuShell.isEngineOrShizukuReady(appContext)) {
-            val res = ShizukuShell(appContext).exec("settings put global adb_wifi_enabled 0")
+            val res = ShizukuShell(appContext).exec(
+                "settings put global adb_wifi_enabled 0 && settings put global development_settings_enabled 0"
+            )
             if (res.exitCode == 0) {
                 success = true
             }
         }
 
         if (success) {
-            Diagnostics.success("adb", "Đã tắt Gỡ lỗi không dây (adb_wifi_enabled=0) để ẩn thông báo thanh trạng thái.")
+            Diagnostics.success(
+                "adb",
+                "Đã tắt Gỡ lỗi không dây & ẩn Tùy chọn nhà phát triển (adb_wifi_enabled=0, development_settings_enabled=0)."
+            )
         }
         success
     }
@@ -481,7 +490,10 @@ object BuiltInWirelessAdb {
                     EngineBinderProvider.notifyStateChanged()
                     Diagnostics.success("engine", "Engine nội bộ (UID 2000) đã kết nối qua Gỡ lỗi không dây.")
                     if (isAutoHideEnabled(appContext)) {
-                        execDirectOnAdb(mgr, "settings put global adb_wifi_enabled 0")
+                        execDirectOnAdb(
+                            mgr,
+                            "settings put global adb_wifi_enabled 0; settings put global development_settings_enabled 0"
+                        )
                         hideWirelessDebugging(appContext)
                     }
                     return@withContext true

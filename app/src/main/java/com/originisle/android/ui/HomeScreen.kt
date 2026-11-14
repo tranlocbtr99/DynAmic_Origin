@@ -1645,13 +1645,13 @@ private fun VivoOptimizerDialog(
                 GroupCard {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            "5. Ẩn thông báo Gỡ lỗi không dây (An toàn với ngân hàng/VNeID)",
+                            "5. Ẩn thông báo Gỡ lỗi không dây & Tùy chọn nhà phát triển",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             color = IsleColors.Text,
                         )
                         Text(
-                            "Tắt cờ Gỡ lỗi không dây (adb_wifi_enabled = 0) giúp xóa icon/thông báo trên thanh trạng thái và tránh bị các ứng dụng ngân hàng phát hiện cảnh báo.",
+                            "Tắt Gỡ lỗi không dây (adb_wifi_enabled = 0) và ẩn Tùy chọn nhà phát triển (development_settings_enabled = 0) giúp xóa icon/thông báo trên thanh trạng thái và an toàn tuyệt đối với ứng dụng ngân hàng / VNeID.",
                             fontSize = 12.sp,
                             lineHeight = 16.sp,
                             color = IsleColors.TextSecondary,
@@ -1665,7 +1665,7 @@ private fun VivoOptimizerDialog(
                                 onClick = {
                                     coroutineScope.launch {
                                         isWorking = true
-                                        statusMessage = "Đang tắt Gỡ lỗi không dây để ẩn thông báo…"
+                                        statusMessage = "Đang tắt Gỡ lỗi & ẩn Tùy chọn nhà phát triển…"
                                         val res = LtmVivoOptimizer.executeHideWirelessDebugging(context)
                                         statusMessage = res.message
                                         isWorking = false
@@ -1681,7 +1681,7 @@ private fun VivoOptimizerDialog(
                                 onClick = {
                                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                                     clipboard.setPrimaryClip(android.content.ClipData.newPlainText("ADB_HideWifi", LtmVivoOptimizer.getHideWirelessDebuggingAdbScript()))
-                                    android.widget.Toast.makeText(context, "Đã sao chép lệnh ADB ẩn Gỡ lỗi", android.widget.Toast.LENGTH_SHORT).show()
+                                    android.widget.Toast.makeText(context, "Đã sao chép lệnh ADB ẩn Gỡ lỗi & Tùy chọn phát triển", android.widget.Toast.LENGTH_SHORT).show()
                                 },
                                 modifier = Modifier.weight(1.1f).height(38.dp),
                                 shape = RoundedCornerShape(10.dp),

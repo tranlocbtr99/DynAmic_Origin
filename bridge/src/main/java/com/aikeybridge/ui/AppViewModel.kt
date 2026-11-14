@@ -429,9 +429,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             val ok = BuiltInWirelessAdb.hideWirelessDebugging(app)
             refreshPermissions()
             _message.value = if (ok) {
-                "Đã tắt Gỡ lỗi không dây (ẩn thông báo thanh trạng thái). Engine vẫn chạy nền!"
+                "Đã tắt Gỡ lỗi không dây & ẩn Tùy chọn nhà phát triển. Engine vẫn chạy nền và an toàn ngân hàng/VNeID!"
             } else {
-                "Chưa thể tắt Gỡ lỗi không dây. Vui lòng kiểm tra quyền hoặc kết nối Engine."
+                "Chưa thể tắt. Vui lòng kiểm tra quyền hoặc kết nối Engine / Shizuku."
             }
         }
     }

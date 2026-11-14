@@ -182,7 +182,7 @@ object LtmVivoOptimizer {
         if (ok) {
             OptimizationResult(
                 true,
-                "Đã tắt Gỡ lỗi không dây (adb_wifi_enabled = 0). Thông báo trên thanh trạng thái đã biến mất và hoàn toàn an toàn với app ngân hàng / VNeID!",
+                "Đã tắt Gỡ lỗi không dây & ẩn Tùy chọn nhà phát triển (adb_wifi_enabled=0, development_settings_enabled=0). An toàn tuyệt đối với app ngân hàng / VNeID!",
                 1,
             )
         } else {
@@ -195,7 +195,7 @@ object LtmVivoOptimizer {
     }
 
     fun getHideWirelessDebuggingAdbScript(): String =
-        "settings put global adb_wifi_enabled 0"
+        "settings put global adb_wifi_enabled 0\nsettings put global development_settings_enabled 0"
 
     val DEFAULT_CALL_PACKAGES = listOf(
         "com.zing.zalo",

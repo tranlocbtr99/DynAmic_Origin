@@ -391,7 +391,7 @@ private fun SetupScreen(model: AppViewModel, onBack: () -> Unit) {
                                 fontWeight = FontWeight.Medium,
                             )
                             Text(
-                                "Tắt adb_wifi_enabled=0 để xóa thông báo thanh trạng thái & an toàn trước app ngân hàng",
+                                "Tắt gỡ lỗi & ẩn Tùy chọn nhà phát triển để xóa thông báo và an toàn tuyệt đối trước app ngân hàng / VNeID",
                                 color = BridgeColors.TextSecondary,
                                 fontSize = 11.sp,
                                 lineHeight = 15.sp,
@@ -423,7 +423,7 @@ private fun SetupScreen(model: AppViewModel, onBack: () -> Unit) {
                             modifier = Modifier.size(15.dp),
                         )
                         Spacer(Modifier.width(6.dp))
-                        Text("Tắt / Ẩn thông báo Gỡ lỗi không dây ngay", fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                        Text("Tắt / Ẩn Gỡ lỗi không dây & Tùy chọn nhà phát triển ngay", fontSize = 12.sp, fontWeight = FontWeight.Medium)
                     }
                 }
             }
