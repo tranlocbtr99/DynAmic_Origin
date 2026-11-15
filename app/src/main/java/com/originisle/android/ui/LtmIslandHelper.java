@@ -703,6 +703,7 @@ public final class LtmIslandHelper {
             intent.putExtra("oi_force_show_card", false);
             intent.putExtra("oi_show_notify", false);
             intent.putExtra("oi_is_idle_ticker", true);
+            intent.putExtra("oi_dismiss_when_kill", false);
             intent.putExtra("icon_res", sContext.getApplicationInfo().icon);
 
             android.content.SharedPreferences prefs = idlePrefs(sContext);

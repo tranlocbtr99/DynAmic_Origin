@@ -104,6 +104,7 @@ class PlaygroundService : Service() {
         super.onCreate()
         notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         OriginIslandBuilder.grantScenes(this)
+        restoreIdleCardIfEnabled()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -118,13 +119,16 @@ class PlaygroundService : Service() {
         }
         ensureForeground()
         scheduleHeartbeatWatchdog()
+        if (intent == null || intent.action == ACTION_KEEPALIVE) {
+            restoreIdleCardIfEnabled()
+        }
         try {
             when (intent?.action) {
                 ACTION_START -> readAndPost(intent)
                 ACTION_CANCEL -> cancelNotification(intent)
                 ACTION_REJECTED -> onRejected(intent.getIntExtra("id", -1))
                 ACTION_STOP -> stopEverything()
-                ACTION_KEEPALIVE -> Unit // ensureForeground() + scheduleHeartbeatWatchdog() above is all that's needed
+                ACTION_KEEPALIVE -> Unit // handled above via restoreIdleCardIfEnabled()
             }
         } catch (e: Throwable) {
             Log.e("PlaygroundService", "onStartCommand failed", e)
@@ -167,6 +171,19 @@ class PlaygroundService : Service() {
 
     /** Matches the listener's own gate — either card source keeps the service worth running. */
     private fun isCastingEnabled(): Boolean = LtmIslandHelper.isIslandEnabled(this)
+
+    private fun restoreIdleCardIfEnabled() {
+        if (!isCastingEnabled()) return
+        if (activeIds.any { it != 0xee84 }) return
+        mainHandler.post {
+            try {
+                LtmIslandHelper.updateIdlePreset(this)
+                LtmIslandHelper.syncIdleTicker(this)
+            } catch (t: Throwable) {
+                Log.w("PlaygroundService", "restoreIdleCardIfEnabled failed: ${t.message}")
+            }
+        }
+    }
 
     /** [flags] picks between arming (FLAG_UPDATE_CURRENT) and looking one up (FLAG_NO_CREATE). */
     private fun restartAlarmIntent(flags: Int): PendingIntent? = PendingIntent.getForegroundService(
@@ -331,7 +348,7 @@ class PlaygroundService : Service() {
             (now - (lastCastByApp[sourcePkg] ?: 0L)) < cooldownSec * 1000L
         if (dedupEnabled && sourcePkg != null && !suppressExpand) lastCastByApp[sourcePkg] = now
         if (suppressExpand) { forceShow = false; forceShowCard = false }
-        val dismissWhenKill = intent.getBooleanExtra("oi_dismiss_when_kill", true)
+        val dismissWhenKill = if (isIdleCard) false else intent.getBooleanExtra("oi_dismiss_when_kill", true)
         val keepScreenOn = intent.getBooleanExtra("oi_keep_screen_on", false)
         val disableInvert = intent.getBooleanExtra("oi_disable_invert", true)
         val showRightIcon = intent.getBooleanExtra("oi_show_right_icon", true)
@@ -635,7 +652,7 @@ class PlaygroundService : Service() {
             }
             mainHandler.postDelayed({
                 if (activeIds.isEmpty() || (activeIds.size == 1 && activeIds.contains(0xee84))) {
-                    LtmIslandHelper.syncIdleTicker(this)
+                    restoreIdleCardIfEnabled()
                 }
             }, 500L)
         }
