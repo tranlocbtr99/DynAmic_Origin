@@ -125,7 +125,7 @@ object MediaCard {
             putExtra("id", id)
             putExtra("is_ongoing", true)
 
-            putExtra("oi_scene", "MOVIE")
+            putExtra("oi_scene", "NAVIGATION")
             putExtra("title", track)
             putExtra("text", artist)
             putExtra("source_pkg", sbn.packageName)

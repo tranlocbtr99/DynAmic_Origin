@@ -432,7 +432,9 @@ public final class LtmIslandHelper {
             if (!sIdleTickerRunning || sContext == null) return;
             String preset = idlePrefs(sContext).getString("ltm_idle_preset", "dot");
             boolean metrics = isMetricPreset(preset);
-            if (!metrics || canRefreshMetrics(sContext)) {
+            if (hasOtherActiveCards(sContext)) {
+                // Another active card (e.g. music, call) is on the island; do not overwrite.
+            } else if (!metrics || canRefreshMetrics(sContext)) {
                 updateIdlePreset(sContext);
             } else {
                 resetNetworkSample();
@@ -464,6 +466,20 @@ public final class LtmIslandHelper {
             return cards.isEmpty() || (cards.size() == 1 && cards.contains(0xee84));
         } catch (ReflectiveOperationException unavailable) {
             return true;
+        }
+    }
+
+    public static boolean hasOtherActiveCards(Context context) {
+        Context owner = context == null ? sContext : context;
+        if (owner == null) return false;
+        try {
+            Class<?> service = Class.forName("com.originisle.android.island.PlaygroundService");
+            Object companion = service.getField("Companion").get(null);
+            java.util.Set<?> cards = (java.util.Set<?>) companion.getClass()
+                    .getMethod("getActiveCardIds").invoke(companion);
+            return !cards.isEmpty() && !(cards.size() == 1 && cards.contains(0xee84));
+        } catch (ReflectiveOperationException unavailable) {
+            return false;
         }
     }
 
@@ -675,6 +691,7 @@ public final class LtmIslandHelper {
         if (context == null) return;
         sContext = context.getApplicationContext();
         if (!isIslandEnabled(sContext)) return;
+        if (hasOtherActiveCards(sContext)) return;
         try {
             Class<?> ps = Class.forName("com.originisle.android.island.PlaygroundService");
             Intent intent = new Intent(sContext, ps);

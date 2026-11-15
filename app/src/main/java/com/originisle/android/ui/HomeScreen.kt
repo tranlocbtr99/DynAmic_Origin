@@ -96,7 +96,7 @@ fun HomeScreen(
     var selectedTab by remember { mutableStateOf(0) }
     var donateExpanded by remember { mutableStateOf(true) }
     var sendToIslandExpanded by remember { mutableStateOf(true) }
-    var mediaOn by remember { mutableStateOf(prefs.getBoolean("cast_media_sessions", false)) }
+    var mediaOn by remember { mutableStateOf(prefs.getBoolean("cast_media_sessions", true)) }
     var includeMessages by remember { mutableStateOf(prefs.getBoolean("cast_include_messages", false)) }
     var expandOnNotification by remember { mutableStateOf(prefs.getBoolean("cast_expand_on_notification", true)) }
     var hideFromShade by remember { mutableStateOf(prefs.getBoolean("cast_hide_from_shade", false)) }
@@ -458,6 +458,7 @@ fun HomeScreen(
                             ) {
                                 mediaOn = it
                                 prefs.edit().putBoolean("cast_media_sessions", it).apply()
+                                if (it) PlaygroundService.keepAlive(context)
                             }
                         }
                     }

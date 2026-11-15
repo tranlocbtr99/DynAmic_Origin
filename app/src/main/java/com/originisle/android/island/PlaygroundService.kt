@@ -546,19 +546,36 @@ class PlaygroundService : Service() {
         if (id == -1) return
         autoDismissTasks.remove(id)?.let { mainHandler.removeCallbacks(it) }
         val scene = originScenes.remove(id) ?: intent.getStringExtra("oi_scene")
-        if (scene != null) {
-            endOrigin(id, scene)
-            mainHandler.postDelayed({
-                notificationManager.cancel(OriginIslandConstants.SUPERX_TAG, id)
-            }, 350L)
-        } else {
-            notificationManager.cancel(id)
-        }
         activeIds.remove(id)
         originChangeRecord.remove(id)
         lastPosts.remove(id)
         plainIds.remove(id)
         activeCardIds = activeIds.toSet()
+
+        val remainingId = activeIds.firstOrNull { it != 0xee84 && (originScenes[it] == scene || scene == null) }
+        if (remainingId != null) {
+            notificationManager.cancel(OriginIslandConstants.SUPERX_TAG, id)
+            val remainingIntent = lastPosts[remainingId]
+            if (remainingIntent != null) {
+                mainHandler.postDelayed({
+                    readAndPost(remainingIntent)
+                }, 100L)
+            }
+        } else {
+            if (scene != null) {
+                endOrigin(id, scene)
+                mainHandler.postDelayed({
+                    notificationManager.cancel(OriginIslandConstants.SUPERX_TAG, id)
+                }, 350L)
+            } else {
+                notificationManager.cancel(id)
+            }
+            mainHandler.postDelayed({
+                if (activeIds.isEmpty() || (activeIds.size == 1 && activeIds.contains(0xee84))) {
+                    LtmIslandHelper.syncIdleTicker(this)
+                }
+            }, 500L)
+        }
         // Keep the sceneCurrentId entry (now stale) so the NEXT different card clears this scene's
         // leftovers via the staleness-aware replace in readAndPost.
         // NOTE: we deliberately do NOT stopSelf() when idle. The notification listener runs in the

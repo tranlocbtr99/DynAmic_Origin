@@ -270,17 +270,19 @@ class NotificationCastListener : NotificationListenerService() {
             try {
                 val prefs = getSharedPreferences(PREFS, 0)
                 val castNotifs = prefs.getBoolean("cast_notifications", false)
-                val castMedia = prefs.getBoolean("cast_media_sessions", false)
+                val castMedia = prefs.getBoolean("cast_media_sessions", true)
                 activeNotifications?.forEach { sbn ->
                     val extras = sbn.notification.extras
                     val token = extras.getParcelable(
                         NotificationCompat.EXTRA_MEDIA_SESSION, MediaSession.Token::class.java,
                     )
-                    if (token != null) {
+                    val controller = token?.let { MediaController(this@NotificationCastListener, it) }
+                        ?: if (castMedia && isAppEnabled(prefs, sbn.packageName)) findMediaControllerFallback(sbn.packageName) else null
+                    if (controller != null) {
                         if (castMedia && isAppEnabled(prefs, sbn.packageName)) {
                             MediaCard.post(
                                 applicationContext, sbn,
-                                MediaController(this@NotificationCastListener, token),
+                                controller,
                             )
                         }
                     } else if (castNotifs && sbn.isOngoing &&
@@ -434,7 +436,7 @@ class NotificationCastListener : NotificationListenerService() {
         }
 
         val castNotifs = prefs.getBoolean("cast_notifications", false)
-        val castMedia = prefs.getBoolean("cast_media_sessions", false)
+        val castMedia = prefs.getBoolean("cast_media_sessions", true)
         if (!castNotifs && !castMedia) { log(sbn, "skipped — casting is off", false); return }
 
         val n = sbn.notification
