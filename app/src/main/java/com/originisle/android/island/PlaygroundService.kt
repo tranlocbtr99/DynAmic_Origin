@@ -403,6 +403,16 @@ class PlaygroundService : Service() {
             lastTransientCardPostTime = now
         }
 
+        if (id != 0xee84 && activeIds.contains(0xee84)) {
+            endOrigin(0xee84, "NAVIGATION")
+            notificationManager.cancel(OriginIslandConstants.SUPERX_TAG, 0xee84)
+            activeIds.remove(0xee84)
+            originChangeRecord.remove(0xee84)
+            originScenes.remove(0xee84)
+            lastPosts.remove(0xee84)
+            plainIds.remove(0xee84)
+        }
+
         // Scene replace ONLY between tester/sports sample cards (id >= 40000) so switching samples
         // doesn't leave stale fields. Real cast notifications (id 20000-29999) are NOT ended against
         // each other — vivo happily stacks several live cards (a main one + reduced ones), and ending
@@ -431,7 +441,7 @@ class PlaygroundService : Service() {
         originScenes[id] = scene
         activeCardIds = activeIds.toSet()
         com.originisle.android.ui.LtmIslandHelper.limitMessageSurfaces(this, intent, bundle)
-        com.originisle.android.ui.LtmIslandHelper.sanitizeIdleBundle(bundle)
+        if (isIdleCard) com.originisle.android.ui.LtmIslandHelper.sanitizeIdleBundle(bundle)
         postSuperX(id, iconRes, title, text, sourceApp, isOngoing, scene, bundle, clickResp)
 
         // Auto-dismiss: only for non-live cards (isOngoing is the same live/persistent flag the

@@ -32,7 +32,7 @@ class LaunchActivity : Activity() {
         val mode = extraMode ?: config?.shortcutAction ?: ActionMode.DEFAULT
 
         val engine = AssistantAccessibilityService.activeEngine
-        if (engine != null && !fromScript && (mode == ActionMode.DEFAULT || mode == ActionMode.GEMINI_VOICE)) {
+        if (engine != null && !fromScript && (mode == ActionMode.DEFAULT || mode == ActionMode.GEMINI_VOICE || mode == ActionMode.GOOGLE_CTS)) {
             engine.launchFromShortcut(mode)
         } else {
             Diagnostics.init(this)

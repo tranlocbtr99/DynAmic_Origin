@@ -522,6 +522,14 @@ class NotificationCastListener : NotificationListenerService() {
             return
         }
 
+        // Filter out background tracking/service notifications (RAM monitor, weather sync, foreground tracking services)
+        val isService = n.category == NotificationCompat.CATEGORY_SERVICE ||
+            (n.flags and Notification.FLAG_FOREGROUND_SERVICE) != 0
+        if (isOngoing && !isCall && !hasProgress && !isTimer(sbn) && (isService || isSilent(sbn))) {
+            log(sbn, "skipped — background ongoing service", false)
+            return
+        }
+
         // A download finishing is usually an UPDATE to the same notification (progress/ongoing flags
         // just get cleared), not a cancel+repost — browsers do this. If we already have a live card up
         // for this id, this update must still go through even though it now looks like "just a plain

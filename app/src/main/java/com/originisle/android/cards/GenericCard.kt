@@ -183,18 +183,12 @@ object GenericCard {
                     } else {
                         putExtra("oi_right_template", OriginIslandConstants.TEMPLATE_RIGHT_ISLAND_TEXT_ICON) // 4
                         putExtra("oi_show_right_icon", appIcon != null)
-                        val body = text.ifBlank { bigText }.ifBlank { subText }
-                        // Calls: the caller's avatar sits on the left, so the right of the camera
-                        // holds just their name — not "Name: Incoming call" cut to a few letters.
-                        val combined = when {
-                            isCall -> title
-                            title.isNotBlank() && title != appLabel && body.isNotBlank() -> "$title: $body"
-                            body.isNotBlank() && body != appLabel -> body
-                            else -> ""
+                        if (isCall) {
+                            putExtra("oi_right_content", title.take(RIGHT_TEXT_MAX_CHARS))
+                        } else {
+                            // Icon-only variant on the right side: show the source app's colorful icon
+                            putExtra("oi_right_content", "")
                         }
-                        putExtra("oi_right_content", combined.take(RIGHT_TEXT_MAX_CHARS).let {
-                            if (combined.length > RIGHT_TEXT_MAX_CHARS) "$it…" else it
-                        })
                     }
                 }
             }

@@ -439,6 +439,9 @@ object OriginIslandBuilder {
         if (rightDoubleLine.isNotEmpty()) {
             right.putCharSequenceArrayList(C.BUNDLE_KEY_ISLAND_RIGHT_DOUBLELINE, ArrayList(rightDoubleLine))
         }
+        if (clickResp != null && !right.containsKey(C.BUNDLE_KEY_ISLAND_RIGHT_CLICK_RESP)) {
+            right.putParcelable(C.BUNDLE_KEY_ISLAND_RIGHT_CLICK_RESP, clickResp)
+        }
         island.putBundle(C.BUNDLE_KEY_ISLAND_RIGHT_INFO, right)
         bundle.putBundle(C.BUNDLE_KEY_ISLAND_INFOS, island)
 

@@ -52,8 +52,9 @@ object AssistOverlay {
         runCatching {
             val manager = context.getSystemService(SearchManager::class.java)
                 ?: return LaunchOutcome(false, "$label lỗi: SearchManager null")
-            SearchManager::class.java.getMethod("launchAssist", Bundle::class.java).invoke(manager, bundle)
-            LaunchOutcome(true, label)
+            val ret = SearchManager::class.java.getMethod("launchAssist", Bundle::class.java).invoke(manager, bundle)
+            val ok = (ret as? Boolean) ?: true
+            if (ok) LaunchOutcome(true, label) else LaunchOutcome(false, "$label trả về false")
         }.getOrElse {
             val cause = it.cause ?: it
             LaunchOutcome(false, "$label lỗi: ${cause.javaClass.simpleName}: ${cause.message}")
