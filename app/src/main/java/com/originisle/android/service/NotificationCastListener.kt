@@ -150,7 +150,7 @@ class NotificationCastListener : NotificationListenerService() {
         private const val TAG = "NotificationCast"
 
         /** Minimum gap between component toggles in [forceRebind]. */
-        private const val REBIND_THROTTLE_MS = 10_000L
+        private const val REBIND_THROTTLE_MS = 3_000L
 
         @Volatile
         private var lastRebindAt = 0L

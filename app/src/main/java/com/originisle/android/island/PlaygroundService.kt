@@ -20,6 +20,7 @@ import androidx.core.app.NotificationCompat
 import com.originisle.android.R
 import com.originisle.android.log.CastLog
 import com.originisle.android.service.IconCache
+import com.originisle.android.service.NotificationCastListener
 import com.originisle.android.ui.PREFS_NAME
 import com.originisle.android.ui.LtmIslandHelper
 import java.util.concurrent.ConcurrentHashMap
@@ -105,6 +106,7 @@ class PlaygroundService : Service() {
         notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         OriginIslandBuilder.grantScenes(this)
         restoreIdleCardIfEnabled()
+        ensureListenerAlive()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -121,6 +123,7 @@ class PlaygroundService : Service() {
         scheduleHeartbeatWatchdog()
         if (intent == null || intent.action == ACTION_KEEPALIVE) {
             restoreIdleCardIfEnabled()
+            ensureListenerAlive()
         }
         try {
             when (intent?.action) {
@@ -153,6 +156,10 @@ class PlaygroundService : Service() {
         }
         runCatching { ensureForeground() }
         runCatching {
+            NotificationCastListener.ensureEnabled(this)
+            NotificationCastListener.forceRebind(this)
+        }
+        runCatching {
             restartAlarmIntent(PendingIntent.FLAG_UPDATE_CURRENT)?.let { restart ->
                 val am = getSystemService(AlarmManager::class.java) ?: return@runCatching
                 val triggerAt = SystemClock.elapsedRealtime() + 500L
@@ -183,6 +190,27 @@ class PlaygroundService : Service() {
                 Log.w("PlaygroundService", "restoreIdleCardIfEnabled failed: ${t.message}")
             }
         }
+    }
+
+    private val listenerWatchdogRunnable = object : Runnable {
+        override fun run() {
+            if (!isCastingEnabled()) return
+            val connected = NotificationCastListener.instance != null
+            if (!connected) {
+                runCatching {
+                    NotificationCastListener.ensureEnabled(this@PlaygroundService)
+                    NotificationCastListener.forceRebind(this@PlaygroundService)
+                }
+            }
+            val nextDelay = if (connected) 30_000L else 5_000L
+            mainHandler.postDelayed(this, nextDelay)
+        }
+    }
+
+    private fun ensureListenerAlive() {
+        if (!isCastingEnabled()) return
+        mainHandler.removeCallbacks(listenerWatchdogRunnable)
+        mainHandler.post(listenerWatchdogRunnable)
     }
 
     /** [flags] picks between arming (FLAG_UPDATE_CURRENT) and looking one up (FLAG_NO_CREATE). */
@@ -665,10 +693,16 @@ class PlaygroundService : Service() {
         // Use the "Stop all cards" button (ACTION_STOP) to shut it down fully.
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        mainHandler.removeCallbacks(listenerWatchdogRunnable)
+    }
+
     private fun stopEverything() {
         // An explicit stop must not be undone by an alarm a previous swipe left armed.
         cancelRestartAlarm()
         cancelHeartbeatWatchdog()
+        mainHandler.removeCallbacks(listenerWatchdogRunnable)
         autoDismissTasks.values.forEach { mainHandler.removeCallbacks(it) }
         autoDismissTasks.clear()
         val hadScenes = originScenes.isNotEmpty()
