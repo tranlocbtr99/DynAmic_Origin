@@ -9,9 +9,11 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.Icon
+import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
@@ -66,6 +68,8 @@ class PlaygroundService : Service() {
 
         /** PendingIntent request code for the [onTaskRemoved] restart alarm. */
         private const val RESTART_REQUEST = 7001
+        private const val WATCHDOG_REQUEST = 7002
+        private const val WATCHDOG_INTERVAL_MS = 15 * 60 * 1000L
 
         /** Layouts a card falls back from to the plain base card when OriginOS refuses it. */
         private val FANCY_TEMPLATES = setOf(
@@ -103,34 +107,35 @@ class PlaygroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // A null intent is a START_STICKY relaunch and ACTION_KEEPALIVE is the alarm/UI anchor
+        // A null intent is a START_REDELIVER_INTENT relaunch and ACTION_KEEPALIVE is the alarm/UI anchor
         // request: both only mean "stay up", which is pointless once casting is off. Explicit card
         // actions still work with it off, so the sample buttons are unaffected.
         if ((intent == null || intent.action == ACTION_KEEPALIVE) && !isCastingEnabled()) {
             cancelRestartAlarm()
+            cancelHeartbeatWatchdog()
             stopSelf()
             return START_NOT_STICKY
         }
         ensureForeground()
+        scheduleHeartbeatWatchdog()
         try {
             when (intent?.action) {
                 ACTION_START -> readAndPost(intent)
                 ACTION_CANCEL -> cancelNotification(intent)
                 ACTION_REJECTED -> onRejected(intent.getIntExtra("id", -1))
                 ACTION_STOP -> stopEverything()
-                ACTION_KEEPALIVE -> Unit // ensureForeground() above is all that's needed
+                ACTION_KEEPALIVE -> Unit // ensureForeground() + scheduleHeartbeatWatchdog() above is all that's needed
             }
         } catch (e: Throwable) {
             Log.e("PlaygroundService", "onStartCommand failed", e)
         }
-        // STICKY so the system relaunches the service (and our process + listener) if it's killed.
-        return START_STICKY
+        // START_REDELIVER_INTENT so the system relaunches the service (and our process + listener) with intent if killed.
+        return START_REDELIVER_INTENT
     }
 
     /**
-     * START_STICKY alone didn't bring the service back on OriginOS, so also leave an alarm behind
-     * that restarts it a second later. The alarm survives because a swipe is a plain process kill,
-     * not a force-stop (which would cancel it, and which nothing can escape).
+     * In addition to START_REDELIVER_INTENT, arm an immediate ELAPSED_REALTIME_WAKEUP alarm
+     * to revive the process 500ms later if swiped away from Recents.
      */
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
@@ -138,15 +143,24 @@ class PlaygroundService : Service() {
         // service a second after the user swiped it away — for good, since nothing else stops it.
         if (!isCastingEnabled()) {
             cancelRestartAlarm()
+            cancelHeartbeatWatchdog()
             stopSelf()
             return
         }
         runCatching { ensureForeground() }
         runCatching {
             restartAlarmIntent(PendingIntent.FLAG_UPDATE_CURRENT)?.let { restart ->
-                getSystemService(AlarmManager::class.java)?.set(
-                    AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 1000L, restart,
-                )
+                val am = getSystemService(AlarmManager::class.java) ?: return@runCatching
+                val triggerAt = SystemClock.elapsedRealtime() + 500L
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    try {
+                        am.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAt, restart)
+                    } catch (e: SecurityException) {
+                        am.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAt, restart)
+                    }
+                } else {
+                    am.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAt, restart)
+                }
             }
         }
     }
@@ -165,6 +179,36 @@ class PlaygroundService : Service() {
     private fun cancelRestartAlarm() {
         runCatching {
             restartAlarmIntent(PendingIntent.FLAG_NO_CREATE)?.let {
+                getSystemService(AlarmManager::class.java)?.cancel(it)
+                it.cancel()
+            }
+        }
+    }
+
+    private fun watchdogAlarmIntent(flags: Int): PendingIntent? = PendingIntent.getForegroundService(
+        this,
+        WATCHDOG_REQUEST,
+        Intent(this, PlaygroundService::class.java).setAction(ACTION_KEEPALIVE),
+        flags or PendingIntent.FLAG_IMMUTABLE,
+    )
+
+    private fun scheduleHeartbeatWatchdog() {
+        if (!isCastingEnabled()) return
+        runCatching {
+            val am = getSystemService(AlarmManager::class.java) ?: return@runCatching
+            val pi = watchdogAlarmIntent(PendingIntent.FLAG_UPDATE_CURRENT) ?: return@runCatching
+            val triggerAt = SystemClock.elapsedRealtime() + WATCHDOG_INTERVAL_MS
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                am.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAt, pi)
+            } else {
+                am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAt, pi)
+            }
+        }
+    }
+
+    private fun cancelHeartbeatWatchdog() {
+        runCatching {
+            watchdogAlarmIntent(PendingIntent.FLAG_NO_CREATE)?.let {
                 getSystemService(AlarmManager::class.java)?.cancel(it)
                 it.cancel()
             }
@@ -607,6 +651,7 @@ class PlaygroundService : Service() {
     private fun stopEverything() {
         // An explicit stop must not be undone by an alarm a previous swipe left armed.
         cancelRestartAlarm()
+        cancelHeartbeatWatchdog()
         autoDismissTasks.values.forEach { mainHandler.removeCallbacks(it) }
         autoDismissTasks.clear()
         val hadScenes = originScenes.isNotEmpty()

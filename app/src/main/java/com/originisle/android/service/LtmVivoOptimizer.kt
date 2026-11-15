@@ -197,6 +197,10 @@ object LtmVivoOptimizer {
     fun getHideWirelessDebuggingAdbScript(): String =
         "settings put global adb_wifi_enabled 0\nsettings put global development_settings_enabled 0"
 
+    private const val PREFS_NAME = "ltm_vivo_optimizer"
+    private const val PREFS_KEY_CONFIGURED_CALL_PKGS = "configured_call_packages"
+    private const val PREFS_KEY_BLOCKED_CALL_PKGS = "blocked_call_packages"
+
     val DEFAULT_CALL_PACKAGES = listOf(
         "com.zing.zalo",
         "com.facebook.orca",
@@ -206,6 +210,49 @@ object LtmVivoOptimizer {
         "com.android.incallui",
         "com.google.android.dialer"
     )
+
+    fun getConfiguredCallPackages(context: Context): Set<String> {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getStringSet(PREFS_KEY_CONFIGURED_CALL_PKGS, null) ?: DEFAULT_CALL_PACKAGES.toSet()
+    }
+
+    fun saveConfiguredCallPackages(context: Context, pkgs: Set<String>) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putStringSet(PREFS_KEY_CONFIGURED_CALL_PKGS, pkgs).apply()
+    }
+
+    fun getBlockedCallPackages(context: Context): Set<String> {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getStringSet(PREFS_KEY_BLOCKED_CALL_PKGS, null) ?: DEFAULT_CALL_PACKAGES.toSet()
+    }
+
+    fun setBlockedCallPackage(context: Context, pkg: String, blocked: Boolean) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val current = getBlockedCallPackages(context).toMutableSet()
+        if (blocked) {
+            current.add(pkg)
+        } else {
+            current.remove(pkg)
+        }
+        prefs.edit().putStringSet(PREFS_KEY_BLOCKED_CALL_PKGS, current).apply()
+    }
+
+    fun setAllBlockedCallPackages(context: Context, pkgs: Set<String>) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putStringSet(PREFS_KEY_BLOCKED_CALL_PKGS, pkgs).apply()
+    }
+
+    suspend fun executeToggleBlockFullScreen(
+        context: Context,
+        pkg: String,
+        block: Boolean
+    ): OptimizationResult = withContext(Dispatchers.IO) {
+        val res = executeBlockFullScreenIntent(context, listOf(pkg), block)
+        if (res.success) {
+            setBlockedCallPackage(context, pkg, block)
+        }
+        res
+    }
 
     suspend fun executeBlockFullScreenIntent(
         context: Context,

@@ -1899,8 +1899,11 @@ private fun BlockCallFullScreenDialog(
     var isWorking by remember { mutableStateOf(false) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
     val shizukuReady = remember { LtmVivoOptimizer.isShizukuAvailable(context) }
-    var selectedPkgs by remember {
-        mutableStateOf(LtmVivoOptimizer.DEFAULT_CALL_PACKAGES.toSet())
+    var configuredPkgs by remember {
+        mutableStateOf(LtmVivoOptimizer.getConfiguredCallPackages(context))
+    }
+    var blockedPkgs by remember {
+        mutableStateOf(LtmVivoOptimizer.getBlockedCallPackages(context))
     }
     var showAppPicker by remember { mutableStateOf(false) }
 
@@ -1924,7 +1927,7 @@ private fun BlockCallFullScreenDialog(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(IsleIcons.Phone, contentDescription = null, tint = IsleColors.TileGreen, modifier = Modifier.size(24.dp))
-                Text("Chặn cuộc gọi bung toàn màn hình", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                Text("Chặn & Khôi phục cuộc gọi toàn màn hình", fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
         },
         text = {
@@ -1933,7 +1936,7 @@ private fun BlockCallFullScreenDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    "Sử dụng quyền AppOps USE_FULL_SCREEN_INTENT để chặn các ứng dụng gọi (Zalo, Messenger, Điện thoại...) tự động bung toàn màn hình khi có cuộc gọi đến. Cuộc gọi sẽ được đưa thẳng lên Đảo Động với 2 nút Nghe / Hủy mà không làm gián đoạn màn hình đang dùng.",
+                    "Khi bật chặn, cuộc gọi đến sẽ không bung đè toàn màn hình mà chỉ hiện gọn trên Đảo Động với 2 nút Nghe / Hủy. Tắt công tắc để khôi phục lại màn hình cuộc gọi toàn màn hình như mặc định.",
                     fontSize = 12.sp,
                     lineHeight = 16.sp,
                     color = IsleColors.TextSecondary,
@@ -1955,7 +1958,7 @@ private fun BlockCallFullScreenDialog(
                                 color = IsleColors.Accent,
                             )
                             Text(
-                                "Nút 'Chặn 1-chạm' cần Engine nội bộ hoặc Shizuku. Nếu chưa kết nối, bạn hãy nhấn 'Sao chép ADB' để chạy qua máy tính, hoặc ghép nối Gỡ lỗi không dây trong tab Trợ lý AI.",
+                                "Khi gạt công tắc hoặc bấm nút nhanh, hệ thống sẽ lưu cấu hình của bạn. Để nạp lệnh có hiệu lực vào máy, hãy bấm nút 'Sao chép ADB' tương ứng để chạy qua máy tính.",
                                 fontSize = 11.sp,
                                 lineHeight = 15.sp,
                                 color = IsleColors.TextSecondary,
@@ -1981,7 +1984,18 @@ private fun BlockCallFullScreenDialog(
                     }
                 }
 
-                Text("Danh sách ứng dụng áp dụng:", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = IsleColors.Text)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Ứng dụng (${blockedPkgs.intersect(configuredPkgs).size}/${configuredPkgs.size} đang chặn):",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = IsleColors.Text
+                    )
+                }
 
                 Column(
                     modifier = Modifier
@@ -1989,31 +2003,73 @@ private fun BlockCallFullScreenDialog(
                         .clip(RoundedCornerShape(10.dp))
                         .background(IsleColors.SurfaceHigh)
                         .padding(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    selectedPkgs.forEach { pkg ->
+                    configuredPkgs.forEach { pkg ->
+                        val isBlocked = blockedPkgs.contains(pkg)
                         val label = appNameMap[pkg] ?: pkg
+                        val isDefault = pkg in LtmVivoOptimizer.DEFAULT_CALL_PACKAGES
+
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
-                                .clickable {
-                                    selectedPkgs = selectedPkgs - pkg
-                                }
-                                .padding(vertical = 4.dp, horizontal = 4.dp),
+                                .background(if (isBlocked) IsleColors.TileGreen.copy(alpha = 0.08f) else Color.Transparent)
+                                .padding(vertical = 4.dp, horizontal = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Checkbox(
-                                checked = true,
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    label,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = IsleColors.Text
+                                )
+                                Text(
+                                    if (isBlocked) "Đã chặn: Chỉ hiện trên Đảo (2 nút)" else "Cho phép bung toàn màn hình",
+                                    fontSize = 10.sp,
+                                    color = if (isBlocked) IsleColors.TileGreen else IsleColors.TextSecondary
+                                )
+                            }
+                            if (!isDefault) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clickable {
+                                            val updated = configuredPkgs - pkg
+                                            configuredPkgs = updated
+                                            LtmVivoOptimizer.saveConfiguredCallPackages(context, updated)
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(IsleIcons.Close, contentDescription = "Xóa", tint = IsleColors.TextTertiary, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                            IsleSwitch(
+                                checked = isBlocked,
                                 onCheckedChange = { checked ->
-                                    if (!checked) selectedPkgs = selectedPkgs - pkg
+                                    if (isWorking) return@IsleSwitch
+                                    if (!shizukuReady) {
+                                        LtmVivoOptimizer.setBlockedCallPackage(context, pkg, checked)
+                                        blockedPkgs = if (checked) blockedPkgs + pkg else blockedPkgs - pkg
+                                        statusMessage = "Đã lưu '${if (checked) "Chặn" else "Cho phép"}' cho $label. Hãy bấm 'Sao chép ADB' bên dưới để nạp lệnh."
+                                    } else {
+                                        coroutineScope.launch {
+                                            isWorking = true
+                                            statusMessage = "Đang ${if (checked) "chặn" else "khôi phục"} quyền cho $label…"
+                                            val res = LtmVivoOptimizer.executeToggleBlockFullScreen(context, pkg, checked)
+                                            if (res.success) {
+                                                blockedPkgs = if (checked) blockedPkgs + pkg else blockedPkgs - pkg
+                                                statusMessage = "Đã ${if (checked) "chặn toàn màn hình (chỉ hiện trên Đảo)" else "cho phép bung toàn màn hình"} cho $label!"
+                                            } else {
+                                                statusMessage = res.message
+                                            }
+                                            isWorking = false
+                                        }
+                                    }
                                 }
                             )
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(label, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = IsleColors.Text)
-                                Text(pkg, fontSize = 10.sp, color = IsleColors.TextSecondary)
-                            }
                         }
                     }
 
@@ -2026,63 +2082,97 @@ private fun BlockCallFullScreenDialog(
                     }
                 }
 
+                Text("Thao tác đồng loạt:", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = IsleColors.TextSecondary)
+
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Button(
-                        enabled = !isWorking && selectedPkgs.isNotEmpty(),
+                        enabled = !isWorking && configuredPkgs.isNotEmpty(),
                         onClick = {
                             if (!shizukuReady) {
-                                statusMessage = "⚠️ Bạn chưa kết nối Shizuku hoặc Engine nội bộ. Vui lòng bấm 'Sao chép ADB' để chạy qua máy tính, hoặc kết nối Gỡ lỗi không dây trong tab Trợ lý AI."
+                                LtmVivoOptimizer.setAllBlockedCallPackages(context, configuredPkgs)
+                                blockedPkgs = configuredPkgs
+                                statusMessage = "Đã lưu cài đặt Chặn tất cả. Hãy bấm 'Sao chép ADB (Chặn)' để nạp lệnh."
                             } else {
                                 coroutineScope.launch {
                                     isWorking = true
-                                    statusMessage = "Đang áp dụng chặn toàn màn hình qua Shizuku…"
-                                    val res = LtmVivoOptimizer.executeBlockFullScreenIntent(context, selectedPkgs.toList(), block = true)
+                                    statusMessage = "Đang chặn toàn màn hình tất cả ứng dụng…"
+                                    val res = LtmVivoOptimizer.executeBlockFullScreenIntent(context, configuredPkgs.toList(), block = true)
+                                    if (res.success) {
+                                        LtmVivoOptimizer.setAllBlockedCallPackages(context, configuredPkgs)
+                                        blockedPkgs = configuredPkgs
+                                    }
                                     statusMessage = res.message
                                     isWorking = false
                                 }
                             }
                         },
-                        modifier = Modifier.weight(1.3f).height(38.dp),
+                        modifier = Modifier.weight(1f).height(38.dp),
                         shape = RoundedCornerShape(10.dp),
                         colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = IsleColors.TileGreen),
                     ) {
-                        Text("Chặn 1-chạm", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Chặn tất cả", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     }
+
                     OutlinedButton(
-                        enabled = selectedPkgs.isNotEmpty(),
+                        enabled = !isWorking && configuredPkgs.isNotEmpty(),
                         onClick = {
-                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("ADB_BlockCall", LtmVivoOptimizer.getBlockFullScreenIntentAdbScript(selectedPkgs.toList(), block = true)))
-                            android.widget.Toast.makeText(context, "Đã sao chép lệnh ADB chặn toàn màn hình", android.widget.Toast.LENGTH_SHORT).show()
+                            if (!shizukuReady) {
+                                LtmVivoOptimizer.setAllBlockedCallPackages(context, emptySet())
+                                blockedPkgs = emptySet()
+                                statusMessage = "Đã lưu cài đặt Khôi phục tất cả. Hãy bấm 'Sao chép ADB (Khôi phục)' để nạp lệnh."
+                            } else {
+                                coroutineScope.launch {
+                                    isWorking = true
+                                    statusMessage = "Đang khôi phục toàn màn hình tất cả ứng dụng…"
+                                    val res = LtmVivoOptimizer.executeBlockFullScreenIntent(context, configuredPkgs.toList(), block = false)
+                                    if (res.success) {
+                                        LtmVivoOptimizer.setAllBlockedCallPackages(context, emptySet())
+                                        blockedPkgs = emptySet()
+                                    }
+                                    statusMessage = res.message
+                                    isWorking = false
+                                }
+                            }
                         },
-                        modifier = Modifier.weight(1.1f).height(38.dp),
+                        modifier = Modifier.weight(1f).height(38.dp),
                         shape = RoundedCornerShape(10.dp),
                     ) {
-                        Text("Sao chép ADB", fontSize = 12.sp)
+                        Text("Khôi phục tất cả", fontSize = 12.sp)
                     }
                 }
 
-                TextButton(
-                    enabled = !isWorking && selectedPkgs.isNotEmpty(),
-                    onClick = {
-                        if (!shizukuReady) {
-                            statusMessage = "⚠️ Bạn chưa kết nối Shizuku hoặc Engine nội bộ. Hãy kết nối Gỡ lỗi không dây trong tab Trợ lý AI trước."
-                        } else {
-                            coroutineScope.launch {
-                                isWorking = true
-                                statusMessage = "Đang khôi phục quyền toàn màn hình qua Shizuku…"
-                                val res = LtmVivoOptimizer.executeBlockFullScreenIntent(context, selectedPkgs.toList(), block = false)
-                                statusMessage = res.message
-                                isWorking = false
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text("Khôi phục cho phép bung toàn màn hình (Allow)", fontSize = 12.sp, color = IsleColors.TextSecondary)
+                    OutlinedButton(
+                        enabled = configuredPkgs.isNotEmpty(),
+                        onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("ADB_BlockCall", LtmVivoOptimizer.getBlockFullScreenIntentAdbScript(configuredPkgs.toList(), block = true)))
+                            android.widget.Toast.makeText(context, "Đã sao chép lệnh ADB Chặn toàn màn hình", android.widget.Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.weight(1f).height(36.dp),
+                        shape = RoundedCornerShape(8.dp),
+                    ) {
+                        Text("Sao chép ADB (Chặn)", fontSize = 11.sp)
+                    }
+
+                    OutlinedButton(
+                        enabled = configuredPkgs.isNotEmpty(),
+                        onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("ADB_UnblockCall", LtmVivoOptimizer.getBlockFullScreenIntentAdbScript(configuredPkgs.toList(), block = false)))
+                            android.widget.Toast.makeText(context, "Đã sao chép lệnh ADB Khôi phục toàn màn hình", android.widget.Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.weight(1f).height(36.dp),
+                        shape = RoundedCornerShape(8.dp),
+                    ) {
+                        Text("Sao chép ADB (Khôi phục)", fontSize = 11.sp)
+                    }
                 }
             }
         },
@@ -2094,9 +2184,12 @@ private fun BlockCallFullScreenDialog(
     if (showAppPicker) {
         SelectAppsToOptimizeDialog(
             context = context,
-            selectedPackages = selectedPkgs,
+            selectedPackages = configuredPkgs,
             onDismiss = { showAppPicker = false },
-            onConfirm = { selectedPkgs = it }
+            onConfirm = { updated ->
+                configuredPkgs = updated
+                LtmVivoOptimizer.saveConfiguredCallPackages(context, updated)
+            }
         )
     }
 }
