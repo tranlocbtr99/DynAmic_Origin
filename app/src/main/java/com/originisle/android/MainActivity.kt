@@ -43,9 +43,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (LtmIslandHelper.handleRecentActivityLaunch(this)) {
-            return
-        }
         when (intent?.getStringExtra("autofire")) {
             "football" -> SportsCard.post(this, "ARS", 1, "MAN", 1, "65'")
         }
@@ -58,9 +55,6 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (LtmIslandHelper.handleRecentActivityLaunch(this)) {
-            return
-        }
     }
 
     /**
