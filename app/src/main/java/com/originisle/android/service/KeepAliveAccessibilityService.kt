@@ -17,12 +17,23 @@ import com.originisle.android.island.OriginIslandBuilder
  */
 class KeepAliveAccessibilityService : AccessibilityService() {
 
+    companion object {
+        @Volatile
+        var activeService: KeepAliveAccessibilityService? = null
+    }
+
     override fun onServiceConnected() {
         super.onServiceConnected()
+        activeService = this
         // Fires when the system (re)starts our process — exactly when the listener needs recovering
         // after a swipe-away kill, where a plain requestRebind is a no-op (see [forceRebind]).
         runCatching { NotificationCastListener.forceRebind(this) }
         runCatching { OriginIslandBuilder.grantScenes(this) }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (activeService === this) activeService = null
     }
 
     // Intentionally empty — this service inspects nothing.

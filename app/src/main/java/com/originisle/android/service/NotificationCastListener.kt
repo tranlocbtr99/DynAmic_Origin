@@ -445,7 +445,11 @@ class NotificationCastListener : NotificationListenerService() {
         val token = extras.getParcelable(NotificationCompat.EXTRA_MEDIA_SESSION, MediaSession.Token::class.java)
         val template = extras.getString(NotificationCompat.EXTRA_TEMPLATE)
         val isCall = n.category == NotificationCompat.CATEGORY_CALL ||
-            template == "android.app.Notification\$CallStyle"
+            template == "android.app.Notification\$CallStyle" ||
+            (n.fullScreenIntent != null && (sbn.isOngoing || !n.actions.isNullOrEmpty())) ||
+            sbn.packageName == "com.android.incallui" ||
+            sbn.packageName == "com.android.phone" ||
+            sbn.packageName == "com.google.android.dialer"
 
         // Media sessions get the dedicated media path. If the notification has no session token
         // (some players, e.g. Firefox playing a video, omit it), fall back to matching an active

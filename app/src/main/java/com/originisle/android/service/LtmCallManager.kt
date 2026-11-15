@@ -25,7 +25,7 @@ object LtmCallManager {
     fun onNotificationPosted(context: Context, sbn: StatusBarNotification, isCall: Boolean) {
         if (!isCall) return
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val suppressFullScreen = prefs.getBoolean("cast_call_island_only", false)
+        val suppressFullScreen = prefs.getBoolean("cast_call_island_only", true)
 
         activeCalls.add(sbn.key)
         Log.i(TAG, "Incoming call detected from ${sbn.packageName}. suppressFullScreen=$suppressFullScreen")
@@ -38,11 +38,12 @@ object LtmCallManager {
             if (isScreenInteractive) {
                 mainHandler.postDelayed({
                     val accessibility = AssistantAccessibilityService.activeService
+                        ?: KeepAliveAccessibilityService.activeService
                     if (accessibility != null) {
                         Log.i(TAG, "Suppressing full-screen call window via AccessibilityService HOME action")
                         accessibility.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)
                     }
-                }, 350)
+                }, 300)
             }
         }
     }

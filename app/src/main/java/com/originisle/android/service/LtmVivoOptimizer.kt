@@ -202,6 +202,7 @@ object LtmVivoOptimizer {
         "com.facebook.orca",
         "org.telegram.messenger",
         "com.whatsapp",
+        "com.android.phone",
         "com.android.incallui",
         "com.google.android.dialer"
     )
@@ -222,8 +223,9 @@ object LtmVivoOptimizer {
         val mode = if (block) "deny" else "allow"
         var count = 0
         for (pkg in packages) {
-            val res = shell.exec("cmd appops set $pkg USE_FULL_SCREEN_INTENT $mode")
-            if (res.exitCode == 0) count++
+            val res1 = shell.exec("cmd appops set $pkg USE_FULL_SCREEN_INTENT $mode")
+            val res2 = shell.exec("cmd appops set --uid $pkg USE_FULL_SCREEN_INTENT $mode")
+            if (res1.exitCode == 0 || res2.exitCode == 0) count++
         }
         val actionText = if (block) "chặn cuộc gọi bung toàn màn hình (chỉ hiện trên Đảo)" else "cho phép cuộc gọi bung toàn màn hình"
         OptimizationResult(
@@ -239,6 +241,7 @@ object LtmVivoOptimizer {
         cmds.add("# ${if (block) "Chặn cuộc gọi bung toàn màn hình (chỉ hiện trên Đảo)" else "Khôi phục cuộc gọi bung toàn màn hình"}")
         for (pkg in packages) {
             cmds.add("cmd appops set $pkg USE_FULL_SCREEN_INTENT $mode")
+            cmds.add("cmd appops set --uid $pkg USE_FULL_SCREEN_INTENT $mode")
         }
         return cmds.joinToString("\n")
     }

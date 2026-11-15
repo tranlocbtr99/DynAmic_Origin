@@ -1910,6 +1910,7 @@ private fun BlockCallFullScreenDialog(
             "com.facebook.orca" to "Messenger",
             "org.telegram.messenger" to "Telegram",
             "com.whatsapp" to "WhatsApp",
+            "com.android.phone" to "Điện thoại (OriginOS Phone)",
             "com.android.incallui" to "Điện thoại (OriginOS InCallUI)",
             "com.google.android.dialer" to "Điện thoại Google (Phone)"
         )
@@ -1937,6 +1938,31 @@ private fun BlockCallFullScreenDialog(
                     lineHeight = 16.sp,
                     color = IsleColors.TextSecondary,
                 )
+
+                if (!shizukuReady) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(IsleColors.SurfaceHigher)
+                            .padding(10.dp)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                "⚠️ Chưa kết nối Shizuku / Gỡ lỗi không dây",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = IsleColors.Accent,
+                            )
+                            Text(
+                                "Nút 'Chặn 1-chạm' cần Engine nội bộ hoặc Shizuku. Nếu chưa kết nối, bạn hãy nhấn 'Sao chép ADB' để chạy qua máy tính, hoặc ghép nối Gỡ lỗi không dây trong tab Trợ lý AI.",
+                                fontSize = 11.sp,
+                                lineHeight = 15.sp,
+                                color = IsleColors.TextSecondary,
+                            )
+                        }
+                    }
+                }
 
                 if (statusMessage != null) {
                     Box(
@@ -2005,14 +2031,18 @@ private fun BlockCallFullScreenDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Button(
-                        enabled = !isWorking && shizukuReady && selectedPkgs.isNotEmpty(),
+                        enabled = !isWorking && selectedPkgs.isNotEmpty(),
                         onClick = {
-                            coroutineScope.launch {
-                                isWorking = true
-                                statusMessage = "Đang áp dụng chặn toàn màn hình qua Shizuku…"
-                                val res = LtmVivoOptimizer.executeBlockFullScreenIntent(context, selectedPkgs.toList(), block = true)
-                                statusMessage = res.message
-                                isWorking = false
+                            if (!shizukuReady) {
+                                statusMessage = "⚠️ Bạn chưa kết nối Shizuku hoặc Engine nội bộ. Vui lòng bấm 'Sao chép ADB' để chạy qua máy tính, hoặc kết nối Gỡ lỗi không dây trong tab Trợ lý AI."
+                            } else {
+                                coroutineScope.launch {
+                                    isWorking = true
+                                    statusMessage = "Đang áp dụng chặn toàn màn hình qua Shizuku…"
+                                    val res = LtmVivoOptimizer.executeBlockFullScreenIntent(context, selectedPkgs.toList(), block = true)
+                                    statusMessage = res.message
+                                    isWorking = false
+                                }
                             }
                         },
                         modifier = Modifier.weight(1.3f).height(38.dp),
@@ -2036,14 +2066,18 @@ private fun BlockCallFullScreenDialog(
                 }
 
                 TextButton(
-                    enabled = !isWorking && shizukuReady && selectedPkgs.isNotEmpty(),
+                    enabled = !isWorking && selectedPkgs.isNotEmpty(),
                     onClick = {
-                        coroutineScope.launch {
-                            isWorking = true
-                            statusMessage = "Đang khôi phục quyền toàn màn hình qua Shizuku…"
-                            val res = LtmVivoOptimizer.executeBlockFullScreenIntent(context, selectedPkgs.toList(), block = false)
-                            statusMessage = res.message
-                            isWorking = false
+                        if (!shizukuReady) {
+                            statusMessage = "⚠️ Bạn chưa kết nối Shizuku hoặc Engine nội bộ. Hãy kết nối Gỡ lỗi không dây trong tab Trợ lý AI trước."
+                        } else {
+                            coroutineScope.launch {
+                                isWorking = true
+                                statusMessage = "Đang khôi phục quyền toàn màn hình qua Shizuku…"
+                                val res = LtmVivoOptimizer.executeBlockFullScreenIntent(context, selectedPkgs.toList(), block = false)
+                                statusMessage = res.message
+                                isWorking = false
+                            }
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
