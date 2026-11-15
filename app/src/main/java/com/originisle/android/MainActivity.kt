@@ -43,18 +43,27 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        when (intent?.getStringExtra("autofire")) {
-            "football" -> SportsCard.post(this, "ARS", 1, "MAN", 1, "65'")
-        }
-        intent?.getIntExtra("autofire_sample", -1)?.takeIf { it >= 0 }?.let {
-            IslandSamples.all.getOrNull(it)?.post(this)
-        }
+        handleIncomingIntent(intent)
         setContent { OriginIsleTheme { Screen() } }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        handleIncomingIntent(intent)
+    }
+
+    private fun handleIncomingIntent(intent: Intent?) {
+        when (intent?.getStringExtra("autofire")) {
+            "football" -> SportsCard.post(this, "ARS", 1, "MAN", 1, "65'")
+        }
+        intent?.getIntExtra("autofire_sample", -1)?.takeIf { it >= 0 }?.let {
+            IslandSamples.all.getOrNull(it)?.post(this)
+        }
+        if (intent?.hasExtra("toggle_idle_card") == true) {
+            val enabled = intent.getBooleanExtra("toggle_idle_card", true)
+            LtmIslandHelper.setIdleCardEnabled(this, enabled)
+        }
     }
 
     /**

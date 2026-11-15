@@ -108,6 +108,7 @@ fun HomeScreen(
     var otpOn by remember { mutableStateOf(prefs.getBoolean("cast_otp", true)) }
     var actionsOn by remember { mutableStateOf(prefs.getBoolean("cast_show_actions", true)) }
     var liveLyricsOn by remember { mutableStateOf(prefs.getBoolean("cast_live_lyrics_opt_in", false)) }
+    var idleIslandOn by remember { mutableStateOf(prefs.getBoolean("ltm_idle_card_enabled", true)) }
     var geminiTap by remember { mutableStateOf(prefs.getBoolean("ltm_idle_gemini_tap", false)) }
     val bridgePrefs = remember { context.getSharedPreferences("ai_key_bridge_settings", Context.MODE_PRIVATE) }
     var voiceAction by remember { mutableStateOf(bridgePrefs.getString("voice_action", "GEMINI_VOICE").orEmpty()) }
@@ -460,6 +461,15 @@ fun HomeScreen(
                                 prefs.edit().putBoolean("cast_media_sessions", it).apply()
                                 if (it) PlaygroundService.keepAlive(context)
                             }
+                            GroupDivider()
+                            ToggleRow(
+                                IsleIcons.Send, IsleColors.TilePurple,
+                                Lang.s(context, "idle_island_toggle"), idleIslandOn,
+                                subtitle = Lang.s(context, "idle_island_toggle_subtitle"),
+                            ) {
+                                idleIslandOn = it
+                                LtmIslandHelper.setIdleCardEnabled(context, it)
+                            }
                         }
                     }
                 }
@@ -468,7 +478,9 @@ fun HomeScreen(
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         SectionLabel(Lang.s(context, "sample_tester_title"))
-                        SampleTester(context)
+                        SampleTester(context) {
+                            idleIslandOn = prefs.getBoolean("ltm_idle_card_enabled", true)
+                        }
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             PillButton(
                                 Lang.s(context, "recast_all"), onClick = { recastAll(context) },
@@ -683,16 +695,27 @@ fun HomeScreen(
                         Modifier.alpha(if (castOn) 1f else 0.4f),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        SectionLabel(Lang.s(context, "idle_card_text"))
+                        SectionLabel(Lang.s(context, "idle_island_toggle"))
                         GroupCard {
-                            NavRow(
+                            ToggleRow(
                                 IsleIcons.Send, IsleColors.TilePurple,
-                                Lang.s(context, "idle_card_text"),
-                                Lang.s(context, "edit"),
+                                Lang.s(context, "idle_island_toggle"), idleIslandOn,
+                                subtitle = Lang.s(context, "idle_island_toggle_subtitle"),
                             ) {
-                                idleTitle = prefs.getString("ltm_idle_card_title", "LTMori").orEmpty()
-                                idleText = prefs.getString("ltm_idle_card_text", "Đang chờ").orEmpty()
-                                idleCardEditOpen = true
+                                idleIslandOn = it
+                                LtmIslandHelper.setIdleCardEnabled(context, it)
+                            }
+                            if (idleIslandOn) {
+                                GroupDivider()
+                                NavRow(
+                                    IsleIcons.Send, IsleColors.TilePurple,
+                                    Lang.s(context, "idle_card_text"),
+                                    Lang.s(context, "edit"),
+                                ) {
+                                    idleTitle = prefs.getString("ltm_idle_card_title", "LTMori").orEmpty()
+                                    idleText = prefs.getString("ltm_idle_card_text", "Đang chờ").orEmpty()
+                                    idleCardEditOpen = true
+                                }
                             }
                         }
                     }
@@ -1211,7 +1234,7 @@ private fun MenuItem(text: String, onClick: () -> Unit) {
 
 /** Island preview + sample picker + send button: fires any [IslandSamples] card on demand. */
 @Composable
-private fun SampleTester(context: Context) {
+private fun SampleTester(context: Context, onSampleSent: () -> Unit = {}) {
     var selected by remember { mutableIntStateOf(0) }
     val sample = IslandSamples.all.getOrElse(selected) { IslandSamples.all.first() }
     var sentAt by remember { mutableLongStateOf(0L) }
@@ -1268,7 +1291,11 @@ private fun SampleTester(context: Context) {
         }
         PillButton(
             if (sentAt != 0L) Lang.s(context, "sent") else Lang.s(context, "send_button"),
-            onClick = { sample.post(context); sentAt = System.currentTimeMillis() },
+            onClick = {
+                sample.post(context)
+                sentAt = System.currentTimeMillis()
+                onSampleSent()
+            },
             modifier = Modifier.padding(horizontal = 14.dp).fillMaxWidth(),
             icon = IsleIcons.Send,
             container = IsleColors.Accent,

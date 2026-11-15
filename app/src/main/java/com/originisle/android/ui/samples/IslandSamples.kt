@@ -316,7 +316,10 @@ object IslandSamples {
 
     private fun setIdlePreset(context: Context, key: String) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putString("ltm_idle_preset", key).apply()
+        prefs.edit()
+            .putString("ltm_idle_preset", key)
+            .putBoolean("ltm_idle_card_enabled", true)
+            .apply()
         LtmIslandHelper.updateIdlePreset(context)
         LtmIslandHelper.syncIdleTicker(context)
     }

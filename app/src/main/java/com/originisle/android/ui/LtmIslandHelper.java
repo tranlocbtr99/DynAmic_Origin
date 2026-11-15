@@ -425,7 +425,7 @@ public final class LtmIslandHelper {
     private static final Runnable IDLE_TICKER = new Runnable() {
         @Override
         public void run() {
-            if (sContext != null && !isIslandEnabled(sContext)) {
+            if (sContext != null && (!isIslandEnabled(sContext) || !isIdleCardEnabled(sContext))) {
                 stopIdleTicker();
                 return;
             }
@@ -540,6 +540,43 @@ public final class LtmIslandHelper {
         if (owner == null) return true;
         android.content.SharedPreferences prefs = idlePrefs(owner);
         return prefs.getBoolean(MASTER_SWITCH, prefs.getBoolean("cast_notifications", true));
+    }
+
+    public static boolean isIdleCardEnabled(Context context) {
+        Context owner = context == null ? sContext : context;
+        if (owner == null) return true;
+        android.content.SharedPreferences prefs = idlePrefs(owner);
+        return prefs.getBoolean("ltm_idle_card_enabled", true);
+    }
+
+    public static void setIdleCardEnabled(Context context, boolean enabled) {
+        Context owner = context == null ? sContext : context;
+        if (owner == null) return;
+        Log.i(TAG, "setIdleCardEnabled: " + enabled);
+        idlePrefs(owner).edit().putBoolean("ltm_idle_card_enabled", enabled).apply();
+        if (enabled) {
+            updateIdlePreset(owner);
+            syncIdleTicker(owner);
+        } else {
+            dismissIdleCard(owner);
+        }
+    }
+
+    public static void dismissIdleCard(Context context) {
+        Context owner = context == null ? sContext : context;
+        if (owner == null) return;
+        try {
+            Log.i(TAG, "dismissIdleCard sending ACTION_CANCEL id=0xee84");
+            stopIdleTicker();
+            Class<?> ps = Class.forName("com.originisle.android.island.PlaygroundService");
+            Intent intent = new Intent(owner, ps);
+            intent.setAction("ACTION_CANCEL");
+            intent.putExtra("id", 0xee84);
+            intent.putExtra("oi_scene", "NAVIGATION");
+            owner.startService(intent);
+        } catch (Throwable t) {
+            Log.w(TAG, "dismissIdleCard error: " + t.getMessage());
+        }
     }
 
     static void setIslandEnabled(Context context, boolean enabled) {
@@ -658,7 +695,7 @@ public final class LtmIslandHelper {
         if (context == null) context = sContext;
         if (context == null) return;
         sContext = context.getApplicationContext();
-        if (!isIslandEnabled(sContext)) {
+        if (!isIslandEnabled(sContext) || !isIdleCardEnabled(sContext)) {
             stopIdleTicker();
             return;
         }
@@ -679,6 +716,10 @@ public final class LtmIslandHelper {
         if (!isIslandEnabled(sContext)) {
             return;
         }
+        if (!isIdleCardEnabled(sContext)) {
+            dismissIdleCard(sContext);
+            return;
+        }
         postIdleCard(sContext);
     }
 
@@ -691,6 +732,7 @@ public final class LtmIslandHelper {
         if (context == null) return;
         sContext = context.getApplicationContext();
         if (!isIslandEnabled(sContext)) return;
+        if (!isIdleCardEnabled(sContext)) return;
         if (hasOtherActiveCards(sContext)) return;
         try {
             Class<?> ps = Class.forName("com.originisle.android.island.PlaygroundService");

@@ -119,6 +119,7 @@ class PlaygroundService : Service() {
         }
         ensureForeground()
         scheduleHeartbeatWatchdog()
+        Log.i("PlaygroundService", "onStartCommand: action=${intent?.action}, id=${intent?.getIntExtra("id", -1)}")
         if (intent == null || intent.action == ACTION_KEEPALIVE) {
             restoreIdleCardIfEnabled()
         }
@@ -174,6 +175,7 @@ class PlaygroundService : Service() {
 
     private fun restoreIdleCardIfEnabled() {
         if (!isCastingEnabled()) return
+        if (!LtmIslandHelper.isIdleCardEnabled(this)) return
         if (activeIds.any { it != 0xee84 }) return
         mainHandler.post {
             try {
@@ -272,6 +274,7 @@ class PlaygroundService : Service() {
         val id = intent.getIntExtra("id", -1)
         if (id == -1) return
         if (!LtmIslandHelper.isIslandEnabled(this)) return
+        if (id == 0xee84 && !LtmIslandHelper.isIdleCardEnabled(this)) return
         LtmIslandHelper.applyIdleCardText(this, intent)
         lastPosts[id] = intent
         val plain = id in plainIds
@@ -623,9 +626,9 @@ class PlaygroundService : Service() {
 
     private fun cancelNotification(intent: Intent) {
         val id = intent.getIntExtra("id", -1)
-        if (id == -1) return
-        autoDismissTasks.remove(id)?.let { mainHandler.removeCallbacks(it) }
         val scene = originScenes.remove(id) ?: intent.getStringExtra("oi_scene")
+        Log.i("PlaygroundService", "cancelNotification: id=$id, scene=$scene")
+        if (id == -1) return
         activeIds.remove(id)
         originChangeRecord.remove(id)
         lastPosts.remove(id)
@@ -646,9 +649,11 @@ class PlaygroundService : Service() {
                 endOrigin(id, scene)
                 mainHandler.postDelayed({
                     notificationManager.cancel(OriginIslandConstants.SUPERX_TAG, id)
+                    notificationManager.cancel(id)
                 }, 350L)
             } else {
                 notificationManager.cancel(id)
+                notificationManager.cancel(OriginIslandConstants.SUPERX_TAG, id)
             }
             mainHandler.postDelayed({
                 if (activeIds.isEmpty() || (activeIds.size == 1 && activeIds.contains(0xee84))) {
