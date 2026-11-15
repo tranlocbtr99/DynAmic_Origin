@@ -163,6 +163,7 @@ object OriginIslandBuilder {
         // Testing whether flipping it is what actually gates shade visibility.
         showNotify: Boolean = true,
         islandNotify: Boolean = false,
+        islandClick: Int = 0,
     ): Bundle {
         val C = OriginIslandConstants
         val bundle = Bundle()
@@ -389,7 +390,7 @@ object OriginIslandBuilder {
         // separate promoted chip ("Notification: Starting navigation… [Exit navigation]") in the
         // shade, on top of the island itself.
         island.putBoolean(C.BUNDLE_KEY_ISLAND_SHOW_BAR_WHEN_CARD, false)
-        island.putInt(C.BUNDLE_KEY_ISLAND_CLICK, 0)
+        island.putInt(C.BUNDLE_KEY_ISLAND_CLICK, islandClick)
         if (clickResp != null) island.putParcelable(C.BUNDLE_KEY_ISLAND_CLICK_RESP, clickResp)
 
         val left = Bundle()

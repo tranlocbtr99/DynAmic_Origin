@@ -1,6 +1,7 @@
 package com.originisle.android
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -42,6 +43,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (LtmIslandHelper.handleRecentActivityLaunch(this)) {
+            return
+        }
         when (intent?.getStringExtra("autofire")) {
             "football" -> SportsCard.post(this, "ARS", 1, "MAN", 1, "65'")
         }
@@ -49,6 +53,14 @@ class MainActivity : ComponentActivity() {
             IslandSamples.all.getOrNull(it)?.post(this)
         }
         setContent { OriginIsleTheme { Screen() } }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (LtmIslandHelper.handleRecentActivityLaunch(this)) {
+            return
+        }
     }
 
     /**

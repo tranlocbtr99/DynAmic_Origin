@@ -271,6 +271,7 @@ class NotificationCastListener : NotificationListenerService() {
                 val prefs = getSharedPreferences(PREFS, 0)
                 val castNotifs = prefs.getBoolean("cast_notifications", false)
                 val castMedia = prefs.getBoolean("cast_media_sessions", true)
+                val isTransientCardActive = (System.currentTimeMillis() - PlaygroundService.lastTransientCardPostTime) < 6000L
                 activeNotifications?.forEach { sbn ->
                     val extras = sbn.notification.extras
                     val token = extras.getParcelable(
@@ -279,7 +280,7 @@ class NotificationCastListener : NotificationListenerService() {
                     val controller = token?.let { MediaController(this@NotificationCastListener, it) }
                         ?: if (castMedia && isAppEnabled(prefs, sbn.packageName)) findMediaControllerFallback(sbn.packageName) else null
                     if (controller != null) {
-                        if (castMedia && isAppEnabled(prefs, sbn.packageName)) {
+                        if (castMedia && !isTransientCardActive && isAppEnabled(prefs, sbn.packageName)) {
                             MediaCard.post(
                                 applicationContext, sbn,
                                 controller,

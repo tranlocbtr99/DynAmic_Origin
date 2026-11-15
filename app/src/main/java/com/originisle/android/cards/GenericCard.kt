@@ -122,17 +122,12 @@ object GenericCard {
             action = PlaygroundService.ACTION_START
             putExtra("id", id)
             putExtra("is_ongoing", isLive || isCall)
+            putExtra("oi_scene", "NAVIGATION")
             if (isCall) {
-                val isVoip = sbn.packageName != "com.android.incallui" &&
-                    sbn.packageName != "com.google.android.dialer" &&
-                    !sbn.packageName.contains("telecom")
-                putExtra("oi_scene", if (isVoip) "VOIPCALL" else "INCALLING")
                 putExtra("is_call", true)
                 putExtra("oi_force_show", true)
                 putExtra("oi_force_show_card", true)
                 putExtra("oi_light_color", "#FF34C759")
-            } else {
-                putExtra("oi_scene", "NAVIGATION")
             }
             putExtra("title", title)
             // vivo silently REJECTS a SuperX post with empty content text — falling back to a plain

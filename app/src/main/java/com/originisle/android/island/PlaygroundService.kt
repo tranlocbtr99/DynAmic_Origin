@@ -57,6 +57,10 @@ class PlaygroundService : Service() {
         @Volatile
         var activeCardIds: Set<Int> = emptySet()
 
+        /** Timestamp of the last transient (non-ongoing, e.g. message) card posted. */
+        @Volatile
+        var lastTransientCardPostTime: Long = 0L
+
         const val ORIGIN_CHANNEL_ID = "originisle_island_hi"
         const val FGS_ID = 9999
 
@@ -390,10 +394,14 @@ class PlaygroundService : Service() {
             changeRecord = changeRecord,
             showNotify = showNotify,
             islandNotify = islandNotify,
+            islandClick = intent.getIntExtra("oi_island_click", OriginIslandConstants.ISLAND_CLICK_SHOW_CARD),
         )
 
         val sourceApp = intent.getStringExtra("source_app").orEmpty()
         val isOngoing = intent.getBooleanExtra("is_ongoing", false)
+        if (!isOngoing && !isIdleCard) {
+            lastTransientCardPostTime = now
+        }
 
         // Scene replace ONLY between tester/sports sample cards (id >= 40000) so switching samples
         // doesn't leave stale fields. Real cast notifications (id 20000-29999) are NOT ended against
@@ -428,10 +436,11 @@ class PlaygroundService : Service() {
 
         // Auto-dismiss: only for non-live cards (isOngoing is the same live/persistent flag the
         // card posters set — media, sports and any ongoing/call/progress GenericCard all mark
-        // themselves live), and only when the user opted into a duration in Cast settings.
+        // themselves live), and only when the user opted into a duration in Cast settings (default 6s for messages).
         autoDismissTasks.remove(id)?.let { mainHandler.removeCallbacks(it) }
         val autoDismissSec = getSharedPreferences(PREFS_NAME, 0).getInt("cast_auto_dismiss_seconds", 0)
-        if (autoDismissSec > 0 && !isOngoing) {
+        val timeoutSec = if (autoDismissSec > 0) autoDismissSec else if (!isOngoing && !isIdleCard) 6 else 0
+        if (timeoutSec > 0 && !isOngoing) {
             val task = Runnable {
                 cancelNotification(
                     Intent(this, PlaygroundService::class.java)
@@ -440,7 +449,7 @@ class PlaygroundService : Service() {
                 )
             }
             autoDismissTasks[id] = task
-            mainHandler.postDelayed(task, autoDismissSec * 1000L)
+            mainHandler.postDelayed(task, timeoutSec * 1000L)
         }
     }
 

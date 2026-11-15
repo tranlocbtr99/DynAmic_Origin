@@ -704,8 +704,29 @@ public final class LtmIslandHelper {
             intent.putExtra("oi_show_notify", false);
             intent.putExtra("oi_is_idle_ticker", true);
             intent.putExtra("icon_res", sContext.getApplicationInfo().icon);
-            Intent click = new Intent(sContext, Class.forName("com.originisle.android.MainActivity"));
-            click.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+            android.content.SharedPreferences prefs = idlePrefs(sContext);
+            boolean geminiTap = prefs.getBoolean("ltm_idle_gemini_tap", false);
+            android.content.SharedPreferences bridgePrefs = sContext.getSharedPreferences("ai_key_bridge_settings", Context.MODE_PRIVATE);
+            String voiceAction = bridgePrefs.getString("voice_action", "GEMINI_VOICE");
+
+            Intent click;
+            if (geminiTap) {
+                click = new Intent(sContext, com.aikeybridge.LaunchActivity.class);
+                if ("GOOGLE_CTS".equals(voiceAction)) {
+                    click.setAction("com.autonavi.minimap.action.CTS");
+                    click.putExtra("action_mode", "GOOGLE_CTS");
+                } else {
+                    click.setAction("com.autonavi.minimap.action.GEMINI");
+                    click.putExtra("action_mode", "GEMINI_VOICE");
+                }
+                click.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                intent.putExtra("oi_island_click", 1); // ISLAND_CLICK_LANDING
+            } else {
+                click = new Intent(sContext, Class.forName("com.originisle.android.MainActivity"));
+                click.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                intent.putExtra("oi_island_click", 0);
+            }
             PendingIntent pi = PendingIntent.getActivity(sContext, 0xee84, click,
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             intent.putExtra("click_resp", pi);
@@ -1536,26 +1557,19 @@ public final class LtmIslandHelper {
     public static boolean launchCircleToSearch(Context context) {
         if (context == null) return false;
         try {
-            android.app.SearchManager sm = (android.app.SearchManager) context.getSystemService(Context.SEARCH_SERVICE);
-            if (sm != null) {
-                Bundle bundle = new Bundle();
-                bundle.putLong("invocation_time_ms", SystemClock.elapsedRealtime());
-                bundle.putInt("omni.entry_point", 1);
-                bundle.putBoolean("cts_trigger", true);
-                bundle.putBoolean("micts_trigger", true);
-                java.lang.reflect.Method method = android.app.SearchManager.class.getMethod("launchAssist", Bundle.class);
-                method.invoke(sm, bundle);
-                Log.i(TAG, "Circle to Search launched via SearchManager.launchAssist");
+            com.aikeybridge.service.LaunchOutcome outcome = com.aikeybridge.service.AssistOverlay.INSTANCE.launchCircleToSearch(context);
+            if (outcome.getOk()) {
+                Log.i(TAG, "Circle to Search launched via AssistOverlay: " + outcome.getDetail());
                 return true;
             }
         } catch (Throwable t) {
-            Log.w(TAG, "launchCircleToSearch error: " + t.getMessage());
+            Log.w(TAG, "AssistOverlay CTS error: " + t.getMessage());
         }
 
         // 2. Try LaunchActivity from AI Key Bridge
         try {
             Intent ctsIntent = new Intent(context, com.aikeybridge.LaunchActivity.class);
-            ctsIntent.setAction("com.aikeybridge.action.CTS");
+            ctsIntent.setAction(com.aikeybridge.LaunchActivity.ACTION_CTS);
             ctsIntent.putExtra("action_mode", "GOOGLE_CTS");
             ctsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(ctsIntent);

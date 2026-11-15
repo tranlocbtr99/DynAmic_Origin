@@ -814,6 +814,7 @@ fun HomeScreen(
                             ) {
                                 geminiTap = it
                                 prefs.edit().putBoolean("ltm_idle_gemini_tap", it).apply()
+                                LtmIslandHelper.postIdleCard(context)
                             }
                             GroupDivider()
 
@@ -833,6 +834,7 @@ fun HomeScreen(
                                 onClick = {
                                     voiceAction = "GEMINI_VOICE"
                                     bridgePrefs.edit().putString("voice_action", "GEMINI_VOICE").apply()
+                                    if (geminiTap) LtmIslandHelper.postIdleCard(context)
                                 },
                             )
 
@@ -846,6 +848,7 @@ fun HomeScreen(
                                 onClick = {
                                     voiceAction = "GOOGLE_CTS"
                                     bridgePrefs.edit().putString("voice_action", "GOOGLE_CTS").apply()
+                                    if (geminiTap) LtmIslandHelper.postIdleCard(context)
                                 },
                             )
 
