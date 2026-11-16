@@ -32,11 +32,6 @@ class LiquidGlassBannerView @JvmOverloads constructor(
     private fun dp(v: Float): Float = v * density
     private fun dpI(v: Float): Int = Math.round(v * density)
 
-    private val opticalRefractPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-        color = Color.parseColor("#2B121826") // Subtle 17% optical refraction tint for contrast
-    }
-
     private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
     }
@@ -306,16 +301,13 @@ class LiquidGlassBannerView @JvmOverloads constructor(
     }
 
     override fun onDraw(canvas: Canvas) {
-        // 1. Subtle optical refraction base (ensures legibility on bright backgrounds without adding darkness)
-        canvas.drawRoundRect(boundsRect, cornerRadius, cornerRadius, opticalRefractPaint)
-
-        // 2. Translucent Liquid White Glass Body
+        // 1. Translucent Liquid White Glass Body (Crystal Clear, zero dark/grey tints)
         canvas.drawRoundRect(boundsRect, cornerRadius, cornerRadius, bgPaint)
 
-        // 3. Liquid Glass Surface Sheen (Glossy reflection)
+        // 2. Liquid Glass Surface Sheen (Glossy reflection)
         canvas.drawRoundRect(boundsRect, cornerRadius, cornerRadius, glassSheenPaint)
 
-        // 4. Brilliant Liquid Glass Specular Rim
+        // 3. Brilliant Liquid Glass Specular Rim
         canvas.drawRoundRect(boundsRect, cornerRadius, cornerRadius, strokePaint)
 
         super.onDraw(canvas)

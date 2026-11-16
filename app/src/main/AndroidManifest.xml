@@ -12,6 +12,7 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Earbuds card only, asked for by its switch: connection broadcasts and the device name. -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
@@ -81,6 +82,12 @@
         <receiver
             android:name=".service.TorchOffReceiver"
             android:exported="false" />
+
+        <provider
+            android:name=".ui.LtmApkProvider"
+            android:authorities="${applicationId}.ltmori.updates"
+            android:exported="false"
+            android:grantUriPermissions="true" />
 
     </application>
 </manifest>

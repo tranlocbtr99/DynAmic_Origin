@@ -162,6 +162,11 @@ fun HomeScreen(
     var permissionsOpen by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
     var updateStatus by remember { mutableStateOf<String?>(null) }
+    var updateDialogOpen by remember { mutableStateOf(false) }
+    var updateAvailableData by remember { mutableStateOf<UpdateChecker.Result.UpdateAvailable?>(null) }
+    var isDownloadingUpdate by remember { mutableStateOf(false) }
+    var downloadProgress by remember { mutableIntStateOf(0) }
+    var downloadError by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     var connected by remember { mutableStateOf(NotificationCastListener.instance != null) }
@@ -277,6 +282,110 @@ fun HomeScreen(
         )
     }
 
+    if (updateDialogOpen && updateAvailableData != null) {
+        val data = updateAvailableData!!
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = {
+                if (!isDownloadingUpdate) updateDialogOpen = false
+            },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(IsleIcons.Heart, contentDescription = null, tint = IsleColors.Accent, modifier = Modifier.size(24.dp))
+                    Text(
+                        if (appLang == "vi") "Bản cập nhật mới: v${data.latest}" else "New Update: v${data.latest}",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
+                }
+            },
+            text = {
+                Column(
+                    Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        if (appLang == "vi") "Phiên bản hiện tại: v${data.current}  ➔  Mới nhất: v${data.latest}"
+                        else "Current: v${data.current}  ➔  Latest: v${data.latest}",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = IsleColors.Accent
+                    )
+                    Text(
+                        if (appLang == "vi") "Ghi chú phát hành:" else "Release Notes:",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 13.5.sp,
+                        color = IsleColors.Text
+                    )
+                    Text(
+                        data.releaseNotes,
+                        fontSize = 12.5.sp,
+                        lineHeight = 17.sp,
+                        color = IsleColors.TextSecondary
+                    )
+                    if (isDownloadingUpdate) {
+                        Spacer(Modifier.height(6.dp))
+                        androidx.compose.material3.LinearProgressIndicator(
+                            progress = { downloadProgress / 100f },
+                            modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+                            color = IsleColors.Accent,
+                            trackColor = IsleColors.SurfaceHigh,
+                        )
+                        Text(
+                            if (appLang == "vi") "Đang tải xuống bản cập nhật... $downloadProgress%"
+                            else "Downloading update... $downloadProgress%",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = IsleColors.Accent
+                        )
+                    }
+                    downloadError?.let {
+                        Text(it, fontSize = 12.sp, color = IsleColors.Danger)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (isDownloadingUpdate) return@TextButton
+                        isDownloadingUpdate = true
+                        downloadError = null
+                        coroutineScope.launch {
+                            val res = UpdateChecker.downloadAndInstall(
+                                context = context,
+                                downloadUrl = data.downloadUrl,
+                                expectedSize = data.apkSize,
+                                onProgress = { downloadProgress = it }
+                            )
+                            if (res.isFailure) {
+                                isDownloadingUpdate = false
+                                downloadError = if (appLang == "vi") "Lỗi khi tải hoặc xác minh: ${res.exceptionOrNull()?.localizedMessage}"
+                                               else "Download failed: ${res.exceptionOrNull()?.localizedMessage}"
+                            }
+                        }
+                    },
+                    enabled = !isDownloadingUpdate
+                ) {
+                    Text(
+                        if (isDownloadingUpdate) (if (appLang == "vi") "Đang tải $downloadProgress%" else "Downloading...")
+                        else (if (appLang == "vi") "Tải & Cài đặt ngay" else "Download & Install"),
+                        fontWeight = FontWeight.Bold,
+                        color = IsleColors.Accent
+                    )
+                }
+            },
+            dismissButton = {
+                if (!isDownloadingUpdate) {
+                    TextButton(onClick = { updateDialogOpen = false }) {
+                        Text(if (appLang == "vi") "Để sau" else "Later", color = IsleColors.TextTertiary)
+                    }
+                }
+            }
+        )
+    }
+
     if (optimizerOpen) {
         VivoOptimizerDialog(context = context, onDismiss = { optimizerOpen = false })
     }
@@ -361,8 +470,27 @@ fun HomeScreen(
                             ) {
                                 MenuItem(Lang.s(context, "check_updates")) {
                                     menuOpen = false
-                                    updateStatus = if (appLang == "vi") "Bạn đang ở phiên bản LTMori mới nhất (v3.0.1)."
-                                                   else "You're on the latest version of LTMori (v3.0.1)."
+                                    updateStatus = if (appLang == "vi") "Đang kiểm tra máy chủ GitHub..." else "Checking GitHub releases..."
+                                    coroutineScope.launch {
+                                        when (val res = UpdateChecker.check(context)) {
+                                            is UpdateChecker.Result.UpToDate -> {
+                                                updateStatus = if (appLang == "vi") "Bạn đang ở phiên bản LTMori mới nhất (${res.current})."
+                                                               else "You're on the latest version (${res.current})."
+                                            }
+                                            is UpdateChecker.Result.UpdateAvailable -> {
+                                                updateStatus = null
+                                                updateAvailableData = res
+                                                downloadProgress = 0
+                                                downloadError = null
+                                                isDownloadingUpdate = false
+                                                updateDialogOpen = true
+                                            }
+                                            is UpdateChecker.Result.Error -> {
+                                                updateStatus = if (appLang == "vi") "Kiểm tra thất bại: ${res.message}"
+                                                               else "Update check failed: ${res.message}"
+                                            }
+                                        }
+                                    }
                                 }
                                 MenuItem(Lang.s(context, "vivo_optimizer")) {
                                     menuOpen = false
@@ -1185,6 +1313,7 @@ private fun CompactRamCard(context: Context) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
+                    modifier = Modifier.weight(1f, fill = false),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -1201,7 +1330,9 @@ private fun CompactRamCard(context: Context) {
                         "RAM: ${String.format(java.util.Locale.US, "%.1f", usedMemMb / 1024.0)} / ${String.format(java.util.Locale.US, "%.1f GB", totalMemMb / 1024.0)}",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = IsleColors.Text
+                        color = IsleColors.Text,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
                 Box(

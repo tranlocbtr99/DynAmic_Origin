@@ -195,9 +195,23 @@ fun SettingRow(
     ) {
         IconTile(icon, tileColor)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = IsleColors.Text)
+            Text(
+                title,
+                fontSize = 15.5.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = IsleColors.Text,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             if (subtitle != null) {
-                Text(subtitle, fontSize = 13.sp, color = IsleColors.TextSecondary, lineHeight = 17.sp)
+                Text(
+                    subtitle,
+                    fontSize = 12.5.sp,
+                    color = IsleColors.TextSecondary,
+                    lineHeight = 16.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
         trailing()
