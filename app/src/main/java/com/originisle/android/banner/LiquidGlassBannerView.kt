@@ -42,7 +42,7 @@ class LiquidGlassBannerView @JvmOverloads constructor(
 
     private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeWidth = dp(0.85f) // Ultra-fine specular glass rim
+        strokeWidth = dp(0.75f) // Ultra-fine crystal specular glass rim
     }
 
     private val boundsRect = RectF()
@@ -126,6 +126,7 @@ class LiquidGlassBannerView @JvmOverloads constructor(
             setTextColor(Color.WHITE)
             textSize = 14.5f
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            setShadowLayer(dp(3f), 0f, dp(1f), Color.parseColor("#B3000000"))
             maxLines = 1
             ellipsize = TextUtils.TruncateAt.END
         }
@@ -137,9 +138,10 @@ class LiquidGlassBannerView @JvmOverloads constructor(
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                 marginStart = dpI(6f)
             }
-            setTextColor(Color.parseColor("#8E8E93"))
+            setTextColor(Color.parseColor("#C7C7CC"))
             textSize = 11.5f
             typeface = Typeface.SANS_SERIF
+            setShadowLayer(dp(2f), 0f, dp(1f), Color.parseColor("#99000000"))
             text = nowLabel
         }
         headerRow.addView(timeView)
@@ -149,9 +151,10 @@ class LiquidGlassBannerView @JvmOverloads constructor(
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                 topMargin = dpI(2f)
             }
-            setTextColor(Color.parseColor("#EBEBF5"))
+            setTextColor(Color.parseColor("#F5F5F7"))
             textSize = 13.5f
             typeface = Typeface.SANS_SERIF
+            setShadowLayer(dp(2.5f), 0f, dp(1f), Color.parseColor("#99000000"))
             maxLines = 2
             ellipsize = TextUtils.TruncateAt.END
         }
@@ -166,8 +169,8 @@ class LiquidGlassBannerView @JvmOverloads constructor(
     private fun createBadgeBackground(): Drawable {
         val shape = android.graphics.drawable.GradientDrawable()
         shape.shape = android.graphics.drawable.GradientDrawable.OVAL
-        shape.setColor(Color.parseColor("#E612141A")) // Translucent dark glass ring
-        shape.setStroke(dpI(1f), Color.parseColor("#33FFFFFF"))
+        shape.setColor(Color.parseColor("#B3000000")) // Crystal dark glass separator ring
+        shape.setStroke(dpI(1f), Color.parseColor("#4DFFFFFF"))
         return shape
     }
 
@@ -259,38 +262,38 @@ class LiquidGlassBannerView @JvmOverloads constructor(
         val inset = strokePaint.strokeWidth / 2f
         boundsRect.set(inset, inset, w.toFloat() - inset, h.toFloat() - inset)
 
-        // 1. Translucent Liquid Smoke Glass Body: ~72-76% opacity for an authentic liquid glass feel
+        // 1. Crystal Clear Liquid Glass: Pure black translucent gradient without any muddy grey tints
+        // Top is light & airy (35% black tint), bottom is slightly richer (52% black tint)
         bgPaint.shader = LinearGradient(
             0f, 0f, 0f, h.toFloat(),
             intArrayOf(
-                Color.parseColor("#C4181B24"), // 77% dark obsidian glass at top
-                Color.parseColor("#A60E1016"), // 65% deep smoke glass at bottom
+                Color.parseColor("#59000000"), // 35% crystal clear glass
+                Color.parseColor("#85000000"), // 52% pure deep glass
             ),
             floatArrayOf(0.0f, 1.0f),
             Shader.TileMode.CLAMP,
         )
 
-        // 2. Liquid Glass Surface Sheen: Delicate specular light wash across the glass surface
+        // 2. Crystal Specular Sheen: Fine light reflection only along the top 12dp rim
         glassSheenPaint.shader = LinearGradient(
-            0f, 0f, 0f, h.toFloat() * 0.7f,
+            0f, 0f, 0f, dp(12f),
             intArrayOf(
-                Color.parseColor("#33FFFFFF"), // 20% specular sheen at top
-                Color.parseColor("#0AFFFFFF"), // 4% subtle sheen
-                Color.parseColor("#00000000"), // transparent
+                Color.parseColor("#38FFFFFF"), // 22% delicate sheen right at the top edge
+                Color.parseColor("#00FFFFFF"), // fades cleanly into transparent body
             ),
-            floatArrayOf(0.0f, 0.45f, 1.0f),
+            floatArrayOf(0.0f, 1.0f),
             Shader.TileMode.CLAMP,
         )
 
-        // 3. Apple Specular Glass Border: Bright specular highlight at top edge fading to soft rim
+        // 3. Apple Crystal Glass Border: Crisp diamond-cut specular highlight at top edge
         strokePaint.shader = LinearGradient(
             0f, 0f, 0f, h.toFloat(),
             intArrayOf(
-                Color.parseColor("#66FFFFFF"), // 40% crisp white reflection at top
-                Color.parseColor("#26FFFFFF"), // 15% glass edge
-                Color.parseColor("#12FFFFFF"), // 7% subtle bottom rim
+                Color.parseColor("#88FFFFFF"), // 53% crystal sharp reflection at top
+                Color.parseColor("#33FFFFFF"), // 20% clear glass edge
+                Color.parseColor("#14FFFFFF"), // 8% bottom rim
             ),
-            floatArrayOf(0.0f, 0.4f, 1.0f),
+            floatArrayOf(0.0f, 0.35f, 1.0f),
             Shader.TileMode.CLAMP,
         )
     }
