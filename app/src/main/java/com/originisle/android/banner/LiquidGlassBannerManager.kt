@@ -102,18 +102,14 @@ object LiquidGlassBannerManager {
         bannerView.onDismissRequested = { dismiss() }
 
         val dm = context.resources.displayMetrics
-        val targetWidth = min((dm.widthPixels * 0.94f).toInt(), (420 * dm.density).toInt())
+        val targetWidth = min((dm.widthPixels * 0.88f).toInt(), (368 * dm.density).toInt())
         val statusBarHeight = getStatusBarHeight(context)
-        val topMargin = statusBarHeight + Math.round(4 * dm.density)
+        val topMargin = Math.max(statusBarHeight - Math.round(6 * dm.density), Math.round(10 * dm.density))
 
-        var flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+        val flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
                 WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            flags = flags or WindowManager.LayoutParams.FLAG_BLUR_BEHIND
-        }
 
         val params = WindowManager.LayoutParams(
             targetWidth,
@@ -124,30 +120,25 @@ object LiquidGlassBannerManager {
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             y = topMargin
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                runCatching {
-                    blurBehindRadius = Math.round(24 * dm.density)
-                }
-            }
         }
 
-        // Initial entrance state (squished and retracted towards the camera hole)
-        bannerView.translationY = -((statusBarHeight + 100 * dm.density))
-        bannerView.scaleX = 0.40f
-        bannerView.scaleY = 0.20f
+        // Initial entrance state (expanding outward directly from the punch-hole camera)
+        bannerView.translationY = -dp(context, 30f)
+        bannerView.scaleX = 0.45f
+        bannerView.scaleY = 0.25f
         bannerView.alpha = 0f
 
         wm.addView(bannerView, params)
         activeView = bannerView
 
-        // Spring entrance animation expanding downward from the camera cutout
+        // Spring entrance animation expanding smoothly from the camera cutout
         bannerView.animate()
             .translationY(0f)
             .scaleX(1.0f)
             .scaleY(1.0f)
             .alpha(1.0f)
-            .setInterpolator(OvershootInterpolator(0.85f))
-            .setDuration(360)
+            .setInterpolator(OvershootInterpolator(0.9f))
+            .setDuration(320)
             .start()
 
         scheduleAutoDismiss(durationMs)
@@ -168,18 +159,16 @@ object LiquidGlassBannerManager {
             autoDismissRunnable?.let { mainHandler.removeCallbacks(it) }
             autoDismissRunnable = null
 
-            val dm = view.context.resources.displayMetrics
-            val statusBarHeight = getStatusBarHeight(view.context)
-            val exitTargetY = -((statusBarHeight + 100 * dm.density))
+            val exitTargetY = -dp(view.context, 35f)
 
             // Retract & morph upwards towards the camera cutout
             view.animate()
                 .translationY(exitTargetY)
-                .scaleX(0.40f)
-                .scaleY(0.20f)
+                .scaleX(0.45f)
+                .scaleY(0.25f)
                 .alpha(0f)
-                .setInterpolator(AccelerateInterpolator(1.4f))
-                .setDuration(240)
+                .setInterpolator(AccelerateInterpolator(1.5f))
+                .setDuration(220)
                 .withEndAction {
                     try {
                         if (view.isAttachedToWindow) {
@@ -201,4 +190,6 @@ object LiquidGlassBannerManager {
         val resourceId = context.resources.getIdentifier("status_bar_height", "dimen", "android")
         return if (resourceId > 0) context.resources.getDimensionPixelSize(resourceId) else Math.round(32 * context.resources.displayMetrics.density)
     }
+
+    private fun dp(context: Context, v: Float): Float = v * context.resources.displayMetrics.density
 }

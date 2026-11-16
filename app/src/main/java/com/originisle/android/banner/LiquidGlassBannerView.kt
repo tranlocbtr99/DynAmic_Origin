@@ -3,7 +3,6 @@ package com.originisle.android.banner
 import android.app.PendingIntent
 import android.content.Context
 import android.graphics.*
-import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.Icon
 import android.os.Build
@@ -14,13 +13,14 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.core.content.ContextCompat
 import com.originisle.android.R
 import kotlin.math.abs
 
 /**
- * A luxury Apple iOS-style Liquid Glass (Frosted Glass / Specular Glassmorphism)
- * Heads-up Notification Banner.
+ * Authentic Apple iOS-style Dynamic Island Liquid Glass Heads-up Notification Banner.
+ * Pure OLED Black (#000000) body seamlessly blending with the camera punch hole,
+ * wrapped in an ultra-fine specular glass rim ([#44FFFFFF] -> [#14FFFFFF]) and
+ * delicate ambient shadow. Zero background blurring to keep user content 100% visible and crisp.
  */
 class LiquidGlassBannerView @JvmOverloads constructor(
     context: Context,
@@ -34,22 +34,16 @@ class LiquidGlassBannerView @JvmOverloads constructor(
 
     private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = Color.parseColor("#EE12141A") // 93% Dark Obsidian Glass
+        color = Color.BLACK // Pure OLED Black matching the camera punch-hole perfectly
     }
 
     private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeWidth = dp(1.2f)
-    }
-
-    private val glarePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeWidth = dp(0.8f)
-        color = Color.parseColor("#33FFFFFF")
+        strokeWidth = dp(0.75f) // Ultra-fine specular glass rim
     }
 
     private val boundsRect = RectF()
-    private val cornerRadius = dp(38f)
+    private val cornerRadius = dp(28f)
 
     private var avatarView: ImageView
     private var badgeView: ImageView
@@ -68,37 +62,44 @@ class LiquidGlassBannerView @JvmOverloads constructor(
         isClickable = true
         isFocusable = false
 
-        // Text & Icons stay crisp and clear while background blur is handled
-        // via WindowManager.LayoutParams.FLAG_BLUR_BEHIND on Android 12+
+        // Elevation and outline for smooth ambient shadow around the island
+        clipToOutline = false
+        elevation = dp(12f)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            outlineAmbientShadowColor = Color.BLACK
+            outlineSpotShadowColor = Color.BLACK
+        }
 
-        // --- Build View Hierarchy Programmatically for Instant Layout ---
+        // --- Build View Hierarchy Programmatically for Instant Performance ---
         val rootLayout = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dpI(14f), dpI(12f), dpI(16f), dpI(12f))
+            setPadding(dpI(13f), dpI(10f), dpI(15f), dpI(10f))
         }
 
         // 1. Avatar container with app badge
         val avatarContainer = FrameLayout(context).apply {
-            layoutParams = LinearLayout.LayoutParams(dpI(44f), dpI(44f)).apply {
-                marginEnd = dpI(12f)
+            layoutParams = LinearLayout.LayoutParams(dpI(40f), dpI(40f)).apply {
+                marginEnd = dpI(11f)
             }
         }
 
+        // Circular Avatar
         avatarView = ImageView(context).apply {
-            layoutParams = LayoutParams(dpI(44f), dpI(44f))
+            layoutParams = LayoutParams(dpI(40f), dpI(40f))
             scaleType = ImageView.ScaleType.CENTER_CROP
             clipToOutline = true
             outlineProvider = object : ViewOutlineProvider() {
                 override fun getOutline(view: View, outline: Outline) {
-                    outline.setRoundRect(0, 0, view.width, view.height, dp(12f))
+                    outline.setOval(0, 0, view.width, view.height)
                 }
             }
         }
         avatarContainer.addView(avatarView)
 
+        // App Badge overlay in bottom-right corner with black ring separator
         badgeView = ImageView(context).apply {
-            layoutParams = LayoutParams(dpI(18f), dpI(18f), Gravity.BOTTOM or Gravity.END)
+            layoutParams = LayoutParams(dpI(17f), dpI(17f), Gravity.BOTTOM or Gravity.END)
             scaleType = ImageView.ScaleType.FIT_CENTER
             background = createBadgeBackground()
             setPadding(dpI(1.5f), dpI(1.5f), dpI(1.5f), dpI(1.5f))
@@ -106,7 +107,7 @@ class LiquidGlassBannerView @JvmOverloads constructor(
         avatarContainer.addView(badgeView)
         rootLayout.addView(avatarContainer)
 
-        // 2. Middle Text Container
+        // 2. Middle Text Column
         val textContainer = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f)
@@ -130,7 +131,9 @@ class LiquidGlassBannerView @JvmOverloads constructor(
         val isVi = com.originisle.android.ui.Lang.isVi(context)
         val nowLabel = if (isVi) "bây giờ" else "now"
         timeView = TextView(context).apply {
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                marginStart = dpI(6f)
+            }
             setTextColor(Color.parseColor("#8E8E93"))
             textSize = 11.5f
             typeface = Typeface.SANS_SERIF
@@ -143,8 +146,8 @@ class LiquidGlassBannerView @JvmOverloads constructor(
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                 topMargin = dpI(2f)
             }
-            setTextColor(Color.parseColor("#E5E7EB"))
-            textSize = 13.0f
+            setTextColor(Color.parseColor("#EBEBF5"))
+            textSize = 13.5f
             typeface = Typeface.SANS_SERIF
             maxLines = 2
             ellipsize = TextUtils.TruncateAt.END
@@ -160,8 +163,8 @@ class LiquidGlassBannerView @JvmOverloads constructor(
     private fun createBadgeBackground(): Drawable {
         val shape = android.graphics.drawable.GradientDrawable()
         shape.shape = android.graphics.drawable.GradientDrawable.OVAL
-        shape.setColor(Color.parseColor("#22232A"))
-        shape.setStroke(dpI(1f), Color.parseColor("#3A3B44"))
+        shape.setColor(Color.BLACK) // Pure black separator ring around the badge
+        shape.setStroke(dpI(1f), Color.parseColor("#222226"))
         return shape
     }
 
@@ -206,21 +209,21 @@ class LiquidGlassBannerView @JvmOverloads constructor(
                 MotionEvent.ACTION_DOWN -> {
                     touchStartY = event.rawY
                     isDragging = false
-                    view.animate().scaleX(0.97f).scaleY(0.97f).setDuration(120).start()
+                    view.animate().scaleX(0.97f).scaleY(0.97f).setDuration(100).start()
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val deltaY = event.rawY - touchStartY
-                    if (deltaY < -dp(8f)) {
+                    if (deltaY < -dp(6f)) {
                         isDragging = true
                         view.translationY = deltaY
                     }
                     true
                 }
                 MotionEvent.ACTION_UP -> {
-                    view.animate().scaleX(1.0f).scaleY(1.0f).setDuration(150).start()
+                    view.animate().scaleX(1.0f).scaleY(1.0f).setDuration(120).start()
                     val deltaY = event.rawY - touchStartY
-                    if (isDragging && deltaY < -dp(24f)) {
+                    if (isDragging && deltaY < -dp(20f)) {
                         // User swiped up: dismiss immediately!
                         performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                         onDismissRequested?.invoke()
@@ -234,13 +237,13 @@ class LiquidGlassBannerView @JvmOverloads constructor(
                         }
                         onDismissRequested?.invoke()
                     } else {
-                        // Snap back down
-                        view.animate().translationY(0f).setDuration(200).start()
+                        // Snap back down smoothly
+                        view.animate().translationY(0f).setDuration(180).start()
                     }
                     true
                 }
                 MotionEvent.ACTION_CANCEL -> {
-                    view.animate().scaleX(1.0f).scaleY(1.0f).translationY(0f).setDuration(150).start()
+                    view.animate().scaleX(1.0f).scaleY(1.0f).translationY(0f).setDuration(120).start()
                     true
                 }
                 else -> false
@@ -253,32 +256,26 @@ class LiquidGlassBannerView @JvmOverloads constructor(
         val inset = strokePaint.strokeWidth / 2f
         boundsRect.set(inset, inset, w.toFloat() - inset, h.toFloat() - inset)
 
-        // Specular Gradient Outline: Top-left light reflection, bottom-right soft edge
+        // Apple Liquid Glass Specular Gradient: Subtle highlight at top edge fading downward
         val gradient = LinearGradient(
-            0f, 0f, w.toFloat(), h.toFloat(),
+            0f, 0f, 0f, h.toFloat(),
             intArrayOf(
-                Color.parseColor("#60FFFFFF"),
-                Color.parseColor("#26FFFFFF"),
-                Color.parseColor("#0EFFFFFF"),
-                Color.parseColor("#33FFFFFF"),
+                Color.parseColor("#44FFFFFF"), // Subtle glass highlight on top edge
+                Color.parseColor("#22FFFFFF"),
+                Color.parseColor("#14FFFFFF"), // Soft dark rim on bottom
             ),
-            floatArrayOf(0.0f, 0.35f, 0.70f, 1.0f),
+            floatArrayOf(0.0f, 0.4f, 1.0f),
             Shader.TileMode.CLAMP,
         )
         strokePaint.shader = gradient
     }
 
     override fun onDraw(canvas: Canvas) {
-        // 1. Draw Glass Dark Obsidian Body
+        // 1. Draw Pure OLED Black Island Body
         canvas.drawRoundRect(boundsRect, cornerRadius, cornerRadius, bgPaint)
 
-        // 2. Draw Specular Gradient Stroke Border
+        // 2. Draw Ultra-Fine Liquid Glass Specular Rim
         canvas.drawRoundRect(boundsRect, cornerRadius, cornerRadius, strokePaint)
-
-        // 3. Draw Top Inset Glare Arc
-        val glareInset = dp(2f)
-        val glareRect = RectF(boundsRect.left + dp(12f), boundsRect.top + glareInset, boundsRect.right - dp(12f), boundsRect.top + dp(16f))
-        canvas.drawArc(glareRect, 195f, 150f, false, glarePaint)
 
         super.onDraw(canvas)
     }
