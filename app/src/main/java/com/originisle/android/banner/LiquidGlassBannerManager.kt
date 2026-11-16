@@ -46,13 +46,14 @@ object LiquidGlassBannerManager {
         avatarIcon: Icon? = null,
         appIcon: Icon? = null,
         contentIntent: PendingIntent? = null,
+        packageName: String? = null,
         durationMs: Long = DEFAULT_DURATION_MS,
     ) {
         if (!isBannerEnabled(context)) return
 
         mainHandler.post {
             try {
-                showInternal(context, title, text, appLabel, avatarIcon, appIcon, contentIntent, durationMs)
+                showInternal(context, title, text, appLabel, avatarIcon, appIcon, contentIntent, packageName, durationMs)
             } catch (t: Throwable) {
                 Log.e(TAG, "Failed to display Liquid Glass banner", t)
             }
@@ -67,6 +68,7 @@ object LiquidGlassBannerManager {
         avatarIcon: Icon?,
         appIcon: Icon?,
         contentIntent: PendingIntent?,
+        packageName: String?,
         durationMs: Long,
     ) {
         val wm = (context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager) ?: return
@@ -78,7 +80,7 @@ object LiquidGlassBannerManager {
         val currentView = activeView
         if (currentView != null && !isDismissing && currentView.isAttachedToWindow) {
             // Already showing -> update content in-place with a subtle spring bounce
-            currentView.bind(title, text, appLabel, avatarIcon, appIcon, contentIntent)
+            currentView.bind(title, text, appLabel, avatarIcon, appIcon, contentIntent, packageName)
             currentView.animate()
                 .scaleX(1.025f).scaleY(1.025f)
                 .setDuration(120)
@@ -98,7 +100,7 @@ object LiquidGlassBannerManager {
         }
 
         val bannerView = LiquidGlassBannerView(context)
-        bannerView.bind(title, text, appLabel, avatarIcon, appIcon, contentIntent)
+        bannerView.bind(title, text, appLabel, avatarIcon, appIcon, contentIntent, packageName)
         bannerView.onDismissRequested = { dismiss() }
 
         val dm = context.resources.displayMetrics

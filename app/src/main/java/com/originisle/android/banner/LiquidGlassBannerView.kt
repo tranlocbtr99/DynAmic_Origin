@@ -1,13 +1,17 @@
 package com.originisle.android.banner
 
+import android.app.ActivityOptions
 import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.graphics.*
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.Icon
 import android.os.Build
+import android.os.Bundle
 import android.text.TextUtils
 import android.util.AttributeSet
+import android.util.Log
 import android.view.*
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -55,8 +59,11 @@ class LiquidGlassBannerView @JvmOverloads constructor(
     private var messageView: TextView
 
     private var contentIntent: PendingIntent? = null
+    private var targetPackage: String? = null
     var onDismissRequested: (() -> Unit)? = null
 
+    private var touchDownTime = 0L
+    private var touchStartX = 0f
     private var touchStartY = 0f
     private var isDragging = false
 
@@ -162,8 +169,6 @@ class LiquidGlassBannerView @JvmOverloads constructor(
         rootLayout.addView(textContainer)
 
         addView(rootLayout, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
-
-        setupTouchInteraction()
     }
 
     private fun createBadgeBackground(): Drawable {
@@ -181,8 +186,10 @@ class LiquidGlassBannerView @JvmOverloads constructor(
         avatarIcon: Icon?,
         appIcon: Icon?,
         pi: PendingIntent?,
+        packageName: String? = null,
     ) {
         this.contentIntent = pi
+        this.targetPackage = packageName
         titleView.text = title.ifBlank { appLabel }
         messageView.text = message
         val isVi = com.originisle.android.ui.Lang.isVi(context)
@@ -209,50 +216,127 @@ class LiquidGlassBannerView @JvmOverloads constructor(
         }
     }
 
-    private fun setupTouchInteraction() {
-        setOnTouchListener { view, event ->
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    touchStartY = event.rawY
-                    isDragging = false
-                    view.animate().scaleX(0.97f).scaleY(0.97f).setDuration(100).start()
-                    true
+    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
+        // Intercept all touches within the banner to guarantee gestures and taps work reliably
+        return true
+    }
+
+    override fun performClick(): Boolean {
+        super.performClick()
+        executeTapAction()
+        onDismissRequested?.invoke()
+        return true
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        val touchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                touchDownTime = System.currentTimeMillis()
+                touchStartX = event.rawX
+                touchStartY = event.rawY
+                isDragging = false
+                animate().scaleX(0.97f).scaleY(0.97f).setDuration(80).start()
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val deltaY = event.rawY - touchStartY
+                if (deltaY < -dp(6f)) {
+                    isDragging = true
+                    translationY = deltaY
                 }
-                MotionEvent.ACTION_MOVE -> {
-                    val deltaY = event.rawY - touchStartY
-                    if (deltaY < -dp(6f)) {
-                        isDragging = true
-                        view.translationY = deltaY
+                return true
+            }
+            MotionEvent.ACTION_UP -> {
+                animate().scaleX(1.0f).scaleY(1.0f).setDuration(120).start()
+                val deltaX = event.rawX - touchStartX
+                val deltaY = event.rawY - touchStartY
+                val totalDist = Math.hypot(deltaX.toDouble(), deltaY.toDouble()).toFloat()
+                val elapsed = System.currentTimeMillis() - touchDownTime
+
+                if (isDragging && deltaY < -dp(20f)) {
+                    // Swiped up: dismiss immediately
+                    performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                    onDismissRequested?.invoke()
+                } else if (elapsed < 800 && totalDist < (touchSlop * 2.5f).coerceAtLeast(dp(28f))) {
+                    // User tapped: trigger action
+                    performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+                    executeTapAction()
+                    onDismissRequested?.invoke()
+                } else {
+                    // Snap back down smoothly
+                    animate().translationY(0f).setDuration(180).start()
+                }
+                return true
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                animate().scaleX(1.0f).scaleY(1.0f).translationY(0f).setDuration(120).start()
+                return true
+            }
+        }
+        return super.onTouchEvent(event)
+    }
+
+    private fun executeTapAction() {
+        var launched = false
+        val pi = contentIntent
+
+        // 1. Prepare ActivityOptions with BAL exemption for Android 14+ (API 34, 35, 36)
+        val optionsBundle: Bundle? = try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                ActivityOptions.makeBasic().apply {
+                    setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+                }.toBundle()
+            } else {
+                ActivityOptions.makeBasic().toBundle()
+            }
+        } catch (t: Throwable) {
+            Log.w("LiquidGlassBanner", "Could not build ActivityOptions", t)
+            null
+        }
+
+        // 2. Try sending PendingIntent
+        if (pi != null) {
+            try {
+                val fillInIntent = Intent().apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                pi.send(context, 0, fillInIntent, null, null, null, optionsBundle)
+                launched = true
+                Log.d("LiquidGlassBanner", "Successfully sent PendingIntent: $pi")
+            } catch (t: Throwable) {
+                Log.w("LiquidGlassBanner", "pi.send failed with options: ${t.message}")
+                try {
+                    val fillInIntent = Intent().apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
-                    true
+                    pi.send(context, 0, fillInIntent)
+                    launched = true
+                    Log.d("LiquidGlassBanner", "Successfully sent PendingIntent without options fallback")
+                } catch (t2: Throwable) {
+                    Log.w("LiquidGlassBanner", "PendingIntent secondary attempt also failed: ${t2.message}")
                 }
-                MotionEvent.ACTION_UP -> {
-                    view.animate().scaleX(1.0f).scaleY(1.0f).setDuration(120).start()
-                    val deltaY = event.rawY - touchStartY
-                    if (isDragging && deltaY < -dp(20f)) {
-                        // User swiped up: dismiss immediately!
-                        performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                        onDismissRequested?.invoke()
-                    } else if (abs(deltaY) < dp(10f)) {
-                        // User tapped: trigger action
-                        performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
-                        try {
-                            contentIntent?.send()
-                        } catch (t: Throwable) {
-                            t.printStackTrace()
-                        }
-                        onDismissRequested?.invoke()
+            }
+        }
+
+        // 3. Fallback: If PendingIntent failed or wasn't provided, launch the target application directly
+        val pkg = targetPackage
+        if (!launched && !pkg.isNullOrBlank()) {
+            try {
+                val pm = context.packageManager
+                val launchIntent = pm.getLaunchIntentForPackage(pkg)?.apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                }
+                if (launchIntent != null) {
+                    if (optionsBundle != null) {
+                        context.startActivity(launchIntent, optionsBundle)
                     } else {
-                        // Snap back down smoothly
-                        view.animate().translationY(0f).setDuration(180).start()
+                        context.startActivity(launchIntent)
                     }
-                    true
+                    Log.d("LiquidGlassBanner", "Launched target app directly as fallback: $pkg")
                 }
-                MotionEvent.ACTION_CANCEL -> {
-                    view.animate().scaleX(1.0f).scaleY(1.0f).translationY(0f).setDuration(120).start()
-                    true
-                }
-                else -> false
+            } catch (t: Throwable) {
+                Log.e("LiquidGlassBanner", "Failed to launch package $pkg fallback", t)
             }
         }
     }

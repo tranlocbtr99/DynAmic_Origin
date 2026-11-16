@@ -79,6 +79,7 @@ object MessageCard {
                 avatarIcon = face,
                 appIcon = appIcon,
                 contentIntent = clickIntent,
+                packageName = sbn.packageName,
             )
         }
 

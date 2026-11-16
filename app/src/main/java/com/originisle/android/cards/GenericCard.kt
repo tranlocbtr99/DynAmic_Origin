@@ -130,6 +130,7 @@ object GenericCard {
                 avatarIcon = pillIcon ?: appIcon,
                 appIcon = appIcon,
                 contentIntent = clickIntent,
+                packageName = sbn.packageName,
             )
         }
 

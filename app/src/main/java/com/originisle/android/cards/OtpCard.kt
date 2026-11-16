@@ -59,6 +59,7 @@ object OtpCard {
                 avatarIcon = appIcon,
                 appIcon = appIcon,
                 contentIntent = copy,
+                packageName = sbn.packageName,
             )
         }
 
