@@ -34,12 +34,15 @@ class LiquidGlassBannerView @JvmOverloads constructor(
 
     private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = Color.BLACK // Pure OLED Black matching the camera punch-hole perfectly
+    }
+
+    private val glassSheenPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
     }
 
     private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeWidth = dp(0.75f) // Ultra-fine specular glass rim
+        strokeWidth = dp(0.85f) // Ultra-fine specular glass rim
     }
 
     private val boundsRect = RectF()
@@ -163,8 +166,8 @@ class LiquidGlassBannerView @JvmOverloads constructor(
     private fun createBadgeBackground(): Drawable {
         val shape = android.graphics.drawable.GradientDrawable()
         shape.shape = android.graphics.drawable.GradientDrawable.OVAL
-        shape.setColor(Color.BLACK) // Pure black separator ring around the badge
-        shape.setStroke(dpI(1f), Color.parseColor("#222226"))
+        shape.setColor(Color.parseColor("#E612141A")) // Translucent dark glass ring
+        shape.setStroke(dpI(1f), Color.parseColor("#33FFFFFF"))
         return shape
     }
 
@@ -256,25 +259,50 @@ class LiquidGlassBannerView @JvmOverloads constructor(
         val inset = strokePaint.strokeWidth / 2f
         boundsRect.set(inset, inset, w.toFloat() - inset, h.toFloat() - inset)
 
-        // Apple Liquid Glass Specular Gradient: Subtle highlight at top edge fading downward
-        val gradient = LinearGradient(
+        // 1. Translucent Liquid Smoke Glass Body: ~72-76% opacity for an authentic liquid glass feel
+        bgPaint.shader = LinearGradient(
             0f, 0f, 0f, h.toFloat(),
             intArrayOf(
-                Color.parseColor("#44FFFFFF"), // Subtle glass highlight on top edge
-                Color.parseColor("#22FFFFFF"),
-                Color.parseColor("#14FFFFFF"), // Soft dark rim on bottom
+                Color.parseColor("#C4181B24"), // 77% dark obsidian glass at top
+                Color.parseColor("#A60E1016"), // 65% deep smoke glass at bottom
+            ),
+            floatArrayOf(0.0f, 1.0f),
+            Shader.TileMode.CLAMP,
+        )
+
+        // 2. Liquid Glass Surface Sheen: Delicate specular light wash across the glass surface
+        glassSheenPaint.shader = LinearGradient(
+            0f, 0f, 0f, h.toFloat() * 0.7f,
+            intArrayOf(
+                Color.parseColor("#33FFFFFF"), // 20% specular sheen at top
+                Color.parseColor("#0AFFFFFF"), // 4% subtle sheen
+                Color.parseColor("#00000000"), // transparent
+            ),
+            floatArrayOf(0.0f, 0.45f, 1.0f),
+            Shader.TileMode.CLAMP,
+        )
+
+        // 3. Apple Specular Glass Border: Bright specular highlight at top edge fading to soft rim
+        strokePaint.shader = LinearGradient(
+            0f, 0f, 0f, h.toFloat(),
+            intArrayOf(
+                Color.parseColor("#66FFFFFF"), // 40% crisp white reflection at top
+                Color.parseColor("#26FFFFFF"), // 15% glass edge
+                Color.parseColor("#12FFFFFF"), // 7% subtle bottom rim
             ),
             floatArrayOf(0.0f, 0.4f, 1.0f),
             Shader.TileMode.CLAMP,
         )
-        strokePaint.shader = gradient
     }
 
     override fun onDraw(canvas: Canvas) {
-        // 1. Draw Pure OLED Black Island Body
+        // 1. Draw Translucent Liquid Glass Body
         canvas.drawRoundRect(boundsRect, cornerRadius, cornerRadius, bgPaint)
 
-        // 2. Draw Ultra-Fine Liquid Glass Specular Rim
+        // 2. Draw Surface Specular Sheen (Glossy reflection)
+        canvas.drawRoundRect(boundsRect, cornerRadius, cornerRadius, glassSheenPaint)
+
+        // 3. Draw Ultra-Fine Specular Glass Rim
         canvas.drawRoundRect(boundsRect, cornerRadius, cornerRadius, strokePaint)
 
         super.onDraw(canvas)
