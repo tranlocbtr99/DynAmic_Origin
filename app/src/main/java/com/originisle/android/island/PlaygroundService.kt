@@ -348,16 +348,16 @@ class PlaygroundService : Service() {
 
         var forceShow = when {
             isIdleCard -> false
-            isCall -> true
-            isLiquidGlassHandled || bannerStyle == "liquid_glass" || bannerStyle == "capsule_only" -> false
             isUpdatingExisting -> false
+            isLiquidGlassHandled || bannerStyle == "liquid_glass" || bannerStyle == "capsule_only" -> false
+            isCall -> true
             else -> intent.getBooleanExtra("oi_force_show", false) || expandOnNotif
         }
         var forceShowCard = when {
             isIdleCard -> false
-            isCall -> true
-            isLiquidGlassHandled || bannerStyle == "liquid_glass" || bannerStyle == "capsule_only" -> false
             isUpdatingExisting -> false
+            isLiquidGlassHandled || bannerStyle == "liquid_glass" || bannerStyle == "capsule_only" -> false
+            isCall -> true
             else -> intent.getBooleanExtra("oi_force_show_card", false) || expandOnNotif
         }
 
@@ -368,7 +368,7 @@ class PlaygroundService : Service() {
         val suppressExpand = dedupEnabled && sourcePkg != null &&
             (now - (lastCastByApp[sourcePkg] ?: 0L)) < cooldownSec * 1000L
         if (dedupEnabled && sourcePkg != null && !suppressExpand) lastCastByApp[sourcePkg] = now
-        if (suppressExpand && !isCall) { forceShow = false; forceShowCard = false }
+        if (suppressExpand) { forceShow = false; forceShowCard = false }
         val dismissWhenKill = if (isIdleCard) false else intent.getBooleanExtra("oi_dismiss_when_kill", true)
         val keepScreenOn = intent.getBooleanExtra("oi_keep_screen_on", false)
         val disableInvert = intent.getBooleanExtra("oi_disable_invert", true)
