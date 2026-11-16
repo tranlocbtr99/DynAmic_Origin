@@ -104,8 +104,8 @@ object LiquidGlassBannerManager {
         val dm = context.resources.displayMetrics
         val targetWidth = min((dm.widthPixels * 0.88f).toInt(), (368 * dm.density).toInt())
         val statusBarHeight = getStatusBarHeight(context)
-        // Offset downwards so the liquid glass banner never overlaps the native status bar island
-        val topMargin = statusBarHeight + Math.round(10 * dm.density)
+        // Offset well below the status bar so it never touches or overlaps the native island
+        val topMargin = statusBarHeight + Math.round(15 * dm.density)
 
         val flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or

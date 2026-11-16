@@ -32,6 +32,11 @@ class LiquidGlassBannerView @JvmOverloads constructor(
     private fun dp(v: Float): Float = v * density
     private fun dpI(v: Float): Int = Math.round(v * density)
 
+    private val opticalRefractPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = Color.parseColor("#2B121826") // Subtle 17% optical refraction tint for contrast
+    }
+
     private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
     }
@@ -42,7 +47,7 @@ class LiquidGlassBannerView @JvmOverloads constructor(
 
     private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeWidth = dp(0.75f) // Ultra-fine crystal specular glass rim
+        strokeWidth = dp(1.0f) // Refractive specular liquid glass rim
     }
 
     private val boundsRect = RectF()
@@ -169,8 +174,8 @@ class LiquidGlassBannerView @JvmOverloads constructor(
     private fun createBadgeBackground(): Drawable {
         val shape = android.graphics.drawable.GradientDrawable()
         shape.shape = android.graphics.drawable.GradientDrawable.OVAL
-        shape.setColor(Color.parseColor("#B3000000")) // Crystal dark glass separator ring
-        shape.setStroke(dpI(1f), Color.parseColor("#4DFFFFFF"))
+        shape.setColor(Color.parseColor("#4DFFFFFF")) // Translucent white liquid glass ring
+        shape.setStroke(dpI(1f), Color.parseColor("#B3FFFFFF"))
         return shape
     }
 
@@ -262,36 +267,38 @@ class LiquidGlassBannerView @JvmOverloads constructor(
         val inset = strokePaint.strokeWidth / 2f
         boundsRect.set(inset, inset, w.toFloat() - inset, h.toFloat() - inset)
 
-        // 1. Crystal Clear Liquid Glass: Pure black translucent gradient without any muddy grey tints
-        // Top is light & airy (35% black tint), bottom is slightly richer (52% black tint)
+        // 1. Pure Liquid White Glass Body: Translucent, shimmering, crystal-clear white glass
+        // Absolutely zero dark or muddy grey tones!
         bgPaint.shader = LinearGradient(
             0f, 0f, 0f, h.toFloat(),
             intArrayOf(
-                Color.parseColor("#59000000"), // 35% crystal clear glass
-                Color.parseColor("#85000000"), // 52% pure deep glass
+                Color.parseColor("#48FFFFFF"), // 28% translucent white glass at top
+                Color.parseColor("#26FFFFFF"), // 15% clear glass in middle
+                Color.parseColor("#14FFFFFF"), // 8% crystal clear glass at bottom
             ),
-            floatArrayOf(0.0f, 1.0f),
+            floatArrayOf(0.0f, 0.5f, 1.0f),
             Shader.TileMode.CLAMP,
         )
 
-        // 2. Crystal Specular Sheen: Fine light reflection only along the top 12dp rim
+        // 2. Liquid Glass Gloss Sheen: Delicate water-like reflection across the upper surface
         glassSheenPaint.shader = LinearGradient(
-            0f, 0f, 0f, dp(12f),
+            0f, 0f, 0f, h.toFloat() * 0.55f,
             intArrayOf(
-                Color.parseColor("#38FFFFFF"), // 22% delicate sheen right at the top edge
-                Color.parseColor("#00FFFFFF"), // fades cleanly into transparent body
+                Color.parseColor("#40FFFFFF"), // 25% glossy sheen at top edge
+                Color.parseColor("#12FFFFFF"), // 7% soft water sheen
+                Color.parseColor("#00FFFFFF"), // transparent
             ),
-            floatArrayOf(0.0f, 1.0f),
+            floatArrayOf(0.0f, 0.45f, 1.0f),
             Shader.TileMode.CLAMP,
         )
 
-        // 3. Apple Crystal Glass Border: Crisp diamond-cut specular highlight at top edge
+        // 3. Apple Liquid Glass Specular Rim: Sparkling, diamond-bright refractive border
         strokePaint.shader = LinearGradient(
             0f, 0f, 0f, h.toFloat(),
             intArrayOf(
-                Color.parseColor("#88FFFFFF"), // 53% crystal sharp reflection at top
-                Color.parseColor("#33FFFFFF"), // 20% clear glass edge
-                Color.parseColor("#14FFFFFF"), // 8% bottom rim
+                Color.parseColor("#E6FFFFFF"), // 90% brilliant white reflection at top edge
+                Color.parseColor("#59FFFFFF"), // 35% refractive glass edge
+                Color.parseColor("#26FFFFFF"), // 15% subtle bottom rim
             ),
             floatArrayOf(0.0f, 0.35f, 1.0f),
             Shader.TileMode.CLAMP,
@@ -299,13 +306,16 @@ class LiquidGlassBannerView @JvmOverloads constructor(
     }
 
     override fun onDraw(canvas: Canvas) {
-        // 1. Draw Translucent Liquid Glass Body
+        // 1. Subtle optical refraction base (ensures legibility on bright backgrounds without adding darkness)
+        canvas.drawRoundRect(boundsRect, cornerRadius, cornerRadius, opticalRefractPaint)
+
+        // 2. Translucent Liquid White Glass Body
         canvas.drawRoundRect(boundsRect, cornerRadius, cornerRadius, bgPaint)
 
-        // 2. Draw Surface Specular Sheen (Glossy reflection)
+        // 3. Liquid Glass Surface Sheen (Glossy reflection)
         canvas.drawRoundRect(boundsRect, cornerRadius, cornerRadius, glassSheenPaint)
 
-        // 3. Draw Ultra-Fine Specular Glass Rim
+        // 4. Brilliant Liquid Glass Specular Rim
         canvas.drawRoundRect(boundsRect, cornerRadius, cornerRadius, strokePaint)
 
         super.onDraw(canvas)
