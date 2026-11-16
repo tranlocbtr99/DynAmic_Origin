@@ -335,14 +335,32 @@ class PlaygroundService : Service() {
             if (hideFromShade) it and OriginIslandConstants.DISPLAY_NOTIFICATION.inv() else it
         }
         val isIdleCard = (id == 0xee84) || intent.getBooleanExtra("oi_is_idle_ticker", false)
+        val isCall = intent.getBooleanExtra("is_call", false)
+        val isLiquidGlassHandled = intent.getBooleanExtra("is_liquid_glass_handled", false)
+        val bannerStyle = getSharedPreferences(PREFS_NAME, 0).getString("notif_banner_style", "liquid_glass")
+        val isUpdatingExisting = activeIds.contains(id)
+        val expandOnNotif = getSharedPreferences(PREFS_NAME, 0).getBoolean("cast_expand_on_notification", true)
+
         val showNotify = if (isIdleCard) false else (intent.getBooleanExtra("oi_show_notify", true) &&
             !getSharedPreferences(PREFS_NAME, 0).getBoolean("cast_hide_from_shade", false))
         val islandNotify = if (isIdleCard) false else intent.getBooleanExtra("oi_island_notify", false)
         val islandShowTime = intent.getIntExtra("oi_island_show_time", 0)
-        var forceShow = if (isIdleCard) false else (intent.getBooleanExtra("oi_force_show", false) ||
-            getSharedPreferences(PREFS_NAME, 0).getBoolean("cast_expand_on_notification", true))
-        var forceShowCard = if (isIdleCard) false else (intent.getBooleanExtra("oi_force_show_card", false) ||
-            getSharedPreferences(PREFS_NAME, 0).getBoolean("cast_expand_on_notification", true))
+
+        var forceShow = when {
+            isIdleCard -> false
+            isCall -> true
+            isLiquidGlassHandled || bannerStyle == "liquid_glass" || bannerStyle == "capsule_only" -> false
+            isUpdatingExisting -> false
+            else -> intent.getBooleanExtra("oi_force_show", false) || expandOnNotif
+        }
+        var forceShowCard = when {
+            isIdleCard -> false
+            isCall -> true
+            isLiquidGlassHandled || bannerStyle == "liquid_glass" || bannerStyle == "capsule_only" -> false
+            isUpdatingExisting -> false
+            else -> intent.getBooleanExtra("oi_force_show_card", false) || expandOnNotif
+        }
+
         val sourcePkg = intent.getStringExtra("source_pkg")
         val dedupEnabled = getSharedPreferences(PREFS_NAME, 0).getBoolean("cast_dedup_same_app", true)
         val cooldownSec = getSharedPreferences(PREFS_NAME, 0).getInt("cast_dedup_cooldown_sec", 10)
@@ -350,7 +368,7 @@ class PlaygroundService : Service() {
         val suppressExpand = dedupEnabled && sourcePkg != null &&
             (now - (lastCastByApp[sourcePkg] ?: 0L)) < cooldownSec * 1000L
         if (dedupEnabled && sourcePkg != null && !suppressExpand) lastCastByApp[sourcePkg] = now
-        if (suppressExpand) { forceShow = false; forceShowCard = false }
+        if (suppressExpand && !isCall) { forceShow = false; forceShowCard = false }
         val dismissWhenKill = if (isIdleCard) false else intent.getBooleanExtra("oi_dismiss_when_kill", true)
         val keepScreenOn = intent.getBooleanExtra("oi_keep_screen_on", false)
         val disableInvert = intent.getBooleanExtra("oi_disable_invert", true)

@@ -46,9 +46,26 @@ object OtpCard {
             Icon.createWithResource(app, R.drawable.ic_key), "Copy", copy,
         ).build()
 
+        val bannerHandled = com.originisle.android.banner.LiquidGlassBannerManager.isBannerEnabled(app)
+        if (bannerHandled) {
+            val isVi = com.originisle.android.ui.Lang.isVi(app)
+            val bannerTitle = if (isVi) "Mã xác thực: ${spaced(code)}" else "Verification code: ${spaced(code)}"
+            val bannerSub = if (isVi) "Chạm để sao chép mã · $appLabel" else "Tap to copy code · $appLabel"
+            com.originisle.android.banner.LiquidGlassBannerManager.show(
+                context = app,
+                title = bannerTitle,
+                text = bannerSub,
+                appLabel = appLabel,
+                avatarIcon = appIcon,
+                appIcon = appIcon,
+                contentIntent = copy,
+            )
+        }
+
         val intent = Intent(app, PlaygroundService::class.java).apply {
             action = PlaygroundService.ACTION_START
             putExtra("id", id)
+            putExtra("is_liquid_glass_handled", bannerHandled)
             putExtra("oi_scene", "NAVIGATION")
             putExtra("oi_template", OriginIslandConstants.TEMPLATE_BASE) // 4
             putExtra("oi_right_template", OriginIslandConstants.TEMPLATE_RIGHT_ISLAND_CAPSULE_TEXT) // 6

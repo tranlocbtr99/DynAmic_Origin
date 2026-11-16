@@ -10,9 +10,12 @@ import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.drawable.Icon
+import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSession
 import android.media.session.MediaSessionManager
+import android.os.Build
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.service.notification.NotificationListenerService
@@ -264,6 +267,44 @@ class NotificationCastListener : NotificationListenerService() {
      * deliberately re-cast with an unchanged postTime (see [pollRunnable]).
      */
     private val lastCastPostTime = ConcurrentHashMap<String, Long>()
+    private val lastCastContentHash = ConcurrentHashMap<String, String>()
+    private val lastCastContentTime = ConcurrentHashMap<String, Long>()
+    private val lastMediaStateKey = ConcurrentHashMap<Int, String>()
+    private val lastMediaPostTime = ConcurrentHashMap<Int, Long>()
+
+    /**
+     * Safely extract a framework [MediaSession.Token] from notification extras,
+     * seamlessly handling both direct framework tokens and support/AndroidX [MediaSessionCompat.Token]
+     * wrapped tokens (e.g. Spotify, Zing MP3, Apple Music, SoundCloud, Chrome).
+     */
+    private fun extractMediaToken(extras: Bundle): MediaSession.Token? {
+        // 1. Direct framework token
+        val direct = runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                extras.getParcelable(NotificationCompat.EXTRA_MEDIA_SESSION, MediaSession.Token::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                extras.getParcelable(NotificationCompat.EXTRA_MEDIA_SESSION) as? MediaSession.Token
+            }
+        }.getOrNull()
+        if (direct != null) return direct
+
+        // 2. Untyped extraction -> check if it's MediaSessionCompat.Token and unwrap via reflection
+        val raw = runCatching {
+            @Suppress("DEPRECATION")
+            extras.get(NotificationCompat.EXTRA_MEDIA_SESSION)
+        }.getOrNull() ?: return null
+
+        if (raw is MediaSession.Token) return raw
+
+        val tokenMethod = runCatching { raw.javaClass.getMethod("getToken") }.getOrNull()
+        if (tokenMethod != null) {
+            val unwrapped = runCatching { tokenMethod.invoke(raw) }.getOrNull()
+            if (unwrapped is MediaSession.Token) return unwrapped
+        }
+
+        return null
+    }
 
     private val pollRunnable = object : Runnable {
         override fun run() {
@@ -274,17 +315,33 @@ class NotificationCastListener : NotificationListenerService() {
                 val isTransientCardActive = (System.currentTimeMillis() - PlaygroundService.lastTransientCardPostTime) < 6000L
                 activeNotifications?.forEach { sbn ->
                     val extras = sbn.notification.extras
-                    val token = extras.getParcelable(
-                        NotificationCompat.EXTRA_MEDIA_SESSION, MediaSession.Token::class.java,
-                    )
+                    val token = extractMediaToken(extras)
+                    val isMediaCategory = sbn.notification.category == NotificationCompat.CATEGORY_TRANSPORT ||
+                        extras.getString(NotificationCompat.EXTRA_TEMPLATE)?.contains("MediaStyle") == true
                     val controller = token?.let { MediaController(this@NotificationCastListener, it) }
-                        ?: if (castMedia && isAppEnabled(prefs, sbn.packageName)) findMediaControllerFallback(sbn.packageName) else null
+                        ?: if (castMedia && isAppEnabled(prefs, sbn.packageName) && (sbn.isOngoing || isMediaCategory)) {
+                            findMediaControllerFallback(sbn.packageName)
+                        } else null
                     if (controller != null) {
                         if (castMedia && !isTransientCardActive && isAppEnabled(prefs, sbn.packageName)) {
-                            MediaCard.post(
-                                applicationContext, sbn,
-                                controller,
-                            )
+                            val castId = IconCache.castIdFor(sbn)
+                            val title = controller.metadata?.getString(MediaMetadata.METADATA_KEY_TITLE).orEmpty()
+                            val artist = controller.metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST).orEmpty()
+                            val playbackState = controller.playbackState?.state ?: -1
+                            val stateKey = "$title|$artist|$playbackState"
+                            val now = System.currentTimeMillis()
+                            val lastKey = lastMediaStateKey[castId]
+                            val lastTime = lastMediaPostTime[castId] ?: 0L
+
+                            // Only push IPC update when track/state actually changed or after 30s heartbeat
+                            if (stateKey != lastKey || (now - lastTime) > 30000L) {
+                                lastMediaStateKey[castId] = stateKey
+                                lastMediaPostTime[castId] = now
+                                MediaCard.post(
+                                    applicationContext, sbn,
+                                    controller,
+                                )
+                            }
                         }
                     } else if (castNotifs && sbn.isOngoing &&
                         extras.getBoolean(NotificationCompat.EXTRA_SHOW_CHRONOMETER, false)
@@ -442,7 +499,7 @@ class NotificationCastListener : NotificationListenerService() {
 
         val n = sbn.notification
         val extras = n.extras
-        val token = extras.getParcelable(NotificationCompat.EXTRA_MEDIA_SESSION, MediaSession.Token::class.java)
+        val token = extractMediaToken(extras)
         val template = extras.getString(NotificationCompat.EXTRA_TEMPLATE)
         val isCall = n.category == NotificationCompat.CATEGORY_CALL ||
             template == "android.app.Notification\$CallStyle" ||
@@ -453,14 +510,15 @@ class NotificationCastListener : NotificationListenerService() {
 
         // Media sessions get the dedicated media path. If the notification has no session token
         // (some players, e.g. Firefox playing a video, omit it), fall back to matching an active
-        // MediaSessionManager session by package name — ongoing only, so an app's ordinary
-        // notifications (e.g. an X DM while a video plays) aren't mistaken for its player.
+        // MediaSessionManager session by package name — ongoing or media style.
         // Resolved even with media casting off: otherwise the player notification falls through
         // below and gets cast as a generic "ongoing" card anyway.
         if (!isCall) {
             val isOngoingNotif = (n.flags and Notification.FLAG_ONGOING_EVENT) != 0
+            val isMediaCategory = n.category == NotificationCompat.CATEGORY_TRANSPORT ||
+                template?.contains("MediaStyle") == true
             val controller = token?.let { MediaController(this, it) }
-                ?: if (isOngoingNotif) findMediaControllerFallback(sbn.packageName) else null
+                ?: if (isOngoingNotif || isMediaCategory) findMediaControllerFallback(sbn.packageName) else null
             if (controller != null) {
                 if (!castMedia) { log(sbn, "skipped — media, media casting off", false); return }
                 log(sbn, "cast — media player", true)
@@ -554,6 +612,19 @@ class NotificationCastListener : NotificationListenerService() {
             isOngoing -> "ongoing"
             else -> "message"
         }
+
+        // Dedup content check to prevent flickering/expanding loops on repeated notification events
+        val contentHash = "${sbn.packageName}|${sbn.id}|${extras.getCharSequence(NotificationCompat.EXTRA_TITLE)}|${extras.getCharSequence(NotificationCompat.EXTRA_TEXT)}|${extras.getCharSequence(NotificationCompat.EXTRA_BIG_TEXT)}"
+        val lastHash = lastCastContentHash[sbn.key]
+        val lastTime = lastCastContentTime[sbn.key] ?: 0L
+        val now = System.currentTimeMillis()
+        if (!isCall && !hasProgress && lastHash == contentHash && (now - lastTime) < 8000L) {
+            log(sbn, "skipped — duplicate content within cooldown", false)
+            return
+        }
+        lastCastContentHash[sbn.key] = contentHash
+        lastCastContentTime[sbn.key] = now
+
         if (kind == "message" && lastCastPostTime.put(sbn.key, sbn.postTime) == sbn.postTime) {
             log(sbn, "skipped — duplicate delivery, unchanged", false); return
         }

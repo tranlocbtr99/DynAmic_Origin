@@ -65,11 +65,28 @@ object MessageCard {
         val subtext = if (msg.count > 1) "$appLabel · ${msg.count} new messages" else appLabel
 
         val buttons = GenericCard.shownActions(context, n)
+        val clickIntent = n.contentIntent ?: fallbackClickIntent(context, sbn.packageName)
+
+        val bannerHandled = com.originisle.android.banner.LiquidGlassBannerManager.isBannerEnabled(context)
+        if (bannerHandled) {
+            val bannerTitle = msg.group ?: msg.sender
+            val bannerText = if (msg.group != null) "${msg.sender}: ${msg.text}" else msg.text
+            com.originisle.android.banner.LiquidGlassBannerManager.show(
+                context = context,
+                title = bannerTitle,
+                text = bannerText,
+                appLabel = appLabel,
+                avatarIcon = face,
+                appIcon = appIcon,
+                contentIntent = clickIntent,
+            )
+        }
 
         val intent = Intent(context, PlaygroundService::class.java).apply {
             action = PlaygroundService.ACTION_START
             putExtra("id", id)
             putExtra("is_ongoing", false)
+            putExtra("is_liquid_glass_handled", bannerHandled)
             putExtra("oi_scene", "NAVIGATION")
             putExtra("oi_template",
                 if (buttons.size >= 2) OriginIslandConstants.TEMPLATE_BUTTONS // 8
@@ -98,7 +115,7 @@ object MessageCard {
             putExtra("status_chip_text", msg.text.clip(LINE_MAX_CHARS))
             putExtra("icon_res", R.mipmap.ic_launcher_round)
             putExtra("when", n.`when`)
-            putExtra("source_content_intent", n.contentIntent ?: fallbackClickIntent(context, sbn.packageName))
+            putExtra("source_content_intent", clickIntent)
             if (buttons.isNotEmpty()) putParcelableArrayListExtra("actions", ArrayList(buttons))
         }
         context.startService(intent)

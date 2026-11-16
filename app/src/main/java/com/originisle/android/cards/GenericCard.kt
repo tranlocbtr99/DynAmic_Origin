@@ -118,10 +118,26 @@ object GenericCard {
         val liveUpdate = hasProgress &&
             extras.getString(NotificationCompat.EXTRA_TEMPLATE) == "android.app.Notification\$ProgressStyle"
 
+        val clickIntent = n.contentIntent ?: fallbackClickIntent(context, sbn.packageName)
+        val bannerHandled = !isLive && !isCall && com.originisle.android.banner.LiquidGlassBannerManager.isBannerEnabled(context)
+        if (bannerHandled) {
+            val bannerContent = text.ifBlank { bigText }.ifBlank { subText }.ifBlank { finalChip }.ifBlank { appLabel }
+            com.originisle.android.banner.LiquidGlassBannerManager.show(
+                context = context,
+                title = title,
+                text = bannerContent,
+                appLabel = appLabel,
+                avatarIcon = pillIcon ?: appIcon,
+                appIcon = appIcon,
+                contentIntent = clickIntent,
+            )
+        }
+
         val intent = Intent(context, PlaygroundService::class.java).apply {
             action = PlaygroundService.ACTION_START
             putExtra("id", id)
             putExtra("is_ongoing", isLive || isCall)
+            putExtra("is_liquid_glass_handled", bannerHandled)
             putExtra("oi_scene", "NAVIGATION")
             if (isCall) {
                 putExtra("is_call", true)
@@ -143,7 +159,7 @@ object GenericCard {
             putExtra("icon_res", R.mipmap.ic_launcher_round)
             putExtra("when", n.`when`)
             // vivo requires a content intent; fall back to launching the source app.
-            putExtra("source_content_intent", n.contentIntent ?: fallbackClickIntent(context, sbn.packageName))
+            putExtra("source_content_intent", clickIntent)
             if (buttons.isNotEmpty()) putParcelableArrayListExtra("actions", ArrayList(buttons))
             style?.iconStatus?.let { putExtra("oi_icon_status_type", it) }
             pillIcon?.let {

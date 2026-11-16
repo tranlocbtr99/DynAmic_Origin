@@ -67,18 +67,14 @@ object MediaCard {
         albumArt?.let { IconCache.activeLargeBitmaps[id] = it }
         val waveColors = waveColorsFrom(albumArt)
 
+        val isVi = com.originisle.android.ui.Lang.isVi(context)
         val showChrono = n.extras.getBoolean(NotificationCompat.EXTRA_SHOW_CHRONOMETER, false)
         val chip = if (showChrono && n.`when` > 0) {
             formatElapsed(abs(System.currentTimeMillis() - n.`when`) / 1000)
         } else if (playing) {
-            "Playing"
+            if (isVi) "Đang phát" else "Playing"
         } else {
-            // Paused pill is icon-only — no "Paused" text, no source-app icon standing in for it.
-            // A single space, not "": OriginIslandBuilder's capsule content is always populated
-            // unconditionally, and a genuinely empty value risks the same silent-rejection behaviour
-            // documented for empty notification title/text (already worked around elsewhere in
-            // OriginIslandBuilder's template-4 path the same way).
-            " "
+            if (isVi) "Tạm dừng" else "Paused"
         }
 
         fun mediaAction(action: String) = PendingIntent.getBroadcast(
@@ -104,19 +100,30 @@ object MediaCard {
         val actions = arrayListOf<Notification.Action>()
         if (hasPrev) {
             actions.add(
-                makeAction(context, R.drawable.ic_media_prev, prevSourceAction ?: mediaAction(MediaControlReceiver.ACTION_PREV)),
+                makeAction(
+                    context,
+                    if (isVi) "Trước" else "Prev",
+                    R.drawable.ic_media_prev,
+                    prevSourceAction ?: mediaAction(MediaControlReceiver.ACTION_PREV),
+                ),
             )
         }
         actions.add(
             makeAction(
                 context,
+                if (playing) (if (isVi) "Tạm dừng" else "Pause") else (if (isVi) "Phát" else "Play"),
                 if (playing) R.drawable.ic_media_pause else R.drawable.ic_media_play,
                 mediaAction(MediaControlReceiver.ACTION_PLAY_PAUSE),
             ),
         )
         if (hasNext) {
             actions.add(
-                makeAction(context, R.drawable.ic_media_next, nextSourceAction ?: mediaAction(MediaControlReceiver.ACTION_NEXT)),
+                makeAction(
+                    context,
+                    if (isVi) "Tiếp" else "Next",
+                    R.drawable.ic_media_next,
+                    nextSourceAction ?: mediaAction(MediaControlReceiver.ACTION_NEXT),
+                ),
             )
         }
 
@@ -173,9 +180,9 @@ object MediaCard {
         context.packageManager.getApplicationLabel(context.packageManager.getApplicationInfo(pkg, 0)).toString()
     }.getOrDefault(pkg)
 
-    private fun makeAction(context: Context, iconRes: Int, pi: PendingIntent): Notification.Action {
+    private fun makeAction(context: Context, title: String, iconRes: Int, pi: PendingIntent): Notification.Action {
         val icon = Icon.createWithResource(context, iconRes).setTint(android.graphics.Color.parseColor("#FF1C1C1E"))
-        return Notification.Action.Builder(icon, "", pi).build()
+        return Notification.Action.Builder(icon, title, pi).build()
     }
 
     /**

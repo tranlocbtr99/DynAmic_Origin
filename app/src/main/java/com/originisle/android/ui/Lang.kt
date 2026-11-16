@@ -17,6 +17,8 @@ object Lang {
         return if (java.util.Locale.getDefault().language == "vi") "vi" else "en"
     }
 
+    fun isVi(context: Context): Boolean = currentLang(context) == "vi"
+
     fun s(context: Context, key: String): String = table[key]?.get(currentLang(context)) ?: table[key]?.get("en") ?: key
 
     fun setLang(context: Context, lang: String) {
@@ -78,6 +80,14 @@ object Lang {
         "skip_silent_subtitle" to mapOf("vi" to "Không hiện thông báo không có âm thanh/rung", "en" to "Ignore silenced notifications"),
         "expand_on_notif" to mapOf("vi" to "Bật sáng đảo khi có thông báo", "en" to "Expand island on notification"),
         "expand_on_notif_subtitle" to mapOf("vi" to "Tự động bung rộng đảo khi có thông báo mới", "en" to "Pop the island when a notification arrives"),
+        "banner_style" to mapOf("vi" to "Kiểu bung khi có thông báo", "en" to "Notification banner style"),
+        "banner_style_subtitle" to mapOf("vi" to "Giao diện hiển thị khi thông báo xuất hiện", "en" to "Banner appearance when notifications arrive"),
+        "style_liquid_glass" to mapOf("vi" to "Kính lỏng iOS (Mặc định)", "en" to "Liquid Glass iOS (Default)"),
+        "style_liquid_glass_sub" to mapOf("vi" to "Hộp kính lỏng iPhone bo cong, giữ nguyên đảo con nhộng của máy", "en" to "Apple-style glass banner, preserves native capsule"),
+        "style_superx" to mapOf("vi" to "Đảo mặc định Vivo", "en" to "Vivo native island"),
+        "style_superx_sub" to mapOf("vi" to "Bung mở rộng thẻ đảo mặc định của OriginOS", "en" to "Expand native OriginOS SuperX island card"),
+        "style_capsule_only" to mapOf("vi" to "Chỉ hiện con nhộng", "en" to "Capsule only"),
+        "style_capsule_only_sub" to mapOf("vi" to "Không bung hộp lớn, chỉ hiện đảo nhỏ quanh camera", "en" to "No popup banner, only compact camera pill"),
         "dedup_same_app" to mapOf("vi" to "Chống lặp cùng ứng dụng", "en" to "Dedup same app"),
         "dedup_same_app_subtitle" to mapOf("vi" to "Không lặp lại hiệu ứng mở rộng liên tục từ cùng 1 app", "en" to "Don't re-expand for repeated notifications from one app"),
         "hide_from_shade" to mapOf("vi" to "Ẩn khỏi bảng thông báo", "en" to "Hide from notification shade"),

@@ -99,6 +99,7 @@ fun HomeScreen(
     var mediaOn by remember { mutableStateOf(prefs.getBoolean("cast_media_sessions", true)) }
     var includeMessages by remember { mutableStateOf(prefs.getBoolean("cast_include_messages", false)) }
     var expandOnNotification by remember { mutableStateOf(prefs.getBoolean("cast_expand_on_notification", true)) }
+    var notifBannerStyle by remember { mutableStateOf(prefs.getString("notif_banner_style", "liquid_glass") ?: "liquid_glass") }
     var hideFromShade by remember { mutableStateOf(prefs.getBoolean("cast_hide_from_shade", false)) }
     var dedupSameApp by remember { mutableStateOf(prefs.getBoolean("cast_dedup_same_app", true)) }
     var dedupCooldown by remember { mutableStateOf(prefs.getInt("cast_dedup_cooldown_sec", 10)) }
@@ -598,13 +599,51 @@ fun HomeScreen(
                                 prefs.edit().putBoolean("cast_ignore_silent", it).apply()
                             }
                             GroupDivider()
-                            ToggleRow(
-                                IsleIcons.Pulse, IsleColors.TileBlue,
-                                Lang.s(context, "expand_on_notif"), expandOnNotification,
-                                subtitle = Lang.s(context, "expand_on_notif_subtitle"),
+                            SettingRow(
+                                IsleIcons.Send, IsleColors.TileBlue,
+                                Lang.s(context, "banner_style"),
+                                subtitle = Lang.s(context, "banner_style_subtitle"),
+                            )
+                            Row(
+                                Modifier.padding(start = 62.dp, end = 16.dp, bottom = 14.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
-                                expandOnNotification = it
-                                prefs.edit().putBoolean("cast_expand_on_notification", it).apply()
+                                val isViLang = Lang.isVi(context)
+                                listOf(
+                                    "liquid_glass" to (if (isViLang) "Kính lỏng iOS" else "Liquid Glass"),
+                                    "superx" to (if (isViLang) "Đảo mặc định" else "Vivo Native"),
+                                    "capsule_only" to (if (isViLang) "Chỉ con nhộng" else "Capsule Only"),
+                                ).forEach { (style, label) ->
+                                    ChoiceChip(
+                                        label,
+                                        selected = notifBannerStyle == style,
+                                        onClick = {
+                                            notifBannerStyle = style
+                                            prefs.edit().putString("notif_banner_style", style).apply()
+                                            if (style == "liquid_glass" && !android.provider.Settings.canDrawOverlays(context)) {
+                                                runCatching {
+                                                    val overlayIntent = android.content.Intent(
+                                                        android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                                        android.net.Uri.parse("package:${context.packageName}")
+                                                    )
+                                                    context.startActivity(overlayIntent)
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                            }
+                            if (notifBannerStyle == "superx") {
+                                GroupDivider()
+                                ToggleRow(
+                                    IsleIcons.Pulse, IsleColors.TileBlue,
+                                    Lang.s(context, "expand_on_notif"), expandOnNotification,
+                                    subtitle = Lang.s(context, "expand_on_notif_subtitle"),
+                                ) {
+                                    expandOnNotification = it
+                                    prefs.edit().putBoolean("cast_expand_on_notification", it).apply()
+                                }
                             }
                             GroupDivider()
                             ToggleRow(
