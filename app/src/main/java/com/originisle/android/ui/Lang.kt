@@ -93,7 +93,7 @@ object Lang {
         "hide_from_shade" to mapOf("vi" to "Ẩn khỏi bảng thông báo", "en" to "Hide from notification shade"),
         "hide_from_shade_subtitle" to mapOf("vi" to "Chỉ hiển thị trên đảo, không tạo thông báo trùng lặp ở thanh kéo xuống", "en" to "Show island card only, no duplicate in shade"),
         "lockscreen" to mapOf("vi" to "Màn hình khóa", "en" to "Lock screen"),
-        "lockscreen_subtitle" to mapOf("vi" to "Hiển thị thẻ trực tiếp trên màn hình khóa", "en" to "Live card on lockscreen"),
+        "lockscreen_subtitle" to mapOf("vi" to "Hiển thị đảo và thẻ trực tiếp trên màn hình khóa", "en" to "Show island & live card on lock screen"),
         "idle_island_toggle" to mapOf("vi" to "Hiển thị Đảo chờ", "en" to "Show Idle Island"),
         "idle_island_toggle_subtitle" to mapOf("vi" to "Luôn hiện viên Đảo khi không có thông báo (Tắt để chỉ hiện khi có thông báo mới)", "en" to "Always show island when idle (Turn off to show only on new notifications)"),
         "cards_section" to mapOf("vi" to "Các loại thẻ", "en" to "Cards"),

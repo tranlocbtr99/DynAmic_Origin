@@ -747,6 +747,10 @@ public final class LtmIslandHelper {
             intent.putExtra("oi_is_idle_ticker", true);
             intent.putExtra("oi_dismiss_when_kill", false);
             intent.putExtra("icon_res", sContext.getApplicationInfo().icon);
+            boolean lockscreen = idlePrefs(sContext).getBoolean("cast_lockscreen_live_card", true);
+            int idleDisplays = 256 | 65536; // DISPLAY_STATUSBAR | DISPLAY_AOD
+            if (lockscreen) idleDisplays |= 16; // DISPLAY_LOCKSCREEN
+            intent.putExtra("oi_displays", idleDisplays);
 
             android.content.SharedPreferences prefs = idlePrefs(sContext);
             boolean geminiTap = prefs.getBoolean("ltm_idle_gemini_tap", false);

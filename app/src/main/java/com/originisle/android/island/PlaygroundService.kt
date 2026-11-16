@@ -328,7 +328,7 @@ class PlaygroundService : Service() {
             OriginIslandConstants.DISPLAY_STATUSBAR or OriginIslandConstants.DISPLAY_AOD,
         )
         val lockscreenOptIn = getSharedPreferences(PREFS_NAME, 0)
-            .getBoolean("cast_lockscreen_live_card", false)
+            .getBoolean("cast_lockscreen_live_card", true)
         val hideFromShade = getSharedPreferences(PREFS_NAME, 0).getBoolean("cast_hide_from_shade", false)
         val displays = ((baseDisplays and OriginIslandConstants.DISPLAY_LOCKSCREEN.inv()) or
             (if (lockscreenOptIn) OriginIslandConstants.DISPLAY_LOCKSCREEN else 0)).let {
@@ -609,12 +609,13 @@ class PlaygroundService : Service() {
             .setOnlyAlertOnce(true)
             .setOngoing(isOngoing)
             .setAutoCancel(!isOngoing)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setDeleteIntent(deletePi)
             .setSmallIcon(iconRes)
             .setExtras(bundle)
         if (id == 0xee84) {
             builder.setSilent(true)
-            builder.setPriority(NotificationCompat.PRIORITY_MIN)
+            builder.setPriority(NotificationCompat.PRIORITY_DEFAULT)
         }
         if (contentIntent != null) {
             builder.setContentIntent(contentIntent)
@@ -731,6 +732,9 @@ class PlaygroundService : Service() {
             setShowBadge(false)
             enableVibration(false)
             setSound(null, null)
+            if (isIsland) {
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            }
         }
         notificationManager.createNotificationChannel(channel)
     }

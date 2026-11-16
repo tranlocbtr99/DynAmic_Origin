@@ -104,7 +104,7 @@ fun HomeScreen(
     var dedupSameApp by remember { mutableStateOf(prefs.getBoolean("cast_dedup_same_app", true)) }
     var dedupCooldown by remember { mutableStateOf(prefs.getInt("cast_dedup_cooldown_sec", 10)) }
     var ignoreSilent by remember { mutableStateOf(prefs.getBoolean("cast_ignore_silent", true)) }
-    var lockscreenLiveCard by remember { mutableStateOf(prefs.getBoolean("cast_lockscreen_live_card", false)) }
+    var lockscreenLiveCard by remember { mutableStateOf(prefs.getBoolean("cast_lockscreen_live_card", true)) }
     var autoDismissSec by remember { mutableStateOf(prefs.getInt("cast_auto_dismiss_seconds", 0)) }
     var otpOn by remember { mutableStateOf(prefs.getBoolean("cast_otp", true)) }
     var actionsOn by remember { mutableStateOf(prefs.getBoolean("cast_show_actions", true)) }
@@ -818,6 +818,9 @@ fun HomeScreen(
                             ) {
                                 lockscreenLiveCard = it
                                 prefs.edit().putBoolean("cast_lockscreen_live_card", it).apply()
+                                if (LtmIslandHelper.isIdleCardEnabled(context)) {
+                                    LtmIslandHelper.postIdleCard(context)
+                                }
                             }
                             GroupDivider()
                             ToggleRow(
