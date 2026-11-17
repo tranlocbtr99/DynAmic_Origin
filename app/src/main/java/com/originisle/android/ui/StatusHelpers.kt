@@ -15,7 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import com.originisle.android.service.KeepAliveAccessibilityService
+
 
 /** Shared permission/status checks used by both [OnboardingScreen] and [PermissionsSheet]. */
 
@@ -42,13 +42,7 @@ fun rememberResumeTick(): MutableIntState {
 fun isListenerEnabled(context: Context): Boolean =
     NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
 
-fun isAccessibilityEnabled(context: Context): Boolean {
-    val flat = Settings.Secure.getString(
-        context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
-    ).orEmpty()
-    val target = android.content.ComponentName(context, KeepAliveAccessibilityService::class.java)
-    return flat.split(':').any { android.content.ComponentName.unflattenFromString(it) == target }
-}
+fun isAccessibilityEnabled(context: Context): Boolean = true
 
 fun isBatteryUnrestricted(context: Context): Boolean {
     val pm = context.getSystemService(PowerManager::class.java)

@@ -38,7 +38,6 @@ object LtmCallManager {
             if (isScreenInteractive) {
                 mainHandler.postDelayed({
                     val accessibility = AssistantAccessibilityService.activeService
-                        ?: KeepAliveAccessibilityService.activeService
                     if (accessibility != null) {
                         Log.i(TAG, "Suppressing full-screen call window via AccessibilityService HOME action")
                         accessibility.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)

@@ -36,6 +36,18 @@
             </intent-filter>
         </activity>
 
+        <!-- Broadcast receiver that safely revives services on unlock, boot, power, and alarm -->
+        <receiver
+            android:name=".service.KeepAliveReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.USER_PRESENT" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />
+                <action android:name="com.originisle.android.ACTION_ALARM_RESTART" />
+            </intent-filter>
+        </receiver>
+
         <!-- Posts / updates / ends OriginIsland SuperX cards. Special-use FGS so it can
              keep re-posting a live card (e.g. a ticking football score). -->
         <!-- stopWithTask=false + START_STICKY get casting back after a swipe-away: OriginOS kills

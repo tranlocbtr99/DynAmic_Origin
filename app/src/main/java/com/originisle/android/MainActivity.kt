@@ -91,7 +91,15 @@ private fun Screen() {
     var page by rememberSaveable { mutableStateOf(Page.HOME) }
 
     // Apps and Activity are pushed on top of Home; system back returns to it.
-    BackHandler(enabled = onboardingDone && page != Page.HOME) { page = Page.HOME }
+    // On Home, system back minimizes the task to background instead of finishing,
+    // ensuring the app and services stay alive without being destroyed.
+    BackHandler(enabled = true) {
+        if (onboardingDone && page != Page.HOME) {
+            page = Page.HOME
+        } else {
+            (context as? android.app.Activity)?.moveTaskToBack(true)
+        }
+    }
 
     Box(
         Modifier.fillMaxSize().background(

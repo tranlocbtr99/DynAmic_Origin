@@ -69,7 +69,7 @@ fun PermissionsSheet(
             android.content.pm.PackageManager.PERMISSION_GRANTED
     }
     val batteryOk = remember(tick.intValue) { isBatteryUnrestricted(context) }
-    val keepAliveOk = remember(tick.intValue) { isAccessibilityEnabled(context) }
+
     // Neither vivo toggle is readable, so all we can track is whether the user has been sent to that
     // screen — the same ack flag the onboarding row writes.
     var autoStartAck by remember { mutableStateOf(prefs.getBoolean("onboarding_autostart_ack", false)) }
@@ -119,13 +119,7 @@ fun PermissionsSheet(
                     IsleIcons.Battery, IsleColors.TileGreen, "Pin & Chạy ngầm",
                     ok = batteryOk, status = if (batteryOk) "Không hạn chế" else "Đang bị hạn chế — OriginOS có thể tắt tiến trình",
                 ) { requestIgnoreBattery(context) }
-                GroupDivider()
-                PermissionRow(
-                    IsleIcons.Heart, IsleColors.TileTeal, "Dịch vụ giữ nền (Keep-alive)",
-                    ok = keepAliveOk,
-                    status = if (keepAliveOk) "Đang bật — tự kết nối lại sau khi bị đóng" else "Đang tắt — khôi phục chậm hơn",
-                    note = "Bật \"LTMori keep-alive\" trong mục Trợ năng. Không có icon thanh trạng thái, không đọc dữ liệu cá nhân.",
-                ) { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+
                 GroupDivider()
                 PermissionRow(
                     IsleIcons.Power, IsleColors.TileAmber, "Autostart + Associated startup",

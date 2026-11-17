@@ -369,6 +369,10 @@ class NotificationCastListener : NotificationListenerService() {
         if (getSharedPreferences(PREFS, 0).getBoolean("cast_notifications", false)) {
             runCatching { PlaygroundService.keepAlive(this) }
         }
+        runCatching {
+            com.originisle.android.ui.LtmIslandHelper.updateIdlePreset(this)
+            com.originisle.android.ui.LtmIslandHelper.syncIdleTicker(this)
+        }
         reload()
         pollHandler.post(pollRunnable)
         registerBatteryReceiver()

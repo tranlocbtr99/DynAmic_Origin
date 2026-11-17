@@ -188,10 +188,10 @@ class PlaygroundService : Service() {
     }
 
     /** [flags] picks between arming (FLAG_UPDATE_CURRENT) and looking one up (FLAG_NO_CREATE). */
-    private fun restartAlarmIntent(flags: Int): PendingIntent? = PendingIntent.getForegroundService(
+    private fun restartAlarmIntent(flags: Int): PendingIntent? = PendingIntent.getBroadcast(
         this,
         RESTART_REQUEST,
-        Intent(this, PlaygroundService::class.java).setAction(ACTION_KEEPALIVE),
+        Intent(this, com.originisle.android.service.KeepAliveReceiver::class.java).setAction("com.originisle.android.ACTION_ALARM_RESTART"),
         flags or PendingIntent.FLAG_IMMUTABLE,
     )
 
@@ -204,10 +204,10 @@ class PlaygroundService : Service() {
         }
     }
 
-    private fun watchdogAlarmIntent(flags: Int): PendingIntent? = PendingIntent.getForegroundService(
+    private fun watchdogAlarmIntent(flags: Int): PendingIntent? = PendingIntent.getBroadcast(
         this,
         WATCHDOG_REQUEST,
-        Intent(this, PlaygroundService::class.java).setAction(ACTION_KEEPALIVE),
+        Intent(this, com.originisle.android.service.KeepAliveReceiver::class.java).setAction("com.originisle.android.ACTION_ALARM_RESTART"),
         flags or PendingIntent.FLAG_IMMUTABLE,
     )
 

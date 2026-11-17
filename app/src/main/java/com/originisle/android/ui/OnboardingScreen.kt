@@ -60,7 +60,7 @@ fun OnboardingScreen(context: Context, prefs: SharedPreferences, onDone: () -> U
             android.content.pm.PackageManager.PERMISSION_GRANTED
     }
     val batteryOk = remember(tick.intValue) { isBatteryUnrestricted(context) }
-    val accessOk = remember(tick.intValue) { isAccessibilityEnabled(context) }
+
     var autoStartAck by remember {
         mutableStateOf(prefs.getBoolean("onboarding_autostart_ack", false))
     }
@@ -109,16 +109,7 @@ fun OnboardingScreen(context: Context, prefs: SharedPreferences, onDone: () -> U
                 ) {
                     if (Build.VERSION.SDK_INT >= 33) notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
-                GroupDivider()
-                OnboardingRow(
-                    icon = IsleIcons.Heart,
-                    tile = IsleColors.TileTeal,
-                    title = "Keep-alive",
-                    description = "Reconnects casting when OriginOS restarts the app, instead of " +
-                        "waiting for you to open it.",
-                    granted = accessOk,
-                    mandatory = false,
-                ) { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+
                 GroupDivider()
                 OnboardingRow(
                     icon = IsleIcons.Battery,
