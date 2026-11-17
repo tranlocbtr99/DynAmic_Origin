@@ -1,6 +1,6 @@
 {
   "success": true,
-  "latestVersion": "3.5",
-  "note": "Tối ưu thuật toán xử lý hình ảnh trực tiếp (Batch scanline + Chroma denoising), nhận diện toàn diện thiết bị Vivo OriginOS, khắc phục thiếu class Float backport và cập nhật endpoint Gemini 2.0 Flash.",
-  "storeUrl": "https://github.com/tranlocbtr99/DynAmic_Origin/releases/download/ltmcam-v3.1/LTMcam_v3.5.apk"
+  "latestVersion": "3.5.1",
+  "note": "Tối ưu hóa 100% JPEG Quality toàn hệ thống (Display P3/Normal/Burst), sửa lỗi lấy nét AI tọa độ rỗng, thêm null-safety cho Shader Grading Pipeline và kích hoạt NightDetail toàn diện.",
+  "storeUrl": "https://github.com/tranlocbtr99/DynAmic_Origin/releases/download/ltmcam-v3.1/LTMcam_v3.5.1.apk"
 }
