@@ -1,6 +1,6 @@
 {
   "success": true,
-  "latestVersion": "3.1",
-  "note": "LTMcam v3.1: Đã kích hoạt Auto Focus theo chủ thể, Cinematic Auto Zoom, và tự động chỉnh màu/ánh sáng Live View theo từng thể loại ảnh.",
-  "storeUrl": "https://github.com/tranlocbtr99/DynAmic_Origin/releases/download/ltmcam-v3.1/LTMcam_v3.1_AI_Enhanced.apk"
+  "latestVersion": "3.1.1",
+  "note": "LTMcam v3.1.1: S\u1eeda tri\u1ec7t \u0111\u1ec3 l\u1ed7i gi\u1eef v\u00f2ng tr\u00f2n khi chuy\u1ec3n camera ho\u1eb7c tab th\u01b0 vi\u1ec7n. \u1ed4n \u0111\u1ecbnh \u0111i\u1ec3m neo v\u00e0 AI focus.",
+  "storeUrl": "https://github.com/tranlocbtr99/DynAmic_Origin/releases/download/ltmcam-v3.1/LTMcam_v3.1.1.apk"
 }
