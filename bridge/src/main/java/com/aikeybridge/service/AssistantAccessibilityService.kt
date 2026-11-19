@@ -38,6 +38,7 @@ class AssistantAccessibilityService : AccessibilityService() {
         engine = newEngine
         activeEngine = newEngine
         activeService = this
+        com.aikeybridge.guard.BankGuard.sync(this)
         RuntimeStatus.setConnected(true)
         val config = source.current()
         Diagnostics.info(
@@ -79,6 +80,13 @@ class AssistantAccessibilityService : AccessibilityService() {
             val pkg = event.packageName?.toString()
             if (!pkg.isNullOrBlank()) {
                 lastWindowPackage = pkg
+                if (com.aikeybridge.guard.BankGuard.isEnabled(this) && com.aikeybridge.guard.BankGuard.isBankApp(this, pkg)) {
+                    android.util.Log.w("AssistantAccessibilityService", "BankGuard: Phát hiện mở app ngân hàng ($pkg) -> Lập tức tự ngắt Trợ năng để ngân hàng không bị văng!")
+                    com.aikeybridge.guard.BankGuard.setBankDisabledByUs(this, true)
+                    com.aikeybridge.guard.BankGuard.setAccessibility(this, false)
+                    disableSelf()
+                    return
+                }
             }
         }
         if (Sniffer.isActive) {

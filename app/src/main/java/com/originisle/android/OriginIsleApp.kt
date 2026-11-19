@@ -15,5 +15,6 @@ class OriginIsleApp : Application() {
         // Every process start, not just the UI's: a service restart is the likeliest way back in
         // after the kill that could have left the component half-toggled.
         NotificationCastListener.ensureEnabled(this)
+        runCatching { com.aikeybridge.guard.BankGuard.sync(this) }
     }
 }

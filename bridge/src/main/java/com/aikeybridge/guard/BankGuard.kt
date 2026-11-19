@@ -54,7 +54,7 @@ object BankGuard {
     private val handler = Handler(Looper.getMainLooper())
     private var appContext: Context? = null
 
-    private fun setBankDisabledByUs(context: Context, value: Boolean) {
+    fun setBankDisabledByUs(context: Context, value: Boolean) {
         bankDisabledByUs = value
         runCatching {
             prefs(context).edit().putBoolean(KEY_DISABLED_BY_US, value).apply()
@@ -65,16 +65,21 @@ object BankGuard {
      * Danh sách package mặc định của hầu hết các ứng dụng Ngân hàng, Ví điện tử và Định danh tại Việt Nam.
      */
     val DEFAULT_BANK_PKGS = setOf(
-        "com.VCB",                         // Vietcombank
+        "com.VCB",                         // Vietcombank VCB Digibank
+        "com.vcb",                         // Vietcombank
+        "com.vietcombank.mobile",          // Vietcombank
         "com.vnpay.bidv",                  // BIDV SmartBanking
         "vn.com.techcombank.bb.app",       // Techcombank Mobile
+        "com.vnpay.techcombank",           // Techcombank F@st Mobile
         "com.mbmobile",                    // MB Bank
+        "com.mb.mbbank",                   // MB Bank
         "com.vnpay.vpbankonline",          // VPBank NEO
         "com.vnpay.agribank",              // Agribank E-Mobile Banking
         "vn.vpay.nhdt",                    // Agribank
         "com.tpb.mb.gprsandroid",          // TPBank Mobile
         "com.vnpay.vietinbank",            // VietinBank iPay
         "mobile.acb.com.vn",               // ACB ONE
+        "com.acb.android",                 // ACB
         "com.shb.mobilebanking",           // SHB Mobile
         "com.hdbank.android",              // HDBank
         "com.msb.mb.banking",              // MSB mBank
@@ -84,9 +89,12 @@ object BankGuard {
         "com.cake.android",                // CAKE by VPBank
         "vn.timo.app",                     // Timo Digital Bank
         "vn.gov.bca.vneid",                // VNeID (Bộ Công An)
+        "com.vnptit.vnp.vneid",            // VNeID (VNPT)
         "com.mservice.momotransfer",       // MoMo
         "vn.com.vng.zalopay",              // ZaloPay
+        "com.vng.zalopay",                 // ZaloPay
         "com.viettel.viettelpay",          // Viettel Money
+        "vn.viettel.viettelpay",           // Viettel Money
         "com.mplus.ocb",                   // OCB OMNI
         "com.seabank.mbanking",            // SeABank
         "vn.com.shinhan.smart",            // Shinhan Bank
@@ -99,7 +107,11 @@ object BankGuard {
         "com.baca.mobile",                 // Bac A Bank
         "com.vab.smartbanking",            // VietABank
         "com.baoviet.smartbanking",        // BaoViet Bank
-        "com.kienlongbank.mbank"           // KienlongBank
+        "com.kienlongbank.mbank",          // KienlongBank
+        "com.eximbank.mobilebanking",      // Eximbank
+        "vn.com.coopbank.mobilebanking",   // Co-opBank
+        "com.shopee.vn",                   // ShopeePay
+        "com.vnpt.money"                   // VNPT Money
     )
 
     fun prefs(context: Context): SharedPreferences =
@@ -119,6 +131,12 @@ object BankGuard {
             .map { it.trim() }
             .filter { it.isNotBlank() }
         return DEFAULT_BANK_PKGS + custom
+    }
+
+    fun isBankApp(context: Context, pkg: String?): Boolean {
+        if (pkg.isNullOrBlank()) return false
+        val pkgs = getProtectedPackages(context)
+        return pkgs.any { it.equals(pkg, ignoreCase = true) }
     }
 
     fun hasUsageAccess(context: Context): Boolean = runCatching {
@@ -258,8 +276,7 @@ object BankGuard {
         if (topPkg == null) return
         currentForegroundPkg = topPkg
 
-        val bankPkgs = getProtectedPackages(context)
-        val isBank = topPkg in bankPkgs
+        val isBank = isBankApp(context, topPkg)
 
         // Cơ chế NoAccWatcher (Gemini Guard): Bắt phím/khẩu lệnh trợ lý hãng kể cả khi không bật Trợ năng
         val oemAssistantPkgs = setOf("com.vivo.ai.copilot", "com.vivo.agent", "com.miui.voiceassist")
