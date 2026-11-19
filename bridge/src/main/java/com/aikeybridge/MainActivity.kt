@@ -373,45 +373,103 @@ private fun SetupScreen(model: AppViewModel, onBack: () -> Unit) {
                             .background(BridgeColors.Divider)
                     )
 
-                    // Tự động tắt / ẩn Gỡ lỗi không dây sau khi kết nối
+                    // Bank Guard tự động
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    var bankGuardActive by remember { mutableStateOf(com.aikeybridge.guard.BankGuard.isEnabled(context)) }
                     Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable { model.setAutoHideWirelessAdb(!wirelessAdb.autoHideEnabled) }
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                        Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Column(Modifier.weight(1f)) {
+                        Column(Modifier.weight(1f).padding(end = 8.dp)) {
                             Text(
-                                "Tự động tắt/ẩn sau khi kết nối",
+                                "Bank Guard (Né ngân hàng tự động)",
                                 color = BridgeColors.Text,
                                 fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium,
+                                fontWeight = FontWeight.SemiBold,
                             )
                             Text(
-                                "Tắt gỡ lỗi & ẩn Tùy chọn nhà phát triển để xóa thông báo và an toàn tuyệt đối trước app ngân hàng / VNeID",
+                                "Tự động ngắt trợ năng khi mở app ngân hàng & VNeID, tự phục hồi khi thoát. Không cần tắt tùy chọn nhà phát triển.",
                                 color = BridgeColors.TextSecondary,
                                 fontSize = 11.sp,
                                 lineHeight = 15.sp,
                             )
                         }
                         Switch(
-                            checked = wirelessAdb.autoHideEnabled,
-                            onCheckedChange = { model.setAutoHideWirelessAdb(it) },
+                            checked = bankGuardActive,
+                            onCheckedChange = {
+                                bankGuardActive = it
+                                com.aikeybridge.guard.BankGuard.setEnabled(context, it)
+                            },
                             colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = BridgeColors.Accent,
+                                checkedThumbColor = BridgeColors.Text,
+                                checkedTrackColor = BridgeColors.Good,
                                 uncheckedThumbColor = BridgeColors.TextSecondary,
                                 uncheckedTrackColor = BridgeColors.SurfaceHigher,
                             ),
                         )
                     }
+                    if (bankGuardActive && !com.aikeybridge.guard.BankGuard.hasUsageAccess(context)) {
+                        OutlinedButton(
+                            onClick = { com.aikeybridge.guard.BankGuard.openUsageSettings(context) },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 36.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, BridgeColors.Warning),
+                        ) {
+                            Text("Cấp quyền truy cập sử dụng", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = BridgeColors.Warning)
+                        }
+                    }
 
+                    // Trạng thái Trợ năng & Phím bật nhanh
+                    val accOn = com.aikeybridge.guard.BankGuard.isAccessibilityOn(context)
+                    val bankDisabled = com.aikeybridge.guard.BankGuard.bankDisabledByUs
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Trợ năng LTMori:", color = BridgeColors.TextSecondary, fontSize = 12.sp)
+                        Text(
+                            when {
+                                accOn -> "Đang bật"
+                                bankDisabled -> "Tạm ngắt (Né ngân hàng)"
+                                else -> "Chưa bật"
+                            },
+                            color = if (accOn || bankDisabled) BridgeColors.Good else BridgeColors.Warning,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
+                    if (!accOn && !bankDisabled) {
+                        OutlinedButton(
+                            onClick = {
+                                if (com.aikeybridge.data.PermissionsReader.hasWriteSecureSettings(context)) {
+                                    com.aikeybridge.guard.BankGuard.setAccessibility(context, true)
+                                } else {
+                                    runCatching {
+                                        context.startActivity(android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 36.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, BridgeColors.Accent),
+                        ) {
+                            Text("Kích hoạt Trợ năng ngay", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = BridgeColors.Accent)
+                        }
+                    }
+
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(BridgeColors.Divider)
+                    )
+
+                    // Nút tắt/ẩn thủ công Tùy chọn nhà phát triển & Gỡ lỗi
                     OutlinedButton(
                         onClick = model::hideWirelessAdb,
-                        modifier = Modifier.fillMaxWidth().height(38.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 38.dp),
                         shape = RoundedCornerShape(10.dp),
                         border = BorderStroke(1.dp, BridgeColors.Border),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = BridgeColors.Text),
@@ -423,8 +481,14 @@ private fun SetupScreen(model: AppViewModel, onBack: () -> Unit) {
                             modifier = Modifier.size(15.dp),
                         )
                         Spacer(Modifier.width(6.dp))
-                        Text("Tắt / Ẩn Gỡ lỗi không dây & Tùy chọn nhà phát triển ngay", fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                        Text("Ẩn Tùy chọn nhà phát triển & Gỡ lỗi", fontSize = 12.sp, fontWeight = FontWeight.Medium)
                     }
+                    Text(
+                        "Dùng khi muốn tắt gỡ lỗi thủ công. Khi bật Bank Guard phía trên, app sẽ tự né ngân hàng mà không cần bấm nút này.",
+                        color = BridgeColors.TextSecondary,
+                        fontSize = 11.sp,
+                        lineHeight = 15.sp,
+                    )
                 }
             }
 

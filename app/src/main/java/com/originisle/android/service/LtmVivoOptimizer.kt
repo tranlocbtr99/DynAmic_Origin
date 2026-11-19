@@ -182,13 +182,13 @@ object LtmVivoOptimizer {
         if (ok) {
             OptimizationResult(
                 true,
-                "Đã tắt Gỡ lỗi không dây & ẩn Tùy chọn nhà phát triển (adb_wifi_enabled=0, development_settings_enabled=0). An toàn tuyệt đối với app ngân hàng / VNeID!",
+                "Đã ẩn Tùy chọn nhà phát triển & tắt Gỡ lỗi không dây (adb_wifi_enabled=0, development_settings_enabled=0). An toàn tuyệt đối với app ngân hàng / VNeID!",
                 1,
             )
         } else {
             OptimizationResult(
                 false,
-                "Chưa tắt được Gỡ lỗi không dây. Vui lòng đảm bảo quyền Shizuku hoặc Engine nội bộ đang hoạt động.",
+                "Chưa ẩn được Tùy chọn nhà phát triển. Vui lòng đảm bảo quyền Shizuku hoặc Engine nội bộ đang hoạt động.",
                 0,
             )
         }
@@ -208,7 +208,10 @@ object LtmVivoOptimizer {
         "com.whatsapp",
         "com.android.phone",
         "com.android.incallui",
-        "com.google.android.dialer"
+        "com.google.android.dialer",
+        "com.vivo.incallui",
+        "com.bbk.incallui",
+        "com.vivo.telecom"
     )
 
     fun getConfiguredCallPackages(context: Context): Set<String> {

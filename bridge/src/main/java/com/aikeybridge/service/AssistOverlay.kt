@@ -7,19 +7,27 @@ import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.os.SystemClock
+import org.lsposed.hiddenapibypass.HiddenApiBypass
 
 /**
- * Mở trợ lý mặc định như khi giữ nút nguồn: SearchManager.launchAssist (API ẩn, thanh hệ thống gọi).
- * Trợ lý mặc định là Google thì hệ thống hiện lớp phủ Gemini (khoanh tròn để hỏi được). Không cần Shizuku: đã thử
- * trên Vivo Android 17, trong khi mọi intent (VOICE_COMMAND, VOICE_ASSIST, ASSIST, deep link) chỉ mở app hoặc bị bỏ qua.
+ * Mở trợ lý mặc định hoặc Google Circle to Search.
+ * Tích hợp HiddenApiBypass để gọi trực tiếp IPC Binder của IVoiceInteractionManagerService
+ * tương tự Gemini Guard 4.0, kích hoạt Gemini native siêu nhanh mà không bị hệ điều hành chặn.
  */
 object AssistOverlay {
 
     /**
      * Mở lớp phủ trợ lý mặc định (Gemini FloatyActivity khi Google là trợ lý mặc định).
      */
-    fun launch(context: Context): LaunchOutcome =
-        launchWithBundle(context, Bundle(), "launchAssist")
+    fun launch(context: Context): LaunchOutcome {
+        val bundle = Bundle().apply {
+            putLong("invocation_time_ms", SystemClock.elapsedRealtime())
+        }
+        val vis = tryVoiceInteractionService(context, bundle)
+        if (vis.ok) return vis
+
+        return launchWithBundle(context, bundle, "launchAssist")
+    }
 
     /**
      * Mở trực tiếp giao diện Google Circle to Search (OmnientActivity - khoanh tròn tìm kiếm / dịch màn hình).
@@ -28,11 +36,11 @@ object AssistOverlay {
      */
     fun launchCircleToSearch(context: Context): LaunchOutcome {
         val bundle = createCtsBundle()
-        val assist = launchWithBundle(context, bundle, "CircleToSearch (launchAssist)")
-        if (assist.ok) return assist
-
         val vis = tryVoiceInteractionService(context, bundle)
         if (vis.ok) return vis
+
+        val assist = launchWithBundle(context, bundle, "CircleToSearch (launchAssist)")
+        if (assist.ok) return assist
 
         val contextual = tryContextualSearch()
         if (contextual.ok) return contextual
@@ -61,35 +69,31 @@ object AssistOverlay {
         }
 
     @SuppressLint("PrivateApi")
-    private fun tryVoiceInteractionService(context: Context, bundle: Bundle): LaunchOutcome =
+    fun tryVoiceInteractionService(context: Context, bundle: Bundle): LaunchOutcome =
         runCatching {
+            runCatching {
+                HiddenApiBypass.addHiddenApiExemptions("")
+            }
             val sm = Class.forName("android.os.ServiceManager")
-            val binder = sm.getMethod("getService", String::class.java)
-                .invoke(null, "voiceinteraction") as? IBinder
+            val getServiceMethod = sm.getMethod("getService", String::class.java)
+            val binder = getServiceMethod.invoke(null, "voiceinteraction") as? IBinder
                 ?: return LaunchOutcome(false, "voiceinteraction service null")
             val stub = Class.forName("com.android.internal.app.IVoiceInteractionManagerService\$Stub")
             val service = stub.getMethod("asInterface", IBinder::class.java).invoke(null, binder)
             val serviceClass = Class.forName("com.android.internal.app.IVoiceInteractionManagerService")
-            val ok = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                val method = serviceClass.getMethod(
-                    "showSessionFromSession",
-                    IBinder::class.java,
-                    Bundle::class.java,
-                    Int::class.javaPrimitiveType,
-                    String::class.java,
-                )
-                (method.invoke(service, null, bundle, 7, context.packageName) as? Boolean) == true
+
+            val method = serviceClass.methods.firstOrNull { it.name == "showSessionFromSession" }
+                ?: return LaunchOutcome(false, "showSessionFromSession method not found")
+
+            val params = if (method.parameterCount == 4) {
+                arrayOf(null, bundle, 7, context.packageName)
             } else {
-                val method = serviceClass.getMethod(
-                    "showSessionFromSession",
-                    IBinder::class.java,
-                    Bundle::class.java,
-                    Int::class.javaPrimitiveType,
-                )
-                (method.invoke(service, null, bundle, 7) as? Boolean) == true
+                arrayOf(null, bundle, 7)
             }
+            val result = method.invoke(service, *params)
+            val ok = (result as? Boolean) ?: true
             if (ok) {
-                LaunchOutcome(true, "CircleToSearch (VoiceInteraction)")
+                LaunchOutcome(true, "VoiceInteraction (IPC Direct)")
             } else {
                 LaunchOutcome(false, "showSessionFromSession trả về false")
             }
@@ -101,6 +105,9 @@ object AssistOverlay {
     @SuppressLint("PrivateApi")
     private fun tryContextualSearch(): LaunchOutcome =
         runCatching {
+            runCatching {
+                HiddenApiBypass.addHiddenApiExemptions("")
+            }
             val sm = Class.forName("android.os.ServiceManager")
             val binder = sm.getMethod("getService", String::class.java)
                 .invoke(null, "contextual_search") as? IBinder

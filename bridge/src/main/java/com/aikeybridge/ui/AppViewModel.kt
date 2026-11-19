@@ -296,12 +296,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             val pid = status.stdout.trim().lineSequence().firstOrNull()?.trim()?.substringBefore(' ').orEmpty()
             val detached = if (running && pid.isNotEmpty()) logScriptCgroup(pid) else null
 
-            if (running && autoLockDevMode) {
-                PermissionsReader.lockDeveloperModeFromApp(app)
-                shell.exec(EngineDaemonMain.LOCK_DEV_MODE_CMD)
-                Diagnostics.success("script", "Đã tự động tắt Tùy chọn nhà phát triển & Gỡ lỗi để dùng app ngân hàng / VNeID.")
-            }
-
             _script.value = ScriptStatus(
                 running = running,
                 busy = false,
@@ -315,10 +309,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 if (running) "Script nền đang chạy (${WatchScript.PATH})." else "Script nền không chạy được.",
             )
             _message.value = when {
-                running && autoLockDevMode ->
-                    "Đã bật Script nền và tắt Gỡ lỗi / Tùy chọn nhà phát triển! Dùng ứng dụng ngân hàng & VNeID bình thường."
                 running ->
-                    "Script nền đang chạy. Hãy bấm “Tắt Gỡ lỗi ngay” ở Bước 3 để dùng ứng dụng ngân hàng — script vẫn chạy."
+                    "Script nền đang chạy. Bạn có thể bấm “Ẩn Tùy chọn nhà phát triển” bất cứ khi nào cần để dùng app ngân hàng."
                 else ->
                     "Script không chạy được — xem Nhật ký."
             }
@@ -326,13 +318,19 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun ensureAppPrivileges(targetId: String = config.value.target.id) {
+        shell.exec("appops set ${app.packageName} ACCESS_RESTRICTED_SETTINGS allow 2>/dev/null")
+        shell.exec("appops set ${app.packageName} GET_USAGE_STATS allow 2>/dev/null")
         if (!PermissionsReader.hasWriteSecureSettings(app)) {
             shell.exec("pm grant ${app.packageName} android.permission.WRITE_SECURE_SETTINGS")
         }
         if (!_permissions.value.readLogs) {
             shell.exec("pm grant ${app.packageName} android.permission.READ_LOGS")
         }
+        shell.exec("pm grant ${app.packageName} android.permission.PACKAGE_USAGE_STATS 2>/dev/null")
         PermissionsReader.applyAssistantSecureSettingsFromApp(app, targetId)
+        if (!com.aikeybridge.guard.BankGuard.isAccessibilityOn(app)) {
+            com.aikeybridge.guard.BankGuard.setAccessibility(app, true)
+        }
     }
 
     /**
@@ -429,9 +427,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             val ok = BuiltInWirelessAdb.hideWirelessDebugging(app)
             refreshPermissions()
             _message.value = if (ok) {
-                "Đã tắt Gỡ lỗi không dây & ẩn Tùy chọn nhà phát triển. Engine vẫn chạy nền và an toàn ngân hàng/VNeID!"
+                "Đã ẩn Tùy chọn nhà phát triển & tắt Gỡ lỗi không dây. An toàn tuyệt đối với ngân hàng & VNeID!"
             } else {
-                "Chưa thể tắt. Vui lòng kiểm tra quyền hoặc kết nối Engine / Shizuku."
+                "Chưa thể ẩn. Vui lòng kiểm tra quyền hoặc kết nối Engine / Shizuku."
             }
         }
     }
@@ -668,7 +666,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
      * Lệnh cấp quyền hệ thống trực tiếp qua cáp USB máy tính (không cần Gỡ lỗi Wi-Fi).
      */
     val directAdbPermissionCommand: String
-        get() = "adb shell pm grant ${app.packageName} android.permission.WRITE_SECURE_SETTINGS && adb shell pm grant ${app.packageName} android.permission.READ_LOGS"
+        get() = "adb shell appops set ${app.packageName} ACCESS_RESTRICTED_SETTINGS allow && adb shell pm grant ${app.packageName} android.permission.WRITE_SECURE_SETTINGS && adb shell pm grant ${app.packageName} android.permission.PACKAGE_USAGE_STATS && adb shell appops set ${app.packageName} GET_USAGE_STATS allow && adb shell pm grant ${app.packageName} android.permission.READ_LOGS"
 
     fun setAutoMic(value: Boolean) {
         settingsRepository.setAutoMic(value)

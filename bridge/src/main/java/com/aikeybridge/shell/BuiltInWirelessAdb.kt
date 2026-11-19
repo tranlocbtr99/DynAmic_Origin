@@ -120,7 +120,7 @@ object BuiltInWirelessAdb {
     fun isAutoHideEnabled(context: Context): Boolean =
         context.applicationContext
             .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .getBoolean(KEY_AUTO_HIDE, true)
+            .getBoolean(KEY_AUTO_HIDE, false)
 
     fun setAutoHideEnabled(context: Context, enabled: Boolean) {
         context.applicationContext
@@ -419,14 +419,11 @@ object BuiltInWirelessAdb {
             val booted = connectAndBootstrapDaemon(appContext)
             stopMdns()
             stopPairingForegroundService(appContext)
-            if (booted && isAutoHideEnabled(appContext)) {
-                hideWirelessDebugging(appContext)
-            }
             _state.update {
                 it.copy(
                     pairingActive = false,
                     connecting = false,
-                    statusText = if (booted) "Engine nội bộ đã chạy (đã ẩn Gỡ lỗi)!" else "Đã ghép nối · chạm Kết nối Engine.",
+                    statusText = if (booted) "Engine nội bộ đã chạy!" else "Đã ghép nối · chạm Kết nối Engine.",
                 )
             }
             showResultNotification(
@@ -489,13 +486,6 @@ object BuiltInWirelessAdb {
                 if (EngineBinderProvider.isAlive(appContext)) {
                     EngineBinderProvider.notifyStateChanged()
                     Diagnostics.success("engine", "Engine nội bộ (UID 2000) đã kết nối qua Gỡ lỗi không dây.")
-                    if (isAutoHideEnabled(appContext)) {
-                        execDirectOnAdb(
-                            mgr,
-                            "settings put global adb_wifi_enabled 0; settings put global development_settings_enabled 0"
-                        )
-                        hideWirelessDebugging(appContext)
-                    }
                     return@withContext true
                 }
                 if (step == 10 || step == 22) {

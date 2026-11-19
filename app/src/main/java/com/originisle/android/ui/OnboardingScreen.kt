@@ -60,6 +60,9 @@ fun OnboardingScreen(context: Context, prefs: SharedPreferences, onDone: () -> U
             android.content.pm.PackageManager.PERMISSION_GRANTED
     }
     val batteryOk = remember(tick.intValue) { isBatteryUnrestricted(context) }
+    val accGranted = remember(tick.intValue) {
+        com.aikeybridge.guard.BankGuard.isAccessibilityOn(context) || com.aikeybridge.guard.BankGuard.bankDisabledByUs
+    }
 
     var autoStartAck by remember {
         mutableStateOf(prefs.getBoolean("onboarding_autostart_ack", false))
@@ -112,10 +115,29 @@ fun OnboardingScreen(context: Context, prefs: SharedPreferences, onDone: () -> U
 
                 GroupDivider()
                 OnboardingRow(
+                    icon = IsleIcons.Grid,
+                    tile = IsleColors.TileTeal,
+                    title = "Dịch vụ Trợ năng (Accessibility)",
+                    description = "Chặn cuộc gọi chiếm toàn màn hình và bắt phím gọi AI (Tự né ngân hàng & VNeID).",
+                    granted = accGranted,
+                    mandatory = false,
+                ) {
+                    if (com.aikeybridge.data.PermissionsReader.hasWriteSecureSettings(context)) {
+                        com.aikeybridge.guard.BankGuard.setAccessibility(context, true)
+                        tick.intValue++
+                    } else {
+                        runCatching {
+                            context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                        }
+                    }
+                }
+
+                GroupDivider()
+                OnboardingRow(
                     icon = IsleIcons.Battery,
                     tile = IsleColors.TileGreen,
-                    title = "Battery unrestricted",
-                    description = "Stops OriginOS from killing the background caster to save power.",
+                    title = "Pin & Chạy nền không hạn chế",
+                    description = "Ngăn hệ thống OriginOS tắt dịch vụ đảo ngầm để tiết kiệm pin.",
                     granted = batteryOk,
                     mandatory = false,
                 ) { requestIgnoreBattery(context) }
@@ -123,9 +145,8 @@ fun OnboardingScreen(context: Context, prefs: SharedPreferences, onDone: () -> U
                 OnboardingRow(
                     icon = IsleIcons.Power,
                     tile = IsleColors.TileAmber,
-                    title = "Autostart + Associated startup",
-                    description = "Turn BOTH on. Without them, closing the app from recents kills " +
-                        "casting until you reboot.",
+                    title = "Tự khởi chạy & Khởi chạy liên kết",
+                    description = "Bật cả 2 mục để đảo không bị biến mất khi bạn vuốt xóa ứng dụng khỏi đa nhiệm.",
                     granted = autoStartAck,
                     mandatory = false,
                 ) {
@@ -140,7 +161,7 @@ fun OnboardingScreen(context: Context, prefs: SharedPreferences, onDone: () -> U
         }
         item {
             PillButton(
-                if (notifGranted) "Continue" else "Grant notification access to continue",
+                if (notifGranted) "Tiếp tục vào ứng dụng" else "Cần cấp quyền truy cập thông báo để tiếp tục",
                 onClick = {
                     prefs.edit().putBoolean("onboarding_done", true).apply()
                     onDone()

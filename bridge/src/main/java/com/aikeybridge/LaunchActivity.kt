@@ -5,12 +5,14 @@ import android.os.Bundle
 import android.os.SystemClock
 import com.aikeybridge.data.ActionMode
 import com.aikeybridge.data.ConfigSource
+import com.aikeybridge.data.PermissionsReader
 import com.aikeybridge.diagnostics.Attempt
 import com.aikeybridge.diagnostics.AttemptLog
 import com.aikeybridge.diagnostics.Diagnostics
 import com.aikeybridge.service.AssistantAccessibilityService
 import com.aikeybridge.service.AssistOverlay
 import com.aikeybridge.service.AssistantLauncher
+import com.aikeybridge.service.LaunchOutcome
 
 /**
  * Lối tắt "Gọi AI" / "Circle to Search" để gán vào phím tắt của ROM, chạm mặt lưng hoặc màn hình chính.
@@ -37,6 +39,12 @@ class LaunchActivity : Activity() {
         } else {
             Diagnostics.init(this)
             AttemptLog.init(this)
+
+            // Tự động khôi phục Trợ lý Google nếu OriginOS vô tình reset khi ẩn Tùy chọn nhà phát triển
+            if (PermissionsReader.hasWriteSecureSettings(this) && !PermissionsReader.googleAssistantDefault(this)) {
+                PermissionsReader.applyAssistantSecureSettingsFromApp(this, "gemini")
+            }
+
             val startedAt = SystemClock.elapsedRealtime()
             val (outcome, flowName) = when (mode) {
                 ActionMode.GOOGLE_CTS -> {
@@ -49,19 +57,22 @@ class LaunchActivity : Activity() {
                     appRes to "Google"
                 }
                 ActionMode.GEMINI_SCREEN -> {
-                    val assist = AssistOverlay.launch(this)
-                    val res = if (assist.ok || config == null) assist else AssistantLauncher.launch(this, config.target)
+                    val isGoogleDefault = PermissionsReader.googleAssistantDefault(this)
+                    val assist = if (isGoogleDefault) AssistOverlay.launch(this) else LaunchOutcome(false, "Google chưa phải trợ lý mặc định")
+                    val res = if (assist.ok) assist else {
+                        if (config != null) AssistantLauncher.launch(this, config.target)
+                        else AssistantLauncher.launchPackage(this, "com.google.android.apps.bard", "Gemini")
+                    }
                     res to "Gemini · Hỏi màn hình"
                 }
                 ActionMode.GEMINI_VOICE, ActionMode.DEFAULT -> {
-                    if (config == null) {
-                        val assist = AssistOverlay.launch(this)
-                        assist to "Gemini"
-                    } else {
-                        val assist = AssistOverlay.launch(this)
-                        val res = if (assist.ok) assist else AssistantLauncher.launch(this, config.target)
-                        res to config.target.displayName
+                    val isGoogleDefault = PermissionsReader.googleAssistantDefault(this)
+                    val assist = if (isGoogleDefault) AssistOverlay.launch(this) else LaunchOutcome(false, "Google chưa phải trợ lý mặc định")
+                    val res = if (assist.ok) assist else {
+                        if (config != null) AssistantLauncher.launch(this, config.target)
+                        else AssistantLauncher.launchPackage(this, "com.google.android.apps.bard", "Gemini")
                     }
+                    res to (config?.target?.displayName ?: "Gemini")
                 }
             }
             Diagnostics.log(

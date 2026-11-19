@@ -11,6 +11,7 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" ns1:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" ns1:ignore="ProtectedPermissions" />
     
     <uses-permission android:name="android.permission.READ_LOGS" ns1:ignore="ProtectedPermissions" />
 
@@ -84,6 +85,30 @@
         <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.files" android:exported="false" android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>
+
+        <service
+            android:name=".service.AssistantAccessibilityService"
+            android:exported="true"
+            android:label="@string/accessibility_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
+        <service
+            android:name=".service.BankGuardTileService"
+            android:exported="true"
+            android:icon="@drawable/lc_accessibility"
+            android:label="Bank Guard"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
     </application>
 
 </manifest>

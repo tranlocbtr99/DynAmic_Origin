@@ -355,6 +355,30 @@ class NotificationCastListener : NotificationListenerService() {
                     }
                 }
                 SportsCard.refresh(applicationContext)
+
+                // Anti-stuck watchdog: Reconcile active island cards against current activeNotifications.
+                // If a notification was dismissed (e.g. via Clear All, while screen off, or dropped by OS),
+                // cancel its ghost card immediately.
+                val currentSbns = activeNotifications
+                val validCastIds = HashSet<Int>()
+                currentSbns?.forEach { sbn ->
+                    if (sbn.packageName != packageName && sbn.packageName !in SYSTEM_PKGS) {
+                        validCastIds.add(IconCache.castIdFor(sbn))
+                    }
+                }
+                val currentIslandCards = PlaygroundService.activeCardIds
+                for (cardId in currentIslandCards) {
+                    if (cardId in 20000..29999 && cardId !in validCastIds) {
+                        Log.i(TAG, "Watchdog: clearing ghost card id=$cardId from island (notification dismissed)")
+                        IconCache.clear(cardId)
+                        startService(
+                            Intent(this@NotificationCastListener, PlaygroundService::class.java)
+                                .setAction(PlaygroundService.ACTION_CANCEL)
+                                .putExtra("id", cardId)
+                                .putExtra("oi_scene", "NAVIGATION"),
+                        )
+                    }
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "poll error", e)
             }
@@ -368,6 +392,28 @@ class NotificationCastListener : NotificationListenerService() {
         connectedAt = System.currentTimeMillis()
         if (getSharedPreferences(PREFS, 0).getBoolean("cast_notifications", false)) {
             runCatching { PlaygroundService.keepAlive(this) }
+        }
+        runCatching {
+            // Reconcile and purge any ghost cards left over from before reconnect
+            val currentSbns = activeNotifications
+            val validCastIds = HashSet<Int>()
+            currentSbns?.forEach { sbn ->
+                if (sbn.packageName != packageName && sbn.packageName !in SYSTEM_PKGS) {
+                    validCastIds.add(IconCache.castIdFor(sbn))
+                }
+            }
+            val currentIslandCards = PlaygroundService.activeCardIds
+            for (cardId in currentIslandCards) {
+                if (cardId in 20000..29999 && cardId !in validCastIds) {
+                    IconCache.clear(cardId)
+                    startService(
+                        Intent(this, PlaygroundService::class.java)
+                            .setAction(PlaygroundService.ACTION_CANCEL)
+                            .putExtra("id", cardId)
+                            .putExtra("oi_scene", "NAVIGATION"),
+                    )
+                }
+            }
         }
         runCatching {
             com.originisle.android.ui.LtmIslandHelper.updateIdlePreset(this)
@@ -510,7 +556,12 @@ class NotificationCastListener : NotificationListenerService() {
             (n.fullScreenIntent != null && (sbn.isOngoing || !n.actions.isNullOrEmpty())) ||
             sbn.packageName == "com.android.incallui" ||
             sbn.packageName == "com.android.phone" ||
-            sbn.packageName == "com.google.android.dialer"
+            sbn.packageName == "com.google.android.dialer" ||
+            sbn.packageName == "com.vivo.incallui" ||
+            sbn.packageName == "com.bbk.incallui" ||
+            sbn.packageName == "com.vivo.telecom" ||
+            (LtmVivoOptimizer.getConfiguredCallPackages(this).contains(sbn.packageName) &&
+                (sbn.isOngoing || !n.actions.isNullOrEmpty() || n.fullScreenIntent != null))
 
         // Media sessions get the dedicated media path. If the notification has no session token
         // (some players, e.g. Firefox playing a video, omit it), fall back to matching an active
@@ -855,6 +906,8 @@ class NotificationCastListener : NotificationListenerService() {
         lastOutcome.remove(sbn.key)
         lastScorePostTime.remove(sbn.key)
         lastCastPostTime.remove(sbn.key)
+        lastCastContentHash.remove(sbn.key)
+        lastCastContentTime.remove(sbn.key)
         LtmCallManager.onNotificationRemoved(applicationContext, sbn)
 
         // Score cards are keyed by team names (matchCastId), not by this notification's own identity
@@ -882,7 +935,12 @@ class NotificationCastListener : NotificationListenerService() {
         startService(
             Intent(this, PlaygroundService::class.java)
                 .setAction(PlaygroundService.ACTION_CANCEL)
-                .putExtra("id", id),
+                .putExtra("id", id)
+                .putExtra("oi_scene", "NAVIGATION"),
         )
+    }
+
+    override fun onNotificationRemoved(sbn: StatusBarNotification, rankingMap: RankingMap?, reason: Int) {
+        onNotificationRemoved(sbn)
     }
 }

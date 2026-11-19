@@ -346,26 +346,40 @@ class LiquidGlassBannerView @JvmOverloads constructor(
         val inset = strokePaint.strokeWidth / 2f
         boundsRect.set(inset, inset, w.toFloat() - inset, h.toFloat() - inset)
 
-        // 1. Pure Liquid White Glass Body: Translucent, shimmering, crystal-clear white glass
-        // Absolutely zero dark or muddy grey tones!
+        val prefs = context.getSharedPreferences(com.originisle.android.ui.PREFS_NAME, Context.MODE_PRIVATE)
+        val transparency = prefs.getInt("liquid_glass_transparency", 65).coerceIn(10, 100) / 100f
+
+        // Smoothly blend between deep OLED dark glass (for maximum text contrast) and luminous crystal clear glass
+        fun blend(cOpaque: Int, cGlass: Int, t: Float): Int {
+            val a = (Color.alpha(cOpaque) * (1f - t) + Color.alpha(cGlass) * t).toInt().coerceIn(0, 255)
+            val r = (Color.red(cOpaque) * (1f - t) + Color.red(cGlass) * t).toInt().coerceIn(0, 255)
+            val g = (Color.green(cOpaque) * (1f - t) + Color.green(cGlass) * t).toInt().coerceIn(0, 255)
+            val b = (Color.blue(cOpaque) * (1f - t) + Color.blue(cGlass) * t).toInt().coerceIn(0, 255)
+            return Color.argb(a, r, g, b)
+        }
+
+        val topColor = blend(Color.parseColor("#EE1A1A1E"), Color.parseColor("#50FFFFFF"), transparency)
+        val midColor = blend(Color.parseColor("#F4121215"), Color.parseColor("#28FFFFFF"), transparency)
+        val botColor = blend(Color.parseColor("#FA08080A"), Color.parseColor("#15FFFFFF"), transparency)
+
+        // 1. Pure Liquid Glass Body: Custom translucent shimmering glass based on user preference
         bgPaint.shader = LinearGradient(
             0f, 0f, 0f, h.toFloat(),
-            intArrayOf(
-                Color.parseColor("#48FFFFFF"), // 28% translucent white glass at top
-                Color.parseColor("#26FFFFFF"), // 15% clear glass in middle
-                Color.parseColor("#14FFFFFF"), // 8% crystal clear glass at bottom
-            ),
+            intArrayOf(topColor, midColor, botColor),
             floatArrayOf(0.0f, 0.5f, 1.0f),
             Shader.TileMode.CLAMP,
         )
+
+        val sheenTop = blend(Color.parseColor("#30FFFFFF"), Color.parseColor("#50FFFFFF"), transparency)
+        val sheenMid = blend(Color.parseColor("#0EFFFFFF"), Color.parseColor("#18FFFFFF"), transparency)
 
         // 2. Liquid Glass Gloss Sheen: Delicate water-like reflection across the upper surface
         glassSheenPaint.shader = LinearGradient(
             0f, 0f, 0f, h.toFloat() * 0.55f,
             intArrayOf(
-                Color.parseColor("#40FFFFFF"), // 25% glossy sheen at top edge
-                Color.parseColor("#12FFFFFF"), // 7% soft water sheen
-                Color.parseColor("#00FFFFFF"), // transparent
+                sheenTop,
+                sheenMid,
+                Color.parseColor("#00FFFFFF"),
             ),
             floatArrayOf(0.0f, 0.45f, 1.0f),
             Shader.TileMode.CLAMP,

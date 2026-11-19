@@ -18,6 +18,7 @@ class KeepAliveReceiver : BroadcastReceiver() {
         runCatching { NotificationCastListener.ensureEnabled(context) }
         runCatching { NotificationCastListener.forceRebind(context) }
         runCatching { PlaygroundService.keepAlive(context) }
+        runCatching { com.aikeybridge.guard.BankGuard.sync(context) }
         runCatching {
             LtmIslandHelper.updateIdlePreset(context)
             LtmIslandHelper.syncIdleTicker(context)

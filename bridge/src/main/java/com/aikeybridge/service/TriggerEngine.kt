@@ -40,8 +40,8 @@ class TriggerEngine(
 
     fun onAccessibilityEvent(event: AccessibilityEvent) {
         val settings = source.settings.state.value
-        // Chỉ chế độ Đầy đủ mới chặn khẩu lệnh; Script nền tự lo, Một lần thì để trợ lý gốc.
-        if (!settings.redirectEnabled || settings.usageMode != UsageMode.FULL) return
+        // Bắt sự kiện khi chuyển hướng được bật (không bắt buộc phải bật script nền)
+        if (!settings.redirectEnabled) return
         if (event.packageName?.toString() == service.packageName) return
 
         val config = source.current()
@@ -194,8 +194,16 @@ class TriggerEngine(
             return FlowOutcome(res.ok, res.detail)
         }
 
-        // Lớp phủ nổi chỉ gọi được bằng phím trợ lý từ shell, và chỉ an toàn khi Google là trợ lý
-        // mặc định — nếu không, phím đó sẽ mở lại trợ lý gốc.
+        // Thử kích hoạt trực tiếp giao diện Gemini qua IPC VoiceInteraction (công nghệ Gemini Guard, không cần Shell/Shizuku)
+        if (target.id == "gemini" || actionMode == ActionMode.GEMINI_VOICE || actionMode == ActionMode.DEFAULT || actionMode == ActionMode.GEMINI_SCREEN) {
+            val assist = AssistOverlay.launch(service)
+            if (assist.ok) {
+                RuntimeStatus.setState(RedirectState.DONE)
+                return FlowOutcome(true, "Lớp phủ Gemini (IPC Trực tiếp)")
+            }
+        }
+
+        // Lớp phủ nổi qua phím trợ lý từ shell (nếu có Shizuku/ADB)
         val overlayReady = target.shellKeyevent != null && shizukuGranted() &&
             (!target.overlayNeedsDefaultAssistant || PermissionsReader.googleAssistantDefault(service))
         var usedOverlay = overlayReady && tryShellVoice(config, wake = needsActivity)

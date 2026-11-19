@@ -75,6 +75,12 @@ class AssistantAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         event ?: return
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            val pkg = event.packageName?.toString()
+            if (!pkg.isNullOrBlank()) {
+                lastWindowPackage = pkg
+            }
+        }
         if (Sniffer.isActive) {
             if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
                 Sniffer.observe(event.packageName?.toString(), event.className?.toString(), packageName)
@@ -122,5 +128,8 @@ class AssistantAccessibilityService : AccessibilityService() {
         @Volatile
         var activeService: AssistantAccessibilityService? = null
             private set
+
+        @Volatile
+        var lastWindowPackage: String? = null
     }
 }

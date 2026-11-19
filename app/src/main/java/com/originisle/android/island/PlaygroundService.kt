@@ -105,6 +105,12 @@ class PlaygroundService : Service() {
         notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         OriginIslandBuilder.grantScenes(this)
         restoreIdleCardIfEnabled()
+        com.aikeybridge.guard.BankGuard.sync(this)
+    }
+
+    override fun onDestroy() {
+        com.aikeybridge.guard.BankGuard.stop(this)
+        super.onDestroy()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -368,7 +374,7 @@ class PlaygroundService : Service() {
         val suppressExpand = dedupEnabled && sourcePkg != null &&
             (now - (lastCastByApp[sourcePkg] ?: 0L)) < cooldownSec * 1000L
         if (dedupEnabled && sourcePkg != null && !suppressExpand) lastCastByApp[sourcePkg] = now
-        if (suppressExpand) { forceShow = false; forceShowCard = false }
+        if (suppressExpand && !isCall) { forceShow = false; forceShowCard = false }
         val dismissWhenKill = if (isIdleCard) false else intent.getBooleanExtra("oi_dismiss_when_kill", true)
         val keepScreenOn = intent.getBooleanExtra("oi_keep_screen_on", false)
         val disableInvert = intent.getBooleanExtra("oi_disable_invert", true)
@@ -645,40 +651,40 @@ class PlaygroundService : Service() {
 
     private fun cancelNotification(intent: Intent) {
         val id = intent.getIntExtra("id", -1)
-        val scene = originScenes.remove(id) ?: intent.getStringExtra("oi_scene")
-        Log.i("PlaygroundService", "cancelNotification: id=$id, scene=$scene")
         if (id == -1) return
+        val scene = originScenes.remove(id) ?: intent.getStringExtra("oi_scene") ?: "NAVIGATION"
+        Log.i("PlaygroundService", "cancelNotification: id=$id, scene=$scene")
         activeIds.remove(id)
         originChangeRecord.remove(id)
         lastPosts.remove(id)
         plainIds.remove(id)
+        autoDismissTasks.remove(id)?.let { mainHandler.removeCallbacks(it) }
         activeCardIds = activeIds.toSet()
 
-        val remainingId = activeIds.firstOrNull { it != 0xee84 && (originScenes[it] == scene || scene == null) }
-        if (remainingId != null) {
+        // ALWAYS explicitly end the SuperX island card with the end bundle on OriginOS
+        endOrigin(id, scene)
+        mainHandler.postDelayed({
             notificationManager.cancel(OriginIslandConstants.SUPERX_TAG, id)
-            val remainingIntent = lastPosts[remainingId]
-            if (remainingIntent != null) {
-                mainHandler.postDelayed({
+            notificationManager.cancel(id)
+        }, 350L)
+
+        // Only restore a remaining card if it is genuine ONGOING (e.g. music/live card), NOT a transient message
+        val remainingId = activeIds.firstOrNull { it != 0xee84 && (originScenes[it] == scene || scene == "NAVIGATION") }
+        val remainingIntent = if (remainingId != null) lastPosts[remainingId] else null
+        val isRemainingOngoing = remainingIntent?.getBooleanExtra("is_ongoing", false) == true || (remainingId != null && remainingId >= 40000)
+
+        if (remainingId != null && remainingIntent != null && isRemainingOngoing) {
+            mainHandler.postDelayed({
+                if (activeIds.contains(remainingId)) {
                     readAndPost(remainingIntent)
-                }, 100L)
-            }
+                }
+            }, 380L)
         } else {
-            if (scene != null) {
-                endOrigin(id, scene)
-                mainHandler.postDelayed({
-                    notificationManager.cancel(OriginIslandConstants.SUPERX_TAG, id)
-                    notificationManager.cancel(id)
-                }, 350L)
-            } else {
-                notificationManager.cancel(id)
-                notificationManager.cancel(OriginIslandConstants.SUPERX_TAG, id)
-            }
             mainHandler.postDelayed({
                 if (activeIds.isEmpty() || (activeIds.size == 1 && activeIds.contains(0xee84))) {
                     restoreIdleCardIfEnabled()
                 }
-            }, 500L)
+            }, 450L)
         }
         // Keep the sceneCurrentId entry (now stale) so the NEXT different card clears this scene's
         // leftovers via the staleness-aware replace in readAndPost.

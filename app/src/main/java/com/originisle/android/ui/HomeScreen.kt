@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -42,6 +43,8 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -100,6 +103,7 @@ fun HomeScreen(
     var includeMessages by remember { mutableStateOf(prefs.getBoolean("cast_include_messages", false)) }
     var expandOnNotification by remember { mutableStateOf(prefs.getBoolean("cast_expand_on_notification", true)) }
     var notifBannerStyle by remember { mutableStateOf(prefs.getString("notif_banner_style", "liquid_glass") ?: "liquid_glass") }
+    var liquidGlassTransparency by remember { mutableStateOf(prefs.getInt("liquid_glass_transparency", 65)) }
     var hideFromShade by remember { mutableStateOf(prefs.getBoolean("cast_hide_from_shade", false)) }
     var dedupSameApp by remember { mutableStateOf(prefs.getBoolean("cast_dedup_same_app", true)) }
     var dedupCooldown by remember { mutableStateOf(prefs.getInt("cast_dedup_cooldown_sec", 10)) }
@@ -118,6 +122,7 @@ fun HomeScreen(
     var privacyPolicyOpen by remember { mutableStateOf(false) }
     var aboutOpen by remember { mutableStateOf(false) }
     var optimizerOpen by remember { mutableStateOf(false) }
+    var bankGuardOn by remember { mutableStateOf(com.aikeybridge.guard.BankGuard.isEnabled(context)) }
     var callBlockDialogOpen by remember { mutableStateOf(false) }
     var callIslandOnly by remember { mutableStateOf(prefs.getBoolean("cast_call_island_only", false)) }
     var idleTitle by remember { mutableStateOf(prefs.getString("ltm_idle_card_title", "LTMori").orEmpty()) }
@@ -534,24 +539,94 @@ fun HomeScreen(
                             }
                             if (donateExpanded) {
                                 Column(
-                                    Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp),
                                 ) {
-                                    Text("Techcombank · Tran Minh Loc", fontSize = 13.sp, color = IsleColors.TextSecondary)
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    // Glass Sub-card for Bank Transfer
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(IsleColors.SurfaceHigh.copy(alpha = 0.5f))
+                                            .border(0.5.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                                            .padding(horizontal = 14.dp, vertical = 10.dp)
                                     ) {
-                                        Text("4444444790", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = IsleColors.Text)
-                                        TextButton(onClick = {
-                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("STK", "4444444790"))
-                                            android.widget.Toast.makeText(context, Lang.s(context, "copied"), android.widget.Toast.LENGTH_SHORT).show()
-                                        }) { Text(Lang.s(context, "copy")) }
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                                Text(
+                                                    "Techcombank · Trần Minh Lộc",
+                                                    fontSize = 12.sp,
+                                                    color = IsleColors.TextSecondary
+                                                )
+                                                Text(
+                                                    "4444444790",
+                                                    fontSize = 16.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = IsleColors.Text
+                                                )
+                                            }
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .background(IsleColors.Accent.copy(alpha = 0.2f))
+                                                    .clickable {
+                                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("STK", "4444444790"))
+                                                        android.widget.Toast.makeText(context, Lang.s(context, "copied"), android.widget.Toast.LENGTH_SHORT).show()
+                                                    }
+                                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                                            ) {
+                                                Text("Sao chép", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = IsleColors.AccentText)
+                                            }
+                                        }
                                     }
-                                    TextButton(onClick = {
-                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://ltmprofile.pages.dev/")))
-                                    }) { Text(Lang.s(context, "contact_author")) }
+
+                                    // iOS Liquid Glass Pill Button for Contact Author
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(IsleColors.SurfaceHigh.copy(alpha = 0.4f))
+                                            .border(0.5.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
+                                            .clickable {
+                                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://ltmprofile.pages.dev/")))
+                                            }
+                                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Icon(
+                                                IsleIcons.Globe,
+                                                contentDescription = null,
+                                                tint = IsleColors.Accent,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Text(
+                                                "Trang cá nhân & Liên hệ tác giả",
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = IsleColors.Text,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                        Icon(
+                                            IsleIcons.ChevronRight,
+                                            contentDescription = null,
+                                            tint = IsleColors.Chevron,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -634,7 +709,7 @@ fun HomeScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Text(
-                                "LTMori v3.0.1",
+                                "LTMori v3.1.8",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = IsleColors.Text,
@@ -645,17 +720,28 @@ fun HomeScreen(
                                 color = IsleColors.TextSecondary,
                             )
                             Row(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                TextButton(onClick = { privacyPolicyOpen = true }) {
-                                    Text(Lang.s(context, "privacy_rule"), fontSize = 12.sp)
-                                }
-                                TextButton(onClick = {
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://ltmprofile.pages.dev/")))
-                                }) {
-                                    Text(Lang.s(context, "contact_author"), fontSize = 12.sp)
-                                }
+                                Text(
+                                    "Quy tắc bảo mật",
+                                    fontSize = 12.sp,
+                                    color = IsleColors.AccentText,
+                                    modifier = Modifier
+                                        .clickable { privacyPolicyOpen = true }
+                                        .padding(vertical = 4.dp)
+                                )
+                                Text("•", fontSize = 12.sp, color = IsleColors.TextTertiary)
+                                Text(
+                                    "Liên hệ tác giả",
+                                    fontSize = 12.sp,
+                                    color = IsleColors.AccentText,
+                                    modifier = Modifier
+                                        .clickable {
+                                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://ltmprofile.pages.dev/")))
+                                        }
+                                        .padding(vertical = 4.dp)
+                                )
                             }
                         }
                     }
@@ -762,6 +848,50 @@ fun HomeScreen(
                                     )
                                 }
                             }
+                            if (notifBannerStyle == "liquid_glass") {
+                                val isViLang = Lang.isVi(context)
+                                GroupDivider()
+                                SettingRow(
+                                    IsleIcons.Sparkles, IsleColors.TilePurple,
+                                    Lang.s(context, "liquid_glass_transparency"),
+                                    subtitle = if (isViLang) "Kéo để chỉnh độ trong suốt: $liquidGlassTransparency%" else "Drag to adjust transparency: $liquidGlassTransparency%",
+                                )
+                                Row(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = 62.dp, end = 20.dp, bottom = 14.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        if (isViLang) "Đậm 10%" else "10%",
+                                        fontSize = 11.sp,
+                                        color = IsleColors.TextSecondary,
+                                        fontWeight = FontWeight.Medium,
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Slider(
+                                        value = liquidGlassTransparency.toFloat(),
+                                        onValueChange = { newVal ->
+                                            liquidGlassTransparency = kotlin.math.round(newVal).toInt()
+                                            prefs.edit().putInt("liquid_glass_transparency", liquidGlassTransparency).apply()
+                                        },
+                                        valueRange = 10f..100f,
+                                        modifier = Modifier.weight(1f),
+                                        colors = SliderDefaults.colors(
+                                            thumbColor = IsleColors.TilePurple,
+                                            activeTrackColor = IsleColors.TilePurple,
+                                            inactiveTrackColor = IsleColors.SurfaceHigher,
+                                        ),
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        if (isViLang) "100% Trong" else "100%",
+                                        fontSize = 11.sp,
+                                        color = IsleColors.TextSecondary,
+                                        fontWeight = FontWeight.Medium,
+                                    )
+                                }
+                            }
                             if (notifBannerStyle == "superx") {
                                 GroupDivider()
                                 ToggleRow(
@@ -832,21 +962,21 @@ fun HomeScreen(
                                 prefs.edit().putBoolean("cast_call_island_only", it).apply()
                             }
                             if (callIslandOnly) {
-                                Row(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(start = 62.dp, end = 16.dp, bottom = 12.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                Box(
+                                    modifier = Modifier
+                                        .padding(start = 62.dp, end = 16.dp, bottom = 12.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(IsleColors.TileGreen.copy(alpha = 0.15f))
+                                        .border(0.5.dp, IsleColors.TileGreen.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+                                        .clickable { callBlockDialogOpen = true }
+                                        .padding(horizontal = 14.dp, vertical = 8.dp)
                                 ) {
-                                    OutlinedButton(
-                                        onClick = { callBlockDialogOpen = true },
-                                        shape = RoundedCornerShape(8.dp),
-                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                                        modifier = Modifier.height(34.dp)
-                                    ) {
-                                        Text("Chặn bung toàn màn hình (Shizuku/ADB)…", fontSize = 12.sp)
-                                    }
+                                    Text(
+                                        "Cài đặt ứng dụng chặn toàn màn hình…",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = IsleColors.GoodText
+                                    )
                                 }
                             }
                         }
@@ -1210,6 +1340,55 @@ fun HomeScreen(
                                 Lang.s(context, "open"),
                                 onClick = { optimizerOpen = true },
                             )
+                            GroupDivider()
+                            ToggleRow(
+                                IsleIcons.Lock, IsleColors.TileGreen,
+                                Lang.s(context, "bank_guard_title"), bankGuardOn,
+                                subtitle = Lang.s(context, "bank_guard_subtitle"),
+                            ) {
+                                bankGuardOn = it
+                                com.aikeybridge.guard.BankGuard.setEnabled(context, it)
+                            }
+                            if (bankGuardOn) {
+                                if (!com.aikeybridge.guard.BankGuard.hasUsageAccess(context)) {
+                                    Row(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(start = 62.dp, end = 16.dp, bottom = 12.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(10.dp))
+                                                .background(IsleColors.TileAmber.copy(alpha = 0.15f))
+                                                .border(0.5.dp, IsleColors.TileAmber.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+                                                .clickable { com.aikeybridge.guard.BankGuard.openUsageSettings(context) }
+                                                .padding(horizontal = 14.dp, vertical = 8.dp)
+                                        ) {
+                                            Text(
+                                                Lang.s(context, "bank_guard_grant_perm"),
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = IsleColors.Warn
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    Row(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(start = 62.dp, end = 16.dp, bottom = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            Lang.s(context, "bank_guard_list_desc"),
+                                            fontSize = 11.sp,
+                                            color = IsleColors.TileGreen
+                                        )
+                                    }
+                                }
+                            }
                             GroupDivider()
                             NavRow(
                                 IsleIcons.Heart, IsleColors.TilePurple,
@@ -2115,7 +2294,10 @@ private fun BlockCallFullScreenDialog(
             "com.whatsapp" to "WhatsApp",
             "com.android.phone" to "Điện thoại (OriginOS Phone)",
             "com.android.incallui" to "Điện thoại (OriginOS InCallUI)",
-            "com.google.android.dialer" to "Điện thoại Google (Phone)"
+            "com.google.android.dialer" to "Điện thoại Google (Phone)",
+            "com.vivo.incallui" to "Điện thoại Vivo (InCallUI)",
+            "com.bbk.incallui" to "Điện thoại BBK (InCallUI)",
+            "com.vivo.telecom" to "Viễn thông Vivo (Telecom)"
         )
     }
 
@@ -2207,7 +2389,7 @@ private fun BlockCallFullScreenDialog(
                 ) {
                     configuredPkgs.forEach { pkg ->
                         val isBlocked = blockedPkgs.contains(pkg)
-                        val label = appNameMap[pkg] ?: pkg
+                        val label = appNameMap[pkg] ?: runCatching { context.packageManager.getApplicationLabel(context.packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrDefault(pkg)
                         val isDefault = pkg in LtmVivoOptimizer.DEFAULT_CALL_PACKAGES
 
                         Row(

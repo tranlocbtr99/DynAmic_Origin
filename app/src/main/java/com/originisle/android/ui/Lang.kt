@@ -82,6 +82,8 @@ object Lang {
         "expand_on_notif_subtitle" to mapOf("vi" to "Tự động bung rộng đảo khi có thông báo mới", "en" to "Pop the island when a notification arrives"),
         "banner_style" to mapOf("vi" to "Kiểu bung khi có thông báo", "en" to "Notification banner style"),
         "banner_style_subtitle" to mapOf("vi" to "Giao diện hiển thị khi thông báo xuất hiện", "en" to "Banner appearance when notifications arrive"),
+        "liquid_glass_transparency" to mapOf("vi" to "Độ trong suốt kính lỏng", "en" to "Liquid glass transparency"),
+        "liquid_glass_transparency_sub" to mapOf("vi" to "Hiệu chỉnh độ trong suốt của thông báo kính bật ra", "en" to "Adjust the opacity and translucency of the liquid glass popup"),
         "style_liquid_glass" to mapOf("vi" to "Kính lỏng iOS (Mặc định)", "en" to "Liquid Glass iOS (Default)"),
         "style_liquid_glass_sub" to mapOf("vi" to "Hộp kính lỏng iPhone bo cong, giữ nguyên đảo con nhộng của máy", "en" to "Apple-style glass banner, preserves native capsule"),
         "style_superx" to mapOf("vi" to "Đảo mặc định Vivo", "en" to "Vivo native island"),
@@ -167,6 +169,19 @@ object Lang {
         "vivo_optimizer_desc" to mapOf(
             "vi" to "Giữ đảo vĩnh viễn & Fix trễ thông báo máy nội địa",
             "en" to "Permanent keep-alive & Fix notification delay"
+        ),
+        "bank_guard_title" to mapOf("vi" to "Bảo vệ Ngân hàng (Bank Guard)", "en" to "Bank Guard (Anti-Bank)"),
+        "bank_guard_subtitle" to mapOf(
+            "vi" to "Tự ẩn trợ năng khi mở app ngân hàng & VNeID",
+            "en" to "Auto-hide accessibility in bank apps & VNeID"
+        ),
+        "bank_guard_status_active" to mapOf("vi" to "Đang bảo vệ (An toàn)", "en" to "Protecting (Safe)"),
+        "bank_guard_status_need_perm" to mapOf("vi" to "Cần cấp quyền Dữ liệu sử dụng", "en" to "Usage Access Required"),
+        "bank_guard_grant_perm" to mapOf("vi" to "Cấp quyền sử dụng", "en" to "Grant Usage Access"),
+        "bank_guard_list_title" to mapOf("vi" to "Đã bảo vệ 35+ ngân hàng & VNeID", "en" to "35+ Banks & VNeID Protected"),
+        "bank_guard_list_desc" to mapOf(
+            "vi" to "Bảo vệ 35+ ngân hàng VN & VNeID",
+            "en" to "Protects 35+ VN Banks & VNeID"
         ),
     )
 }

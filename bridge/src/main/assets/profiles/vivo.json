@@ -23,7 +23,13 @@
       "id": "vivo_copilot",
       "label": "Hi Jovi / nút AI",
       "package": "com.vivo.ai.copilot",
-      "class_regex": ".*CopilotPanelWindow.*"
+      "class_regex": ".*"
+    },
+    {
+      "id": "vivo_agent",
+      "label": "Tiểu V / Jovi Voice",
+      "package": "com.vivo.agent",
+      "class_regex": ".*"
     }
   ],
   "log_triggers": [

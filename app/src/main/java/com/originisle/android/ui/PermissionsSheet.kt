@@ -132,9 +132,43 @@ fun PermissionsSheet(
                         prefs.edit().putBoolean("onboarding_autostart_ack", true).apply()
                     }
                 }
+
+                GroupDivider()
+                val accOn = remember(tick.intValue) { com.aikeybridge.guard.BankGuard.isAccessibilityOn(context) }
+                val bankDisabled = com.aikeybridge.guard.BankGuard.bankDisabledByUs
+                PermissionRow(
+                    IsleIcons.Grid, IsleColors.TileTeal, "Dịch vụ Trợ năng (Accessibility)",
+                    ok = accOn || bankDisabled,
+                    status = when {
+                        accOn -> "Đã bật — Sẵn sàng hoạt động"
+                        bankDisabled -> "Tạm ngắt — Đang né ngân hàng"
+                        else -> "Chưa bật — Chạm để bật"
+                    },
+                    note = "Dùng để chặn cuộc gọi chiếm màn hình và bắt phím AI.",
+                ) {
+                    if (com.aikeybridge.data.PermissionsReader.hasWriteSecureSettings(context)) {
+                        com.aikeybridge.guard.BankGuard.setAccessibility(context, true)
+                        tick.intValue++
+                    } else {
+                        runCatching {
+                            context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                        }
+                    }
+                }
+
+                GroupDivider()
+                val usageOk = remember(tick.intValue) { com.aikeybridge.guard.BankGuard.hasUsageAccess(context) }
+                PermissionRow(
+                    IsleIcons.Pulse, IsleColors.TileBlue, "Truy cập dữ liệu sử dụng",
+                    ok = usageOk,
+                    status = if (usageOk) "Đã cấp phép — Bảo vệ 35+ ngân hàng" else "Chưa cấp phép — Chạm để cấp quyền",
+                    note = "Cho phép LTMori tự động ẩn trợ năng khi vào app ngân hàng & VNeID.",
+                ) {
+                    com.aikeybridge.guard.BankGuard.openUsageSettings(context)
+                }
             }
             PillButton(
-                "Redo first-run setup",
+                "Thiết lập lại từ đầu",
                 onClick = onRedoSetup,
                 modifier = Modifier.fillMaxWidth(),
                 icon = IsleIcons.Refresh,

@@ -59,6 +59,8 @@ object EngineDaemonMain {
         appendLine("  [ \"\$p\" != \"\$MY_PID\" ] && kill -9 \"\$p\" 2>/dev/null")
         appendLine("done")
         appendLine("pm grant com.autonavi.minimap android.permission.WRITE_SECURE_SETTINGS 2>/dev/null")
+        appendLine("pm grant com.autonavi.minimap android.permission.PACKAGE_USAGE_STATS 2>/dev/null")
+        appendLine("appops set com.autonavi.minimap GET_USAGE_STATS allow 2>/dev/null")
         appendLine("pm grant com.autonavi.minimap android.permission.READ_LOGS 2>/dev/null")
         appendLine("DIR='$extDir'")
         appendLine("IPC_DIR=\"\$DIR/${EngineBinderProvider.IPC_DIR}\"")

@@ -51,6 +51,8 @@ object WatchScript {
             appendLine("# Tuyệt đối không tự ý bật adb_wifi_enabled=1 để tránh bung popup Gỡ lỗi không dây liên tục.")
             appendLine("ps -A -o PID,ARGS 2>/dev/null | grep -E '[a]kb_engine|[c]om\\.aikeybridge:shell|[c]om\\.android\\.commands\\.content\\.Content' | while read p r; do kill -9 \$p 2>/dev/null; done")
             appendLine("pm grant com.autonavi.minimap android.permission.WRITE_SECURE_SETTINGS 2>/dev/null")
+            appendLine("pm grant com.autonavi.minimap android.permission.PACKAGE_USAGE_STATS 2>/dev/null")
+            appendLine("appops set com.autonavi.minimap GET_USAGE_STATS allow 2>/dev/null")
             appendLine("LOG='$eventLog'")
             appendLine("DIR=\"\${LOG%/*}\"")
             appendLine("echo 1 > \"\$DIR/$ENABLED_FILE\" 2>/dev/null")
@@ -177,7 +179,7 @@ object WatchScript {
         ActionMode.GOOGLE_APP ->
             "monkey -p com.google.android.googlequicksearchbox -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1"
         ActionMode.DEFAULT, ActionMode.GEMINI_VOICE, ActionMode.GEMINI_SCREEN ->
-            "input keyevent $keyevent"
+            "settings put secure voice_interaction_service com.google.android.googlequicksearchbox/com.google.android.voiceinteraction.GsaVoiceInteractionService 2>/dev/null; input keyevent $keyevent"
     }
 
     /** 0.642 → 642: sh chỉ tính số nguyên. */

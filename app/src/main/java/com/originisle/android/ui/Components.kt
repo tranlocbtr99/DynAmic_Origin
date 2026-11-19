@@ -137,14 +137,23 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier) {
     )
 }
 
-/** A rounded grey card holding a group of rows. */
+/** A rounded grey card holding a group of rows (iOS Liquid Glass styled). */
 @Composable
 fun GroupCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier.fillMaxWidth()
             .clip(RoundedCornerShape(GroupRadius))
-            .background(IsleColors.Surface.copy(alpha = 0.55f))
-            .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(GroupRadius)),
+            .background(IsleColors.Surface.copy(alpha = 0.65f))
+            .border(
+                0.8.dp,
+                androidx.compose.ui.graphics.Brush.verticalGradient(
+                    listOf(
+                        Color.White.copy(alpha = 0.16f),
+                        Color.White.copy(alpha = 0.04f)
+                    )
+                ),
+                RoundedCornerShape(GroupRadius)
+            ),
         content = content,
     )
 }
@@ -197,19 +206,19 @@ fun SettingRow(
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 title,
-                fontSize = 15.5.sp,
+                fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = IsleColors.Text,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             if (subtitle != null) {
                 Text(
                     subtitle,
-                    fontSize = 12.5.sp,
+                    fontSize = 12.sp,
                     color = IsleColors.TextSecondary,
                     lineHeight = 16.sp,
-                    maxLines = 2,
+                    maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
