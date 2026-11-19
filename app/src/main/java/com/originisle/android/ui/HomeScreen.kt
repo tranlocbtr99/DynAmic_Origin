@@ -526,6 +526,109 @@ fun HomeScreen(
                     item { SetupAttentionBanner(onClick = { permissionsOpen = true }) }
                 }
 
+                // 0. THÔNG BÁO TỪ NHÀ PHÁT TRIỂN
+                item {
+                    GroupCard {
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(IsleColors.TileAmber.copy(alpha = 0.2f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        IsleIcons.Heart,
+                                        contentDescription = null,
+                                        tint = IsleColors.TileAmber,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                Column {
+                                    Text(
+                                        "Thông báo từ Nhà Phát Triển",
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = IsleColors.Text
+                                    )
+                                    Text(
+                                        "LocTM · tranlocbtr99@gmail.com",
+                                        fontSize = 12.sp,
+                                        color = IsleColors.TextSecondary
+                                    )
+                                }
+                            }
+                            Text(
+                                "Cảm ơn các bạn đã đồng hành, do kinh phí hạn chế nên NPT sẽ cập nhật chậm hơn ở các phiên bản sau, mọi ý kiến đóng góp xin gửi về gmail: tranlocbtr99@gmail.com",
+                                fontSize = 13.sp,
+                                lineHeight = 19.sp,
+                                color = IsleColors.Text
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(IsleColors.Accent.copy(alpha = 0.15f))
+                                        .clickable {
+                                            runCatching {
+                                                val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
+                                                    data = Uri.parse("mailto:tranlocbtr99@gmail.com")
+                                                    putExtra(Intent.EXTRA_SUBJECT, "Góp ý LTMori")
+                                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                }
+                                                context.startActivity(emailIntent)
+                                            }.onFailure {
+                                                android.widget.Toast.makeText(context, "Không mở được ứng dụng Email", android.widget.Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                        .padding(vertical = 10.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        "Gửi phản hồi Email",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = IsleColors.Accent
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(IsleColors.SurfaceHigh)
+                                        .clickable {
+                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Email NPT", "tranlocbtr99@gmail.com"))
+                                            android.widget.Toast.makeText(context, "Đã sao chép: tranlocbtr99@gmail.com", android.widget.Toast.LENGTH_SHORT).show()
+                                        }
+                                        .padding(vertical = 10.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        "Sao chép Gmail",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = IsleColors.TextSecondary
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // 1. ỦNG HỘ TÁC GIẢ (ĐƯA LÊN TRÊN CÙNG THEO YÊU CẦU)
                 item {
                     GroupCard {

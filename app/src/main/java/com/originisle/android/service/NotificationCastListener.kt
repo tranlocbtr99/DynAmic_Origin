@@ -668,7 +668,7 @@ class NotificationCastListener : NotificationListenerService() {
         val wasLive = IconCache.castIdFor(sbn) in PlaygroundService.activeCardIds
         if (!isLive && !wasLive) {
             val includeMessages = prefs.getBoolean("cast_include_messages", false)
-            if (!includeMessages) { log(sbn, "skipped — plain message (not a live card)", false); return }
+            if (!includeMessages && !isMessage) { log(sbn, "skipped — plain message (not a live card)", false); return }
 
             val ignoreSilent = prefs.getBoolean("cast_ignore_silent", true)
             if (ignoreSilent && isSilent(sbn)) { log(sbn, "skipped — silent notification", false); return }
