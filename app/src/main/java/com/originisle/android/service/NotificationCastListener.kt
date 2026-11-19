@@ -551,17 +551,30 @@ class NotificationCastListener : NotificationListenerService() {
         val extras = n.extras
         val token = extractMediaToken(extras)
         val template = extras.getString(NotificationCompat.EXTRA_TEMPLATE)
-        val isCall = n.category == NotificationCompat.CATEGORY_CALL ||
+
+        // Phân định chính xác: Tin nhắn (MessagingStyle, CATEGORY_MESSAGE, có ô nhập RemoteInput)
+        // Tuyệt đối không bao giờ nhận nhầm tin nhắn thành cuộc gọi!
+        val isMessage = n.category == NotificationCompat.CATEGORY_MESSAGE ||
+            template?.contains("MessagingStyle") == true ||
+            (n.actions?.any { it.remoteInputs?.isNotEmpty() == true } == true)
+
+        val isCall = !isMessage && (
+            n.category == NotificationCompat.CATEGORY_CALL ||
             template == "android.app.Notification\$CallStyle" ||
+            sbn.packageName in setOf(
+                "com.android.incallui",
+                "com.android.phone",
+                "com.google.android.dialer",
+                "com.vivo.incallui",
+                "com.bbk.incallui",
+                "com.vivo.telecom"
+            ) ||
             (n.fullScreenIntent != null && (sbn.isOngoing || !n.actions.isNullOrEmpty())) ||
-            sbn.packageName == "com.android.incallui" ||
-            sbn.packageName == "com.android.phone" ||
-            sbn.packageName == "com.google.android.dialer" ||
-            sbn.packageName == "com.vivo.incallui" ||
-            sbn.packageName == "com.bbk.incallui" ||
-            sbn.packageName == "com.vivo.telecom" ||
             (LtmVivoOptimizer.getConfiguredCallPackages(this).contains(sbn.packageName) &&
-                (sbn.isOngoing || !n.actions.isNullOrEmpty() || n.fullScreenIntent != null))
+                sbn.isOngoing && (n.fullScreenIntent != null ||
+                    (extras.getCharSequence(NotificationCompat.EXTRA_TITLE)?.toString()?.lowercase().orEmpty().contains("cuộc gọi") ||
+                     extras.getCharSequence(NotificationCompat.EXTRA_TEXT)?.toString()?.lowercase().orEmpty().contains("cuộc gọi"))))
+        )
 
         // Media sessions get the dedicated media path. If the notification has no session token
         // (some players, e.g. Firefox playing a video, omit it), fall back to matching an active

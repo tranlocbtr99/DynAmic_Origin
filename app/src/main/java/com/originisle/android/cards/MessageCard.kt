@@ -98,6 +98,8 @@ object MessageCard {
             putExtra("subtext", subtext)
             putExtra("source_app", appLabel)
             putExtra("source_pkg", sbn.packageName)
+            putExtra("oi_force_show", true)
+            putExtra("oi_force_show_card", true)
 
             putExtra("oi_left_content", shortName(context, top))
             face?.let {

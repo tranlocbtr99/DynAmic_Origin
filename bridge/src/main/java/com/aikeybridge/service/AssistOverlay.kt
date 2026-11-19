@@ -3,6 +3,7 @@ package com.aikeybridge.service
 import android.annotation.SuppressLint
 import android.app.SearchManager
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
@@ -26,7 +27,31 @@ object AssistOverlay {
         val vis = tryVoiceInteractionService(context, bundle)
         if (vis.ok) return vis
 
-        return launchWithBundle(context, bundle, "launchAssist")
+        val assist = launchWithBundle(context, bundle, "launchAssist")
+        if (assist.ok) return assist
+
+        // Fallback: Mở trực tiếp Intent Google Voice / Gemini
+        return runCatching {
+            val intent = Intent(Intent.ACTION_VOICE_COMMAND)
+                .setPackage(AssistantLauncher.GOOGLE_PACKAGE)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            if (intent.resolveActivity(context.packageManager) != null) {
+                context.startActivity(intent)
+                LaunchOutcome(true, "Mở Google Voice Command")
+            } else {
+                val bardIntent = context.packageManager.getLaunchIntentForPackage("com.google.android.apps.bard")
+                    ?: context.packageManager.getLaunchIntentForPackage(AssistantLauncher.GOOGLE_PACKAGE)
+                if (bardIntent != null) {
+                    bardIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(bardIntent)
+                    LaunchOutcome(true, "Mở App Gemini")
+                } else {
+                    LaunchOutcome(false, "Không tìm thấy Google/Gemini")
+                }
+            }
+        }.getOrElse {
+            LaunchOutcome(false, "Lỗi mở Gemini: ${it.message}")
+        }
     }
 
     /**
@@ -86,7 +111,7 @@ object AssistOverlay {
                 ?: return LaunchOutcome(false, "showSessionFromSession method not found")
 
             val params = if (method.parameterCount == 4) {
-                arrayOf(null, bundle, 7, context.packageName)
+                arrayOf(null, bundle, 7, null)
             } else {
                 arrayOf(null, bundle, 7)
             }

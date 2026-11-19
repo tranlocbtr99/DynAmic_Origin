@@ -355,14 +355,14 @@ class PlaygroundService : Service() {
         var forceShow = when {
             isIdleCard -> false
             isUpdatingExisting -> false
-            isLiquidGlassHandled || bannerStyle == "liquid_glass" || bannerStyle == "capsule_only" -> false
+            bannerStyle == "capsule_only" -> false
             isCall -> true
             else -> intent.getBooleanExtra("oi_force_show", false) || expandOnNotif
         }
         var forceShowCard = when {
             isIdleCard -> false
             isUpdatingExisting -> false
-            isLiquidGlassHandled || bannerStyle == "liquid_glass" || bannerStyle == "capsule_only" -> false
+            bannerStyle == "capsule_only" -> false
             isCall -> true
             else -> intent.getBooleanExtra("oi_force_show_card", false) || expandOnNotif
         }

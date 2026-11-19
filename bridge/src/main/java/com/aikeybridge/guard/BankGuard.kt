@@ -36,7 +36,7 @@ object BankGuard {
     const val KEY_BANK_PKGS = "bank_pkgs"
     const val KEY_POLL_MS = "bank_poll_ms"
     const val KEY_DISABLED_BY_US = "bank_disabled_by_us"
-    const val DEFAULT_POLL_MS = 300
+    const val DEFAULT_POLL_MS = 120
 
     @Volatile
     private var running = false
