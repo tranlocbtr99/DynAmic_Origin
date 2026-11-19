@@ -36,7 +36,7 @@ object BankGuard {
     const val KEY_BANK_PKGS = "bank_pkgs"
     const val KEY_POLL_MS = "bank_poll_ms"
     const val KEY_DISABLED_BY_US = "bank_disabled_by_us"
-    const val DEFAULT_POLL_MS = 500
+    const val DEFAULT_POLL_MS = 300
 
     @Volatile
     private var running = false
@@ -69,23 +69,33 @@ object BankGuard {
         "com.vcb",                         // Vietcombank
         "com.vietcombank.mobile",          // Vietcombank
         "com.vnpay.bidv",                  // BIDV SmartBanking
-        "vn.com.techcombank.bb.app",       // Techcombank Mobile
+        "vn.com.bidv.smartbanking",        // BIDV SmartBanking
+        "vn.com.techcombank.mb.online",    // Techcombank Mobile chính thức
+        "vn.com.techcombank.bb.app",       // Techcombank Mobile (BB)
+        "vn.com.techcombank.mobile.business", // Techcombank Business
         "com.vnpay.techcombank",           // Techcombank F@st Mobile
+        "com.techcombank.tcbotp",          // Techcombank OTP
         "com.mbmobile",                    // MB Bank
         "com.mb.mbbank",                   // MB Bank
+        "com.vnpay.mbbank",                // MB Bank
         "com.vnpay.vpbankonline",          // VPBank NEO
+        "com.vpbank.neo",                  // VPBank NEO
         "com.vnpay.agribank",              // Agribank E-Mobile Banking
         "vn.vpay.nhdt",                    // Agribank
         "com.tpb.mb.gprsandroid",          // TPBank Mobile
+        "vn.com.tpb.ebank.app",            // TPBank Mobile
         "com.vnpay.vietinbank",            // VietinBank iPay
+        "com.vietinbank.ipay",             // VietinBank iPay
         "mobile.acb.com.vn",               // ACB ONE
         "com.acb.android",                 // ACB
+        "vn.com.acb",                      // ACB
         "com.shb.mobilebanking",           // SHB Mobile
         "com.hdbank.android",              // HDBank
         "com.msb.mb.banking",              // MSB mBank
         "com.scb.phonebanking",            // SCB Mobile Banking
         "com.vnpay.sacombank",             // Sacombank mBanking
         "com.sacombank.mbanking",          // Sacombank Pay
+        "vn.com.sacombank.pay",            // Sacombank Pay
         "com.cake.android",                // CAKE by VPBank
         "vn.timo.app",                     // Timo Digital Bank
         "vn.gov.bca.vneid",                // VNeID (Bộ Công An)
@@ -135,6 +145,43 @@ object BankGuard {
 
     fun isBankApp(context: Context, pkg: String?): Boolean {
         if (pkg.isNullOrBlank()) return false
+        val lower = pkg.lowercase()
+        if (lower.contains("techcombank") ||
+            lower.contains("vietcombank") ||
+            lower.contains("mbbank") ||
+            lower.contains("mbmobile") ||
+            lower.contains("vneid") ||
+            lower.contains("bidv") ||
+            lower.contains("vietinbank") ||
+            lower.contains("vpbank") ||
+            lower.contains("agribank") ||
+            lower.contains("sacombank") ||
+            lower.contains("tpbank") ||
+            lower.contains("shbbank") ||
+            lower.contains("hdbank") ||
+            lower.contains("msbbank") ||
+            lower.contains("scbbank") ||
+            lower.contains("seabank") ||
+            lower.contains("shinhan") ||
+            lower.contains("bvbank") ||
+            lower.contains("namabank") ||
+            lower.contains("lpbank") ||
+            lower.contains("pvcombank") ||
+            lower.contains("bacabank") ||
+            lower.contains("vietabank") ||
+            lower.contains("kienlong") ||
+            lower.contains("eximbank") ||
+            lower.contains("coopbank") ||
+            lower.contains("zalopay") ||
+            lower.contains("viettelpay") ||
+            lower.contains("viettelmoney") ||
+            lower.contains("shopeepay") ||
+            (lower.contains("acb") && (lower.contains("bank") || lower.contains("mobile") || lower.contains("one"))) ||
+            (lower.contains("vcb") && lower.contains("com.")) ||
+            (lower.contains("momo") && lower.contains("transfer"))
+        ) {
+            return true
+        }
         val pkgs = getProtectedPackages(context)
         return pkgs.any { it.equals(pkg, ignoreCase = true) }
     }
